@@ -27,3 +27,6 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+
+# 推送脚本的临时提交信息文件（现在写在系统临时目录，这里只防手滑）
+_push_commit_msg.txt

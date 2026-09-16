@@ -44,9 +44,12 @@ def git(*args, check=True, quiet=False):
 
 
 def commit_all(message):
-    """提交说明写进 UTF-8 文件再 -F，避免 PowerShell/Git 的中文编码坑。"""
-    msg_path = os.path.join(ROOT, "_push_commit_msg.txt")
-    with open(msg_path, "w", encoding="utf-8", newline="\n") as f:
+    """提交说明写进仓库外的 UTF-8 临时文件再 -F，避开 PowerShell/Git 的中文编码坑，
+    也避免 `git add -A` 把临时文件自己带进提交。"""
+    import tempfile
+
+    fd, msg_path = tempfile.mkstemp(prefix="hlc_commit_", suffix=".txt")
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
         f.write(message.rstrip() + "\n")
     try:
         git("add", "-A")
