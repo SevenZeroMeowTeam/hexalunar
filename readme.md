@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r19`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r20`
 - 创造模式页签：**六相月灾**
 
 ---
@@ -16,7 +16,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 |---|---|
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r19.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r20.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 
 `.vscode/tasks.json` 里已配好两个任务（含 Java 报错问题匹配器）：
@@ -164,6 +164,9 @@ tools/  开发辅助脚本（见第五节）
 | `obj_rotate.py` | 绕几何中心旋转 OBJ 顶点（`--x/--y/--z`），用于把模型长轴对齐到原版物品的 Y 轴约定 |
 | `recipe_audit.py` | 合成表静态体检：JSON 合法性、物品/标签存在性、pattern 自检、配方冲突、无产出物品 |
 | `lang_audit.py` | 翻译键体检：代码里用到的 key 是否在 `zh_cn`/`en_us` 都存在、中英是否对齐 |
+| `log_audit.py` | 日志体检：扫 `mod/logs`（含轮转 `.gz`）捞出模组相关堆栈/报错，汇总关键信号 |
+| `github_ip.py` | 扫 GitHub 可用 IP（TCP + 真 TLS 握手双重验证），`--apply` 写 hosts |
+| `push.py` | 一键推送：**先扫 IP → 写 hosts → 再 push**，失败自动重扫重试（`-m` 可顺便提交，中文安全） |
 
 ---
 
@@ -182,6 +185,15 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r20`
+
+- **修复「一进世界就崩」**（日志实锤）：`GrenadeHud.render` 把 `GrenadeItem.heldGrenade()` 的 `null` 直接解引用，
+  手里没手雷时每帧 NPE → `[Minecraft/FATAL]: Unreported exception thrown!` 直接崩客户端；
+  `ModNetwork` 的开火/装填包也补上判空（客户端点完枪立刻切手，服务器就会 NPE）
+- 新增 `tools/log_audit.py`：扫 `mod/logs`（含轮转 `.gz`）提取模组相关堆栈与关键信号
+- 新增 `tools/github_ip.py` + `tools/push.py`：**每次推送自动扫描 GitHub 可用 IP**（TCP 通才再试真 TLS 握手，
+  只信能完成 HTTPS 的节点）、写 hosts 并重试；VS Code 任务 `mc_push` / `mc_logs` / `mc_audit`
 
 > 版本 `1.0.0-r19`
 

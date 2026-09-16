@@ -22,8 +22,9 @@ public final class GrenadeHud {
     public static void render(Minecraft mc, GuiGraphics g) {
         Player player = mc.player;
         if (player == null) return;
+        // heldGrenade() 手里没手雷时返回 null —— 这里必须判空，否则每帧 NPE 直接 FATAL 崩客户端
         ItemStack stack = GrenadeItem.heldGrenade(player);
-        if (!(stack.getItem() instanceof GrenadeItem grenade)) return;
+        if (stack == null || !(stack.getItem() instanceof GrenadeItem)) return;
 
         Component line = switch (GrenadeItem.state(stack)) {
             case GrenadeItem.STATE_PULLING -> with(ChatFormatting.AQUA,

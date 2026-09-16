@@ -118,6 +118,8 @@ public final class ModNetwork {
                 if (player == null) return;
                 net.minecraft.world.item.ItemStack weapon =
                         cn.blockforge.generated.hexalunarcalamity.weapon.AmmoUtil.heldWeapon(player);
+                // 客户端与服务器可能错开一帧（点完枪立刻切手），这里必须判空
+                if (weapon == null) return;
                 if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.WeaponAmmo ammo) {
                     net.minecraft.world.InteractionHand hand =
                             weapon == player.getMainHandItem()
@@ -146,6 +148,7 @@ public final class ModNetwork {
                 if (player == null) return;
                 net.minecraft.world.item.ItemStack weapon =
                         cn.blockforge.generated.hexalunarcalamity.weapon.AmmoUtil.heldWeapon(player);
+                if (weapon == null) return;
                 if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.WeaponAmmo ammo) {
                     net.minecraft.world.InteractionHand hand =
                             weapon == player.getMainHandItem()

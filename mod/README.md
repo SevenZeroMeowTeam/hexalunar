@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r19**
+- 当前版本：**1.0.0-r20**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r19.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r20.jar`
 - 依赖：Forge 47.4.0（无需其他前置）
 
 ---
@@ -139,13 +139,18 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 `hexalunar_calamity-1.0.0-r19.jar` 放进 `.minecraft/mods/`；
+2. 把 `hexalunar_calamity-1.0.0-r20.jar` 放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
 
+- **r20** — 修复进世界即崩的 NPE：
+  - `GrenadeHud.render` 对 `GrenadeItem.heldGrenade()` 返回的 `null` 直接调用 `getItem()`，
+    手里没手雷时每帧 NPE → `FATAL: Unreported exception thrown!` 崩客户端（日志 `GrenadeHud.java:26`）
+  - `ModNetwork` 的开火 / 装填请求包同样补上判空（客户端与服务器错开一帧就会 NPE）
+  - 新增日志体检工具 `tools/log_audit.py`，以及推送前自动扫 GitHub 可用 IP 的 `tools/github_ip.py` / `tools/push.py`
 - **r19** — 尸毒瓶与武器获取途径：
   - 新增配方「尸毒萃取剂 + 玻璃瓶 → 尸毒瓶 ×2」（之前尸毒瓶没有任何获取途径）
   - 喷吐尸新增尸毒萃取剂掉落（1~2 个，受抢夺影响）—— 萃取剂不再只有剧毒骷髅一个来源

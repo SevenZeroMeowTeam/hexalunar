@@ -60,6 +60,51 @@
         "panel": "dedicated",
         "clear": true
       }
+    },
+    {
+      "label": "mc_push",
+      "detail": "扫描 GitHub 可用 IP → 写 hosts → 推送到 origin（CI 自动构建）",
+      "type": "shell",
+      "command": "python tools/push.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "mc_logs",
+      "detail": "扫描 mod/logs（含轮转 .gz）找出模组相关报错",
+      "type": "shell",
+      "command": "python tools/log_audit.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "mc_audit",
+      "detail": "合成表 + 战利品修饰器 + 翻译键体检",
+      "type": "shell",
+      "command": "python tools/recipe_audit.py; python tools/lang_audit.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
     }
   ]
 }
