@@ -87,11 +87,14 @@ def main():
         if not args.no_scan:
             print(f"\n[扫描] 第 {attempt}/{args.attempts} 次探测 GitHub 可用 IP …")
             good = github_ip.scan("github.com")
+            current = github_ip.current_hosts_ip("github.com")
             if good:
                 for ip, cost in good[:5]:
                     print(f"   {ip:16} {cost * 1000:6.0f} ms")
-                ok, msg = github_ip.apply_hosts(good[0][0], "github.com")
-                print(f"[hosts] {good[0][0]} -> {msg}")
+                # hosts 里那个 IP 还能用就先别换（少折腾），它失效了才换到最快的
+                pick = current if current and any(ip == current for ip, _ in good) else good[0][0]
+                ok, msg = github_ip.apply_hosts(pick, "github.com")
+                print(f"[hosts] {pick} -> {msg}")
             else:
                 print("   [警告] 没扫到可用节点，先按当前网络直接试一次")
         code, out = git("push", args.remote, f"HEAD:refs/heads/{args.branch}", check=False)

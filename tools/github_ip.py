@@ -46,21 +46,26 @@ def tcp_ok(ip, timeout=4.0):
         return False
 
 
-def https_ok(ip, host, timeout=8.0):
-    """真做一次 TLS 握手 + HEAD，返回耗时（秒）；失败返回 None。"""
-    start = time.time()
-    try:
-        ctx = ssl.create_default_context()
-        raw = socket.create_connection((ip, 443), timeout=timeout)
-        tls = ctx.wrap_socket(raw, server_hostname=host)
-        tls.sendall(f"HEAD / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode())
-        head = tls.recv(120)
-        tls.close()
-        if b"HTTP/1." not in head:
-            return None
-        return time.time() - start
-    except Exception:  # noqa: BLE001  —— 网络异常种类多，统一当失败
-        return None
+def https_ok(ip, host, timeout=8.0, attempts=2):
+    """真做一次 TLS 握手 + HEAD，返回耗时（秒）；失败返回 None。
+
+    网络干扰是阵发性的（同一天 curl 会 200/000 交替），所以默认重试 2 次，
+    只要有一次成功就算该节点可用。
+    """
+    for attempt in range(attempts):
+        start = time.time()
+        try:
+            ctx = ssl.create_default_context()
+            raw = socket.create_connection((ip, 443), timeout=timeout)
+            tls = ctx.wrap_socket(raw, server_hostname=host)
+            tls.sendall(f"HEAD / HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n".encode())
+            head = tls.recv(120)
+            tls.close()
+            if b"HTTP/1." in head:
+                return time.time() - start
+        except Exception:  # noqa: BLE001  —— 网络异常种类多，统一当失败
+            pass
+    return None
 
 
 def scan(host="github.com", ips=None, workers=16):
@@ -71,6 +76,19 @@ def scan(host="github.com", ips=None, workers=16):
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         results = list(zip(alive, pool.map(lambda i: https_ok(i, host), alive)))
     return sorted((r for r in results if r[1]), key=lambda r: r[1])
+
+
+def current_hosts_ip(host="github.com"):
+    """当前 hosts 里给这个域名写的 IP（没有则 None）——扫描全挂时可用来先对付一下。"""
+    try:
+        with open(HOSTS, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2 and parts[1].lower() == host.lower():
+                    return parts[0]
+    except OSError:
+        pass
+    return None
 
 
 def apply_hosts(ip, host="github.com"):
@@ -123,11 +141,16 @@ def main():
     ap.add_argument("--apply", action="store_true", help="把最快的节点写入 hosts")
     args = ap.parse_args()
 
-    print(f"[扫描] {args.host} 的候选节点 {len(CANDIDATES)} 个（TCP + TLS 双重验证）…")
+    print(f"[扫描] {args.host} 的候选节点 {len(CANDIDATES)} 个（TCP + TLS 双重验证，各重试 2 次）…")
     good = scan(args.host)
     if not good:
-        print("[结果] 没有可用节点 —— 网络可能整体不通；如果代理软件在运行，"
-              "可以试 `git -c http.proxy=http://127.0.0.1:7897 push`")
+        now = current_hosts_ip(args.host)
+        hint = ""
+        if now:
+            hint = f"（hosts 当前指向 {now}，可以直接先试一次 push）"
+        print("[结果] 本轮没扫到能完成 HTTPS 的节点" + hint)
+        print("       网络阵发性抖动时属正常，重跑一次即可；若代理软件在运行，"
+              "也可 `git -c http.proxy=http://127.0.0.1:7897 push`")
         return 1
 
     print(f"[结果] 可用节点 {len(good)} 个：")
