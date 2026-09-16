@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "pattern": [
+  "ppp",
+  "pap",
+  "iii"
+ ],
+ "key": {
+  "p": {
+   "tag": "minecraft:planks"
+  },
+  "a": {
+   "item": "hexalunar_calamity:compound_arrow"
+  },
+  "i": {
+   "item": "minecraft:iron_ingot"
+  }
+ },
+ "result": {
+  "item": "hexalunar_calamity:ammo_box_arrow",
+  "count": 1
+ }
+}

@@ -1,0 +1,25 @@
+{
+  "sources": [
+    {
+      "type": "directory",
+      "source": "models",
+      "prefix": "models/"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:models/akm"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:models/crossbow"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:models/compound_bow"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:models/bolt"
+    }
+  ]
+}

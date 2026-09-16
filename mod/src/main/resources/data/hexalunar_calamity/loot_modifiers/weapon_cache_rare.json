@@ -1,0 +1,42 @@
+{
+  "type": "hexalunar_calamity:weapon_cache",
+  "conditions": [],
+  "settings": {
+    "chance": 0.16,
+    "tables": [
+      "minecraft:chests/ancient_city",
+      "minecraft:chests/ancient_city_ice_box",
+      "minecraft:chests/underwater_ruin_big",
+      "minecraft:chests/bastion_treasure",
+      "minecraft:chests/bastion_bridge",
+      "minecraft:chests/bastion_hoglin_stable",
+      "minecraft:chests/bastion_other",
+      "minecraft:chests/buried_treasure",
+      "minecraft:chests/shipwreck_treasure",
+      "minecraft:chests/shipwreck_supply",
+      "minecraft:chests/end_city_treasure",
+      "minecraft:chests/stronghold_library",
+      "minecraft:chests/woodland_mansion"
+    ],
+    "entries": [
+      {
+        "weapon": "hexalunar_calamity:compound_bow",
+        "weight": 3,
+        "ammo": "hexalunar_calamity:compound_arrow",
+        "ammo_count": 12
+      },
+      {
+        "weapon": "hexalunar_calamity:crossbow",
+        "weight": 4,
+        "ammo": "hexalunar_calamity:crossbow_bolt",
+        "ammo_count": 12
+      },
+      {
+        "weapon": "hexalunar_calamity:akm",
+        "weight": 3,
+        "ammo": "hexalunar_calamity:ammo_762",
+        "ammo_count": 20
+      }
+    ]
+  }
+}

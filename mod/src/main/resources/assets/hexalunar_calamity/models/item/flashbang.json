@@ -1,0 +1,6 @@
+{
+ "parent": "item/generated",
+ "textures": {
+  "layer0": "hexalunar_calamity:item/flashbang"
+ }
+}

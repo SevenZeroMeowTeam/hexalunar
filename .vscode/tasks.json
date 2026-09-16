@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "mc_check",
+      "detail": "类型检查 / 静态编译：gradle compileJava（不打包）",
+      "type": "shell",
+      "command": "$env:JAVA_HOME='C:\\Users\\Administrator\\.jdks\\temurin-17'; $g=(Get-ChildItem \"$env:USERPROFILE\\.gradle\\wrapper\\dists\\gradle-8.14.5-bin\" -Recurse -Filter gradle.bat | Select-Object -First 1).FullName; if (-not $g) { Write-Error 'gradle 8.14.5 not found in wrapper dists'; exit 1 }; & $g compileJava --console=plain; exit $LASTEXITCODE",
+      "options": {
+        "cwd": "${workspaceFolder}/mod"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": {
+        "owner": "java",
+        "fileLocation": [
+          "autoDetect",
+          "${workspaceFolder}/mod"
+        ],
+        "pattern": {
+          "regexp": "^(.*\\.java):(\\d+):\\s+(error|warning):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "severity": 3,
+          "message": 4
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "mc_build",
+      "detail": "编译打包并把 jar 部署到 .minecraft/mods",
+      "type": "shell",
+      "command": "$env:JAVA_HOME='C:\\Users\\Administrator\\.jdks\\temurin-17'; $g=(Get-ChildItem \"$env:USERPROFILE\\.gradle\\wrapper\\dists\\gradle-8.14.5-bin\" -Recurse -Filter gradle.bat | Select-Object -First 1).FullName; & $g build --console=plain; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $jar=(Get-ChildItem '${workspaceFolder}/mod/build/libs/hexalunar_calamity-*.jar' | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName; Copy-Item $jar 'C:\\Users\\Administrator\\Desktop\\.minecraft\\versions\\1.20.1-Forge_47.4.23-2\\mods' -Force; Write-Host \"DEPLOYED -> $jar\"",
+      "options": {
+        "cwd": "${workspaceFolder}/mod"
+      },
+      "problemMatcher": {
+        "owner": "java",
+        "fileLocation": [
+          "autoDetect",
+          "${workspaceFolder}/mod"
+        ],
+        "pattern": {
+          "regexp": "^(.*\\.java):(\\d+):\\s+(error|warning):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "severity": 3,
+          "message": 4
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}

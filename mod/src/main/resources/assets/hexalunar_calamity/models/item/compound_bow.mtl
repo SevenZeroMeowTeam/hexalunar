@@ -1,0 +1,15 @@
+# compound_bow material
+newmtl mat
+Kd 1.0 1.0 1.0
+Ka 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ns 0
+map_Kd hexalunar_calamity:models/compound_bow
+
+# 拉弦变体里追加的弦（tools/bow_gen_pull.py 生成）
+newmtl str
+Kd 1.0 1.0 1.0
+Ka 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ns 0
+map_Kd hexalunar_calamity:models/bow_string

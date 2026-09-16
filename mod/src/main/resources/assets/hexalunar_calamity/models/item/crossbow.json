@@ -1,0 +1,166 @@
+{
+ "loader": "forge:obj",
+ "model": "hexalunar_calamity:models/item/crossbow.obj",
+ "flip_v": true,
+ "gui_light": "front",
+ "overrides": [
+  {
+   "predicate": {
+    "hexalunar_calamity:pulling": 1
+   },
+   "model": "hexalunar_calamity:item/crossbow_pulling_0"
+  },
+  {
+   "predicate": {
+    "hexalunar_calamity:pull": 0.65,
+    "hexalunar_calamity:pulling": 1
+   },
+   "model": "hexalunar_calamity:item/crossbow_pulling_1"
+  },
+  {
+   "predicate": {
+    "hexalunar_calamity:pull": 0.9,
+    "hexalunar_calamity:pulling": 1
+   },
+   "model": "hexalunar_calamity:item/crossbow_pulling_2"
+  }
+ ],
+ "display": {
+  "gui": {
+   "rotation": [
+    25,
+    215,
+    0
+   ],
+   "translation": [
+    0,
+    1,
+    0
+   ],
+   "scale": [
+    0.72,
+    0.72,
+    0.72
+   ]
+  },
+  "ground": {
+   "rotation": [
+    0,
+    -90,
+    0
+   ],
+   "translation": [
+    0,
+    4,
+    0
+   ],
+   "scale": [
+    0.3,
+    0.3,
+    0.3
+   ]
+  },
+  "head": {
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "translation": [
+    0,
+    13,
+    0
+   ],
+   "scale": [
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "fixed": {
+   "rotation": [
+    0,
+    -90,
+    0
+   ],
+   "translation": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  },
+  "thirdperson_righthand": {
+   "rotation": [
+    0,
+    180,
+    0
+   ],
+   "translation": [
+    4.8,
+    -0.2,
+    3.5
+   ],
+   "scale": [
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "thirdperson_lefthand": {
+   "rotation": [
+    0,
+    180,
+    0
+   ],
+   "translation": [
+    4.8,
+    -0.2,
+    3.5
+   ],
+   "scale": [
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "firstperson_righthand": {
+   "rotation": [
+    0,
+    210,
+    0
+   ],
+   "translation": [
+    -0.8,
+    2.4,
+    6.1
+   ],
+   "scale": [
+    0.62,
+    0.62,
+    0.62
+   ]
+  },
+  "firstperson_lefthand": {
+   "rotation": [
+    0,
+    210,
+    0
+   ],
+   "translation": [
+    -0.8,
+    2.4,
+    6.1
+   ],
+   "scale": [
+    0.62,
+    0.62,
+    0.62
+   ]
+  }
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "ingredients": [
+  {
+   "item": "hexalunar_calamity:compound_arrow"
+  },
+  {
+   "item": "hexalunar_calamity:poison_reagent"
+  }
+ ],
+ "result": {
+  "item": "hexalunar_calamity:poison_arrow",
+  "count": 2
+ }
+}

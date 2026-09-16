@@ -1,0 +1,18 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "ingredients": [
+  {
+   "item": "hexalunar_calamity:poison_reagent"
+  },
+  {
+   "item": "minecraft:honey_bottle"
+  },
+  {
+   "item": "minecraft:sugar"
+  }
+ ],
+ "result": {
+  "item": "hexalunar_calamity:antidote",
+  "count": 2
+ }
+}

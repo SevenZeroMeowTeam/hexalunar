@@ -1,0 +1,29 @@
+# ── 构建产物 ──────────────────────────────────────────────
+build/
+mod/build/
+mod/.gradle/
+.gradle/
+out/
+run/
+logs/
+mod/logs/
+*.class
+*.jar
+!mod/gradle/wrapper/gradle-wrapper.jar
+
+# ── 本地备份 / 快照（不进仓库） ────────────────────────────
+backup_*/
+*.bak
+*.unit16bak
+*.rotbak
+*.orig
+
+# ── 模型临时导出（与 resources 里的贴图重复） ───────────────
+mod/模型/*.png
+
+# ── 编辑器 / 系统 ──────────────────────────────────────────
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+Thumbs.db

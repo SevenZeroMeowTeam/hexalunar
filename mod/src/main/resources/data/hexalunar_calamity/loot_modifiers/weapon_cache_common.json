@@ -1,0 +1,41 @@
+{
+  "type": "hexalunar_calamity:weapon_cache",
+  "conditions": [],
+  "settings": {
+    "chance": 0.06,
+    "tables": [
+      "minecraft:chests/abandoned_mineshaft",
+      "minecraft:chests/simple_dungeon",
+      "minecraft:chests/desert_pyramid",
+      "minecraft:chests/jungle_temple",
+      "minecraft:chests/igloo_chest",
+      "minecraft:chests/pillager_outpost",
+      "minecraft:chests/ruined_portal",
+      "minecraft:chests/stronghold_corridor",
+      "minecraft:chests/stronghold_crossing",
+      "minecraft:chests/nether_bridge",
+      "minecraft:chests/village/village_weaponsmith",
+      "minecraft:chests/village/village_fletcher"
+    ],
+    "entries": [
+      {
+        "weapon": "hexalunar_calamity:compound_bow",
+        "weight": 6,
+        "ammo": "hexalunar_calamity:compound_arrow",
+        "ammo_count": 8
+      },
+      {
+        "weapon": "hexalunar_calamity:crossbow",
+        "weight": 3,
+        "ammo": "hexalunar_calamity:crossbow_bolt",
+        "ammo_count": 8
+      },
+      {
+        "weapon": "hexalunar_calamity:akm",
+        "weight": 1,
+        "ammo": "hexalunar_calamity:ammo_762",
+        "ammo_count": 12
+      }
+    ]
+  }
+}

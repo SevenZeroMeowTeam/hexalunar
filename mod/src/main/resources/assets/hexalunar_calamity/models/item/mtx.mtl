@@ -1,0 +1,7 @@
+newmtl mat0
+Kd 1.0 1.0 1.0
+Ka 1.0 1.0 1.0
+Ks 0.0 0.0 0.0
+Ns 0
+map_Kd hexalunar_calamity:models/mtx
+

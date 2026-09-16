@@ -1,0 +1,50 @@
+name: build
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build mod jar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # ⚠️ ForgeGradle [6.0,6.2) 不支持 Gradle 9.x，wrapper 固定在 8.14.5
+      - name: Build (compileJava + jar)
+        working-directory: mod
+        run: ./gradlew build --console=plain --stacktrace --no-daemon
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: hexalunar_calamity-jar
+          path: mod/build/libs/hexalunar_calamity-*.jar
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: |
+            mod/build/reports/problems/**
+            mod/build/logs/**
+          if-no-files-found: ignore

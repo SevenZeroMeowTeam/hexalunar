@@ -1,0 +1,23 @@
+{
+ "type": "minecraft:crafting_shaped",
+ "pattern": [
+  "ppp",
+  "pbp",
+  "iii"
+ ],
+ "key": {
+  "p": {
+   "tag": "minecraft:planks"
+  },
+  "b": {
+   "item": "hexalunar_calamity:crossbow_bolt"
+  },
+  "i": {
+   "item": "minecraft:iron_ingot"
+  }
+ },
+ "result": {
+  "item": "hexalunar_calamity:ammo_box_bolt",
+  "count": 1
+ }
+}
