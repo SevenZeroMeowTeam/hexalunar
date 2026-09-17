@@ -29,6 +29,12 @@ public class CrossbowWeaponItem extends Item implements WeaponAmmo {
         return AmmoType.BOLT;
     }
 
+    /** 客户端：第三人称手臂姿态（双手举弩 / 开镜时端平） */
+    @Override
+    public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(cn.blockforge.generated.hexalunarcalamity.client.WeaponArmPose.CROSSBOW);
+    }
+
     /** 倍镜放大倍率：4 倍 */
     public static final float SCOPE_ZOOM = 4.0F;
 

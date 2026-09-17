@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r20**
+- 当前版本：**1.0.0-r21**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r20.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r21.jar`
 - 依赖：Forge 47.4.0（无需其他前置）
 
 ---
@@ -139,13 +139,22 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 `hexalunar_calamity-1.0.0-r20.jar` 放进 `.minecraft/mods/`；
+2. 把 `hexalunar_calamity-1.0.0-r21.jar` 放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
 
+- **r21** — 手持动作动画（程序化变换，不是骨骼动画）：
+  - `WeaponAnim`（每 tick 推进的冲量）+ `WeaponPose`（折算 display 增量）+ `AnimatedWeaponModel`
+    （`BakedModelWrapper`，在 `ModelEvent.ModifyBakingResult` 给武器模型套上）
+  - **AKM**：开火后坐（后拖 / 上抬 / 随机枪口偏摆，连发累积）、举枪过渡、换弹整套起伏、走路摆动与呼吸微漂
+  - **复合弓**：拉弦往身前拉 + 放箭向前回弹；**十字弩**：开镜往画面中心收 + 开火后坐
+  - **手雷 / 震爆弹**：拔销时手腕外翻、引信越短抖得越厉害、出手向前上方甩
+  - 第三人称手臂姿态：步枪 / 弩双手持握、瞄准端平，手雷拔销后抬手持投
+  - 数值均用 `tools/fp_preview.py` 离线验证屏幕包围盒
+  - CI：推到 main 时若版本号还没有 tag，自动发 Release 并附 jar
 - **r20** — 修复进世界即崩的 NPE：
   - `GrenadeHud.render` 对 `GrenadeItem.heldGrenade()` 返回的 `null` 直接调用 `getItem()`，
     手里没手雷时每帧 NPE → `FATAL: Unreported exception thrown!` 崩客户端（日志 `GrenadeHud.java:26`）

@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r20`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r21`
 - 创造模式页签：**六相月灾**
 
 ---
@@ -16,7 +16,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 |---|---|
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r20.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r21.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 
 `.vscode/tasks.json` 里已配好两个任务（含 Java 报错问题匹配器）：
@@ -27,7 +27,8 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | `mc_build` | `gradle build` + **自动复制 jar 到 mods 目录** |
 
 > 仓库已带 Gradle Wrapper（固定 **8.14.5**）：CI 与本地都可以直接用 `mod\gradlew.bat build`（Linux/macOS 用 `./gradlew`）。
-> 推送到 GitHub 后由 `.github/workflows/build.yml` 自动编译并上传 jar 产物（Actions → 对应运行 → Artifacts）。
+> 推送到 GitHub 后由 `.github/workflows/build.yml` 自动编译并上传 jar 产物；
+> 若 `mod/build.gradle` 里的版本号还没有对应 tag，还会**自动打 `v1.0.0-rXX` 标签并创建 Release（附 jar）**。
 
 手动执行等价命令：
 
@@ -174,6 +175,8 @@ tools/  开发辅助脚本（见第五节）
 
 | 想改什么 | 位置 |
 |---|---|
+| **手持动作幅度 / 速度** | `client/WeaponAnim.java`（冲量大小与衰减）+ `client/WeaponPose.java`（折算成 display 增量的数值） |
+| 手持动作是否生效 | `client/AnimatedWeaponModel.java` + `ModClient.onModifyBakingResult`；日志里会打“手持动作动画已启用：包装了 N 个武器模型” |
 | AKM 弹匣容量 / 换弹时长 / 射速 / 散布 | `weapon/AkmRifleItem.java`（`MAG_SIZE` / `RELOAD_TICKS` / `FIRE_INTERVAL` / `fire()`） |
 | 弩的倍镜倍率 | `weapon/CrossbowWeaponItem.java` 的 `SCOPE_ZOOM`（`4.0F` = 4 倍）；开镜 FOV 由 `ClientEvents` 用 `1/SCOPE_ZOOM` 计算 |
 | 手雷拔销时长 / 捏雷时限 | `item/GrenadeItem.java`（`PIN_TICKS` / `COOK_TICKS`） |
@@ -185,6 +188,21 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r21`
+
+- **手持动作动画**（参考 SuperbWarfare 的表现，但用**程序化变换**实现，不引入 GeckoLib / Mixin）：
+  - 新增 `client/WeaponAnim.java`（每 tick 推进的冲量状态机）、`client/WeaponPose.java`（折算 display 增量）、
+    `client/AnimatedWeaponModel.java`（`BakedModelWrapper`，在 `ModelEvent.ModifyBakingResult` 给武器模型套上）
+  - **AKM**：开火后坐（后拖 + 上抬 + 随机枪口偏摆，连发会累积）、举枪过渡、40 tick 换弹整套起伏
+    （含插弹匣/拉机柄两次顿挫）、走路摆动与呼吸微漂
+  - **复合弓**：拉弦把弓往身前拉、放箭向前回弹（回弹幅度按蓄力）
+  - **十字弩**：开镜往画面中心收 + 开火后坐
+  - **手雷 / 震爆弹**：拔销时手腕外翻使劲、引信越短抖得越厉害、出手向前上方甩
+  - **第三人称手臂姿态**（`IClientItemExtensions#getArmPose`）：步枪 / 弩双手持握、瞄准改端平、手雷拔销后抬手持投
+  - 数值全部用 `tools/fp_preview.py` 离线验过屏幕包围盒，不会把武器甩出画面
+- **CI 自动发布**：`build.yml` 新增 release 作业 —— 推到 main 时若 `mod/build.gradle` 的版本号还没有对应 tag，
+  自动打 `v1.0.0-rXX` 标签 + 建 Release 并附上 jar（版本号没变就跳过，不会重复发）
 
 > 版本 `1.0.0-r20`
 

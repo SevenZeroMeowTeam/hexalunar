@@ -48,3 +48,55 @@ jobs:
             mod/build/reports/problems/**
             mod/build/logs/**
           if-no-files-found: ignore
+
+  # 推送到 main 时：如果 mod/build.gradle 里的版本号还没有对应 tag，就自动打 tag 并发 Release
+  release:
+    name: Publish release
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from mod/build.gradle
+        id: version
+        run: |
+          VERSION=$(sed -n "s/^version = '\(.*\)'/\1/p" mod/build.gradle | head -1 | tr -d '\r')
+          if [ -z "$VERSION" ]; then echo "读不到 mod/build.gradle 里的 version" >&2; exit 1; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether the tag already exists
+        id: check
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip notice
+        if: steps.check.outputs.exists == 'true'
+        run: echo "标签 ${{ steps.version.outputs.tag }} 已存在，本次不重复发布（改版本号再推即可）"
+
+      - name: Download jar
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: hexalunar_calamity-jar
+          path: dist
+
+      - name: Publish release
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: 六相月灾 ${{ steps.version.outputs.version }}
+          files: dist/*.jar
+          generate_release_notes: true
+          draft: false

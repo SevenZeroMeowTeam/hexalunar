@@ -225,6 +225,8 @@ public final class ClientEvents {
         ClientMoonState.onClientTick();
         ClientGrenadeState.onClientTick();
         Minecraft mc = Minecraft.getInstance();
+        // 手持动作（后坐 / 举枪 / 换弹 / 拔销…）每 tick 推进一次
+        WeaponAnim.tick(mc);
         Level level = mc.level;
         if (level != null) GrenadeItem.clientGameTime = level.getGameTime();
         Player player = mc.player;

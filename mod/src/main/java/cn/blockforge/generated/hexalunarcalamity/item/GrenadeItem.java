@@ -83,6 +83,12 @@ public class GrenadeItem extends Item {
         return kind;
     }
 
+    /** 客户端：第三人称手臂姿态（拔销后抬手持投） */
+    @Override
+    public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(cn.blockforge.generated.hexalunarcalamity.client.WeaponArmPose.GRENADE);
+    }
+
     // ------------------------------------------------------------------ NBT 状态
 
     public static int state(ItemStack stack) {

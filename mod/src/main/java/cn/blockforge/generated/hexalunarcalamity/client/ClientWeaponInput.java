@@ -54,6 +54,7 @@ public final class ClientWeaponInput {
             if (grenade && GrenadeItem.isHeldArmed(mc.player)) {
                 ModNetwork.CHANNEL.sendToServer(
                         new ModNetwork.GrenadeAction(ModNetwork.GrenadeAction.THROW));
+                WeaponAnim.onThrow();
             }
             return;
         }
@@ -112,6 +113,8 @@ public final class ClientWeaponInput {
 
         if (down && cooldown == 0 && (auto || !lastDown)) {
             ModNetwork.CHANNEL.sendToServer(new ModNetwork.WeaponFire());
+            // 手持动作：开火后坐（客户端先自己演，不必等服务端回包）
+            WeaponAnim.onFire(weapon, mc.player.isUsingItem() && mc.player.getUseItem() == weapon);
             cooldown = interval;
         }
         lastDown = down;

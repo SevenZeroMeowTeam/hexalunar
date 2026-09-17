@@ -14,13 +14,56 @@ import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.ModelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 /** 实体渲染器注册：投射物与六只特殊感染者 */
 @Mod.EventBusSubscriber(modid = HexaLunarCalamity.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ModClient {
+
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger(HexaLunarCalamity.MOD_ID);
+
+    /**
+     * 给武器模型套上会动的一层（见 {@link AnimatedWeaponModel}）：
+     * 模型键是 {@code hexalunar_calamity:akm#inventory} 这种，拉弦变体是
+     * {@code hexalunar_calamity:item/compound_bow_pulling_0#inventory}，按路径前缀认领。
+     */
+    @SubscribeEvent
+    public static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
+        Map<net.minecraft.resources.ResourceLocation, net.minecraft.client.resources.model.BakedModel> models =
+                event.getModels();
+        int wrapped = 0;
+        for (net.minecraft.resources.ResourceLocation id : new ArrayList<>(models.keySet())) {
+            if (!HexaLunarCalamity.MOD_ID.equals(id.getNamespace())) continue;
+            WeaponAnim.Kind kind = kindOfModel(id.getPath());
+            if (kind == null) continue;
+            net.minecraft.client.resources.model.BakedModel baked = models.get(id);
+            if (baked == null || baked instanceof AnimatedWeaponModel) continue;
+            models.put(id, new AnimatedWeaponModel(baked, kind));
+            wrapped++;
+        }
+        LOGGER.info("手持动作动画已启用：包装了 {} 个武器模型", wrapped);
+    }
+
+    /** 模型路径 → 动作种类；返回 null 表示该模型不需要动（弹药、图标等） */
+    private static WeaponAnim.Kind kindOfModel(String path) {
+        if (path.contains("crossbow_bolt")) return null;
+        if (path.startsWith("akm")) return WeaponAnim.Kind.AKM;
+        if (path.startsWith("crossbow") || path.contains("crossbow_pulling")) {
+            return WeaponAnim.Kind.CROSSBOW;
+        }
+        if (path.contains("compound_bow")) return WeaponAnim.Kind.BOW;
+        if (path.startsWith("mud") || path.contains("frag_grenade")) return WeaponAnim.Kind.GRENADE;
+        if (path.startsWith("mtx") || path.contains("flashbang")) return WeaponAnim.Kind.FLASH;
+        return null;
+    }
 
     /**
      * 拉弦动画：注册与原版弓同名的物品属性（本项目用自己的命名空间避免冲突），

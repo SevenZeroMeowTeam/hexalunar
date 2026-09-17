@@ -34,6 +34,12 @@ public class CompoundBowItem extends Item implements WeaponAmmo {
         return AmmoType.ARROW;
     }
 
+    /** 客户端：第三人称手臂姿态（原版按 UseAnim.BOW 自己给拉弓姿势） */
+    @Override
+    public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(cn.blockforge.generated.hexalunarcalamity.client.WeaponArmPose.BOW);
+    }
+
     /** 右键：瞄准蓄力 */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {

@@ -37,6 +37,12 @@ public class AkmRifleItem extends Item implements WeaponAmmo {
         return AmmoType.RIFLE;
     }
 
+    /** 客户端：第三人称手臂姿态（双手握持 / 抵肩） */
+    @Override
+    public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(cn.blockforge.generated.hexalunarcalamity.client.WeaponArmPose.AKM);
+    }
+
     public static int mag(ItemStack stack) {
         CompoundTag tag = stack.getTag();
         return tag == null ? 0 : tag.getInt("HlcMag");
@@ -49,6 +55,16 @@ public class AkmRifleItem extends Item implements WeaponAmmo {
     public static boolean reloading(ItemStack stack, long gameTime) {
         CompoundTag tag = stack.getTag();
         return tag != null && tag.getLong("HlcReloadUntil") > gameTime;
+    }
+
+    /** 换弹进度 0..1（供客户端手持动画使用）；没在换弹返回 -1 */
+    public static float reloadProgress(ItemStack stack, long gameTime) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null) return -1.0F;
+        long until = tag.getLong("HlcReloadUntil");
+        if (until <= gameTime) return -1.0F;
+        float left = (float) (until - gameTime);
+        return Mth.clamp(1.0F - left / RELOAD_TICKS, 0.0F, 1.0F);
     }
 
     /** 右键：空仓时装填，否则进入瞄准姿态 */
