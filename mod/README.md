@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r21**
+- 当前版本：**1.0.0-r22**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r21.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r22.jar`
 - 依赖：Forge 47.4.0（无需其他前置）
 
 ---
@@ -139,13 +139,17 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 `hexalunar_calamity-1.0.0-r21.jar` 放进 `.minecraft/mods/`；
+2. 把 `hexalunar_calamity-1.0.0-r22.jar` 放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
 
+- **r22** — 倍镜十字分划不再挡视野：
+  - 原来是从中心 6px 画到 `r/2`（480p 约 100px）、`0xB0` 不透明度的长亮线 + 2×2 中心点，压在目标上很挡视角
+  - 中心留白 9px；分划总长压到 `min(r/3, 52)`；内段 `0x74` / 外段 `0x3C` 递淡；中心点缩为 1px
+  - 新增 `tools/scope_preview.py`，离线出对比图调参
 - **r21** — 手持动作动画（程序化变换，不是骨骼动画）：
   - `WeaponAnim`（每 tick 推进的冲量）+ `WeaponPose`（折算 display 增量）+ `AnimatedWeaponModel`
     （`BakedModelWrapper`，在 `ModelEvent.ModifyBakingResult` 给武器模型套上）

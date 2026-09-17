@@ -133,13 +133,28 @@ public final class ClientEvents {
                 }
             }
         }
-        // 十字分划：上下左右四条短线 + 中心点
-        int line = 0xB0FFFFFF;
-        g.fill(cx - 1, cy - r / 2, cx, cy - 6, line);
-        g.fill(cx - 1, cy + 6, cx, cy + r / 2, line);
-        g.fill(cx - r / 2, cy - 1, cx - 6, cy, line);
-        g.fill(cx + 6, cy - 1, cx + r / 2, cy, line);
-        g.fill(cx - 1, cy - 1, cx + 1, cy + 1, 0xE0FFFFFF);
+        // 十字分划：中心留空 + 短分划 + 内亮外淡
+        // 之前是从中心 6px 一直画到 r/2（480p 下约 100px）且不透明度 0xB0，又长又亮会挡视野；
+        // 现在总长压到 min(r/3, 52)，中心留 9px 空白，外侧一段更淡，只看得到“刻度感”。
+        int gap = 9;
+        int len = Math.max(16, Math.min(r / 3, 52));
+        int tick = Math.max(6, len / 3);
+        int near = 0x74FFFFFF;      // 靠近中心的一段（相对清楚）
+        int far = 0x3CFFFFFF;       // 外段（很淡，只作参考）
+        // 上
+        g.fill(cx - 1, cy - gap - tick, cx, cy - gap, near);
+        g.fill(cx - 1, cy - gap - len, cx, cy - gap - tick, far);
+        // 下
+        g.fill(cx - 1, cy + gap, cx, cy + gap + tick, near);
+        g.fill(cx - 1, cy + gap + tick, cx, cy + gap + len, far);
+        // 左
+        g.fill(cx - gap - tick, cy - 1, cx - gap, cy, near);
+        g.fill(cx - gap - len, cy - 1, cx - gap - tick, cy, far);
+        // 右
+        g.fill(cx + gap, cy - 1, cx + gap + tick, cy, near);
+        g.fill(cx + gap + tick, cy - 1, cx + gap + len, cy, far);
+        // 中心 1px 细点：能对准，但不会糊住目标
+        g.fill(cx - 1, cy - 1, cx, cy, 0x9CFFFFFF);
     }
 
     /** 天空着色 + 弹药 HUD + 命中标记 */
