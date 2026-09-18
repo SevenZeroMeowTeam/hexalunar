@@ -119,12 +119,22 @@ public final class ClientEvents {
         MoonPhase phase = ClientMoonState.phase();
         String title = "第 " + day + " 天";
         String sub = phase == null ? null : phase.zhName;
-        // 第三行把「时间越久进化越多」直接摆给玩家看（与 ZombieEvolution 同一取数口径）
-        String evoLine = "僵尸进化 "
-                + Math.round(cn.blockforge.generated.hexalunarcalamity.moon.ZombieEvolution
-                .spawnChance(day) * 100.0F) + "%  档 "
-                + cn.blockforge.generated.hexalunarcalamity.moon.ZombieEvolution
-                .unlockedTiers(day) + "/4";
+        // 第三行：当前月相的核心效果（蓝月=玩家幸运 / 黄月=作物加速 / 血月=进化+不眠）
+        // 没月相时退回「时间越久进化越多」的数值（与 ZombieEvolution 同一取数口径）
+        int evoPct = Math.round(cn.blockforge.generated.hexalunarcalamity.moon.ZombieEvolution
+                .spawnChance(day) * 100.0F);
+        int tiers = cn.blockforge.generated.hexalunarcalamity.moon.ZombieEvolution
+                .unlockedTiers(day);
+        String evoLine;
+        if (phase == null) {
+            evoLine = "僵尸进化 " + evoPct + "%  档 " + tiers + "/4";
+        } else if (phase.isBlue()) {
+            evoLine = "幸运 " + (phase.luckAmplifier() + 1) + " 级  直到天亮";
+        } else if (phase.isYellow()) {
+            evoLine = "作物加速生长  直到天亮";
+        } else {
+            evoLine = "僵尸进化 " + evoPct + "%  档 " + tiers + "/4  ·  夜不能寐";
+        }
         int accent = phase == null ? 0xFF7C8894 : (0xFF000000 | (phase.dustColor & 0xFFFFFF));
         int w = Math.max(font.width(title),
                 Math.max(sub == null ? 0 : font.width(sub), font.width(evoLine))) + 14;

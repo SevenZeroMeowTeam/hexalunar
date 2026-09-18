@@ -50,8 +50,11 @@ public final class MoonManager {
             MoonPhase next = MoonPhase.forNight(data.nightCount);
             data.setPhase(next);
             data.wasNight = true;
-            data.nextHordeTick = level.getGameTime() + 100;
+            data.nextHordeTick = level.getGameTime() + HORDE_START_DELAY;
             data.nextBarrageTick = level.getGameTime() + 300;
+            data.hordeActive = false;
+            data.hordeWave = 0;
+            data.nextWaveTick = 0L;
             if (next != null) {
                 announce(server, next);
                 ModNetwork.syncToAll(MoonPhase.indexOf(next), data.nightCount);
@@ -59,10 +62,19 @@ public final class MoonManager {
             data.setDirty();
             return;
         }
-        // 白天：月相结束
+        // 白天：月相结束（尸潮自动收尾：清掉大部分、留少量徘徊）
         if (!night && data.wasNight) {
+            boolean hadHorde = data.hordeWave > 0;
             data.wasNight = false;
+            data.hordeActive = false;
+            data.hordeWave = 0;
+            data.nextHordeTick = 0L;
             data.setPhase(null);
+            MoonBlessings.dawnCleanup(server);
+            if (hadHorde) {
+                broadcast(server, "moon.hexalunar_calamity.horde_cleared",
+                        net.minecraft.ChatFormatting.GREEN);
+            }
             ModNetwork.syncToAll(-1, data.nightCount);
             data.setDirty();
             return;
@@ -75,10 +87,30 @@ public final class MoonManager {
             server.setDayTime(level.getDayTime() - 3L);
         }
 
-        // 战术尸潮
-        if (level.getGameTime() >= data.nextHordeTick) {
-            data.nextHordeTick = level.getGameTime() + (phase.superMoon ? 90 : 160);
-            runHorde(server, phase);
+        // 血月：4 波尸潮（每波数量不同；超级血月 ×1.5；第 14 天倍数那晚概率更大）
+        if (phase.isBlood()) {
+            long now = level.getGameTime();
+            if (!data.hordeActive && data.nextHordeTick > 0L && now >= data.nextHordeTick) {
+                data.nextHordeTick = 0L;              // 今晚只掷一次
+                if (rollHorde(ZombieEvolution.dayOf(level), phase, level.random)) {
+                    data.hordeActive = true;
+                    data.hordeWave = 0;
+                    data.nextWaveTick = now;
+                    broadcast(server, "moon.hexalunar_calamity.horde_incoming",
+                            net.minecraft.ChatFormatting.DARK_RED);
+                }
+            }
+            if (data.hordeActive && now >= data.nextWaveTick) {
+                data.hordeWave++;
+                if (data.hordeWave > HORDE_WAVES) {
+                    data.hordeActive = false;
+                } else {
+                    runWave(server, phase, data.hordeWave);
+                    broadcast(server, "moon.hexalunar_calamity.horde_wave",
+                            net.minecraft.ChatFormatting.RED, String.valueOf(data.hordeWave));
+                    data.nextWaveTick = now + WAVE_GAP;
+                }
+            }
             data.setDirty();
         }
 
@@ -106,21 +138,57 @@ public final class MoonManager {
         }
     }
 
-    /** 在玩家周围生成一波战术尸潮 */
-    private static void runHorde(ServerLevel level, MoonPhase phase) {
+    /** 尸潮：固定 4 波 */
+    public static final int HORDE_WAVES = 4;
+    /** 每一波的基础数量（各不相同：越往后越多） */
+    private static final int[] WAVE_SIZES = {6, 9, 13, 18};
+    /** 波与波之间隔多少 tick（约 6 秒） */
+    private static final int WAVE_GAP = 120;
+    /** 入夜后过多久开始掷骰（给玩家一点反应时间） */
+    private static final int HORDE_START_DELAY = 100;
+    /** 第 14 天（含 28/42…）那些晚上的额外规模倍率 */
+    private static final float MILESTONE_SCALE = 1.5F;
+
+    /** 今晚要不要开尸潮：第 14 天倍数那晚概率更高，超级血月再高一截 */
+    private static boolean rollHorde(long day, MoonPhase phase, RandomSource rand) {
+        boolean milestone = day > 0L && day % 14L == 0L;
+        float chance = milestone ? 0.75F : 0.35F;
+        if (phase.superMoon) chance = Math.min(1.0F, chance + 0.35F);
+        return rand.nextFloat() < chance;
+    }
+
+    /** 某一波对每个玩家刷多少只 */
+    private static int waveCount(long day, MoonPhase phase, int wave, RandomSource rand) {
+        int base = WAVE_SIZES[Mth.clamp(wave, 1, HORDE_WAVES) - 1];
+        float scale = phase.hordeScale();                       // 超级血月 = 1.5 倍
+        if (day > 0L && day % 14L == 0L) scale *= MILESTONE_SCALE;
+        return Mth.ceil(base * scale * (0.85F + rand.nextFloat() * 0.3F));
+    }
+
+    /** 放一波尸潮：数量按波次 / 月相 / 第 14 天算 */
+    private static void runWave(ServerLevel level, MoonPhase phase, int wave) {
         RandomSource rand = level.getRandom();
         for (ServerPlayer player : level.players()) {
             if (player.isCreative() || player.isSpectator()) continue;
             if (player.gameMode.getGameModeForPlayer() == GameType.CREATIVE) continue;
             int nearby = level.getEntitiesOfClass(Zombie.class,
                     player.getBoundingBox().inflate(64.0D)).size();
-            if (nearby > 28) continue;
-            int count = Mth.ceil(phase.spawnMultiplier * (1.0F + rand.nextFloat()));
+            if (nearby > 44) continue;
+            int count = waveCount(ZombieEvolution.dayOf(level), phase, wave, rand);
             for (int i = 0; i < count; i++) {
                 BlockPos pos = findSpawnPos(level, player.blockPosition(), 34 + rand.nextInt(24), rand);
                 if (pos == null) continue;
                 spawnWaveMember(level, phase, pos, rand);
             }
+        }
+    }
+
+    /** 向所有玩家发一条（带颜色的）提示 */
+    private static void broadcast(ServerLevel level, String key,
+                                  net.minecraft.ChatFormatting color, String... args) {
+        Component text = Component.translatable(key, (Object[]) args).withStyle(color);
+        for (ServerPlayer sp : level.players()) {
+            sp.connection.send(new ClientboundSetActionBarTextPacket(text));
         }
     }
 
@@ -148,6 +216,8 @@ public final class MoonManager {
         mob.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
         mob.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), reason, null, null);
         mob.setPersistenceRequired();
+        // ★ 尸潮标记：天亮时靠它清场（只留少量孅徊者），白天也靠它免烧
+        mob.getPersistentData().putBoolean(MoonBlessings.TAG_HORDE, true);
         level.addFreshEntityWithPassengers(mob);
         return mob;
     }

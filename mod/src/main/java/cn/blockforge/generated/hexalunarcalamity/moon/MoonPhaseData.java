@@ -14,6 +14,12 @@ public class MoonPhaseData extends SavedData {
     public boolean wasNight = false;
     public long nextHordeTick = 0L;
     public long nextBarrageTick = 0L;
+    /** 尸潮：是否正在进行 */
+    public boolean hordeActive = false;
+    /** 尸潮：已经放出的波数（0 = 还没开波，1..4 = 已放出的波数） */
+    public int hordeWave = 0;
+    /** 尸潮：下一波的时刻 */
+    public long nextWaveTick = 0L;
 
     public static MoonPhaseData load(CompoundTag tag) {
         MoonPhaseData data = new MoonPhaseData();
@@ -22,6 +28,9 @@ public class MoonPhaseData extends SavedData {
         data.wasNight = tag.getBoolean("WasNight");
         data.nextHordeTick = tag.getLong("NextHorde");
         data.nextBarrageTick = tag.getLong("NextBarrage");
+        data.hordeActive = tag.getBoolean("HordeActive");
+        data.hordeWave = tag.getInt("HordeWave");
+        data.nextWaveTick = tag.getLong("NextWave");
         return data;
     }
 
@@ -32,6 +41,9 @@ public class MoonPhaseData extends SavedData {
         tag.putBoolean("WasNight", wasNight);
         tag.putLong("NextHorde", nextHordeTick);
         tag.putLong("NextBarrage", nextBarrageTick);
+        tag.putBoolean("HordeActive", hordeActive);
+        tag.putInt("HordeWave", hordeWave);
+        tag.putLong("NextWave", nextWaveTick);
         return tag;
     }
 

@@ -100,6 +100,17 @@ public final class ZombieEvolution {
                 BASE_LIVE_CHANCE, MAX_LIVE_CHANCE);
     }
 
+    /** 夜晚进度：血月夜里入夜 1.0 倍 → 天亮 2.0 倍（其它月相 1.0） */
+    public static float nightRamp(Level level) {
+        if (!(level instanceof ServerLevel server)) return 1.0F;
+        MoonPhase phase = MoonManager.current(server);
+        if (phase == null || !phase.isBlood()) return 1.0F;
+        long t = level.getDayTime() % 24000L;
+        // 夜晚 13000 → 23000 映射到 0 → 1（超级血月把夜晚拖长也只是回退 dayTime，仍在夜里）
+        float p = Mth.clamp((t - 13000.0F) / 10000.0F, 0.0F, 1.0F);
+        return 1.0F + p;
+    }
+
     /** 当前天数已解锁的最高档（0 = 还没解锁任何档） */
     public static int unlockedTiers(long day) {
         int n = 0;
@@ -116,7 +127,7 @@ public final class ZombieEvolution {
         if (zombie.getType() != EntityType.ZOMBIE || zombie.isBaby()) return;
         if (zombie.getPersistentData().getBoolean(TAG_PENDING)) return;
         long day = dayOf(server);
-        if (rand.nextFloat() < spawnChance(day)) {
+        if (rand.nextFloat() < spawnChance(day) * nightRamp(server)) {
             zombie.getPersistentData().putBoolean(TAG_PENDING, true);
         }
     }
@@ -144,7 +155,7 @@ public final class ZombieEvolution {
         if (players.isEmpty()) return;
 
         long day = dayOf(server);
-        float chance = liveChance(day);
+        float chance = liveChance(day) * nightRamp(server);
         RandomSource rand = server.getRandom();
         for (ServerPlayer player : players) {
             if (player.isCreative() || player.isSpectator()) continue;

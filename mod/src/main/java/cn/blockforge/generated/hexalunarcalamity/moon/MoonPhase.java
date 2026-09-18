@@ -15,16 +15,16 @@ public enum MoonPhase {
             false, 2.0F, 0.0F, 0.0F, 0.10F, 0.6F, () -> ModSounds.ALARM_BLOOD.get()),
     BLUE("blue_moon", "蓝月", 0x274F9E, 0x3A3355CC, 0x66AAFF,
             0xAECBFF, 0x4A7CFF, 0x06101F, 0x143A6E,
-            false, 1.0F, 0.35F, 0.0F, 0.06F, 1.0F, () -> ModSounds.ALARM_BLUE.get()),
+            false, 1.0F, 0.0F, 0.0F, 0.06F, 1.0F, () -> ModSounds.ALARM_BLUE.get()),
     YELLOW("yellow_moon", "黄月", 0x8A6D1F, 0x33C8A032, 0xFFDD55,
             0xFFD35E, 0xFFB320, 0x141005, 0x453512,
-            false, 1.0F, 0.0F, 2.0F, 0.04F, 1.4F, () -> ModSounds.ALARM_YELLOW.get()),
+            false, 1.0F, 0.0F, 1.0F, 0.04F, 1.4F, () -> ModSounds.ALARM_YELLOW.get()),
     SUPER_BLOOD("super_blood", "超级血月", 0x6E0F0F, 0x55DD1818, 0xFF3030,
             0xFF6E52, 0xFF3018, 0x28070B, 0x6E1616,
             true, 3.0F, 0.0F, 0.0F, 0.22F, 0.6F, () -> ModSounds.ALARM_BLOOD.get()),
     SUPER_BLUE("super_blue", "超级蓝月", 0x183A80, 0x4A2244CC, 0x88CCFF,
             0xD2E8FF, 0x5E96FF, 0x08142E, 0x1C4A88,
-            true, 1.0F, 0.60F, 0.0F, 0.18F, 1.0F, () -> ModSounds.ALARM_BLUE.get()),
+            true, 1.0F, 0.0F, 0.0F, 0.18F, 1.0F, () -> ModSounds.ALARM_BLUE.get()),
     SUPER_YELLOW("super_yellow", "超级黄月", 0x6E520F, 0x44E0B040, 0xFFEE77,
             0xFFE9A0, 0xFFC840, 0x1C1608, 0x57431A,
             true, 1.0F, 0.0F, 3.0F, 0.14F, 1.4F, () -> ModSounds.ALARM_YELLOW.get());
@@ -50,19 +50,53 @@ public enum MoonPhase {
         return ORDER[(int) ((nightCount - 1) % ORDER.length)];
     }
 
-    /** 黄月类月相下是否提升掉落 */
-    public boolean boostsDrops() {
+    /** 血月类（含超级）：亡灵会进化、玩家不能睡觉、会有尸潮 */
+    public boolean isBlood() {
+        return this == BLOOD || this == SUPER_BLOOD;
+    }
+
+    /** 蓝月类（含超级）：玩家拿幸运，僵尸没有任何加成 */
+    public boolean isBlue() {
+        return this == BLUE || this == SUPER_BLUE;
+    }
+
+    /** 黄月类（含超级）：只加速作物生长，没有其他加成 */
+    public boolean isYellow() {
         return this == YELLOW || this == SUPER_YELLOW;
     }
 
-    /** 蓝月类月相下僵尸是否加速 */
-    public boolean boostsSpeed() {
-        return this == BLUE || this == SUPER_BLUE;
+    /**
+     * 蓝月给玩家加「幸运」的药水等级；-1 表示这个月相不给。
+     * 蓝月 = 幸运 I，超级蓝月 = 幸运 II。
+     */
+    public int luckAmplifier() {
+        return switch (this) {
+            case BLUE -> 0;
+            case SUPER_BLUE -> 1;
+            default -> -1;
+        };
+    }
+
+    /**
+     * 黄月加速作物生长：每隔多少 tick 催一次玩家附近的作物（0 = 不催）。
+     * 超级黄月更快。
+     */
+    public int cropTickInterval() {
+        return switch (this) {
+            case YELLOW -> 20;
+            case SUPER_YELLOW -> 7;
+            default -> 0;
+        };
+    }
+
+    /** 尸潮规模倍率（超级血月是普通血月的 1.5 倍） */
+    public float hordeScale() {
+        return superMoon ? 1.5F : 1.0F;
     }
 
     /** 血月类月相是否增加数量 */
     public boolean boostsSpawns() {
-        return this == BLOOD || this == SUPER_BLOOD;
+        return isBlood();
     }
 
     public final String id;
