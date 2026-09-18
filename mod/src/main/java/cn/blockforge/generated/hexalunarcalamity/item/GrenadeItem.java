@@ -24,17 +24,16 @@ import org.jetbrains.annotations.Nullable;
  * 「世界时间」推算，避免每 tick 同步槽位）：
  * <pre>
  *   SAFE         保险销插着、压杆被手压住 —— 完全安全，可以一直拿着
- *   PULLING      按住右键拔销中（1 秒）。中途松手 —— 保险销自动插回 SAFE
- *   PRIMED       销已拔出，但压杆**仍被手压住** ⇒ 撞针没释放、引信没点燃 —— 想拿多久拿多久，
- *                绝不会在手里响：
- *                  · 左键投掷 —— 压杆在出手瞬间脱落，引信这才点燃，飞行中读秒
+ *   PULLING      按住右键拔销中（1 秒）。中途松手 —— 销还没出来，自动插回 SAFE
+ *   PRIMED       销已拔出，压杆**仍被手压住**（按住右键不放）⇒ 撞针没释放、引信没点燃：
+ *                  · ★ **一松手（没及时按住 / 手滑）⇒ 撞针击发、引信立刻点燃**（r77）
  *                  · **潜行 + 右键 1 秒** —— 压杆还被手压着，可以把保险销插回去
  *                    （r69 起必须潜行：以前随手右键就开始插销，丢出去前手一抖就把销插回去了）
- *                  · ★ **刚拔完就松手（1.5 秒内）—— 自动把保险销插回**（r75）
- *                  · 换槽位 / 收进背包 —— 压杆一松，保险销自己弹回去
+ *                  · 左键投掷 —— 压杆在出手瞬间脱落，引信同样从这一刻开始烧
  *   REINSERTING  正在插回保险销（1 秒）。中途松手则回到 PRIMED（销还没进去）
- *   ARMED        引信已点燃。手里攥着时**永远不会**进入这个状态（serverTick 会折回 PRIMED），
- *                只有出手之后的抛射体（GrenadeEntity）在飞行中读秒
+ *   ARMED        引信已点燃（撞针已击发、压杆已脱手）—— ★ **手里也会烧**：
+ *                5 秒内必须丢出去，不然就在掌心爆（{@code GrenadeBlasts#detonateInHand}）；
+ *                引信点着后插不回保险销了（压杆已经脱手）；收回背包/换格也不会熄灭
  * </pre>
  *
  * <p>右键按下/松开由 {@code ClientWeaponInput} 轮询后打包成
@@ -44,13 +43,6 @@ public class GrenadeItem extends Item {
 
     /** 拔销（或插回保险销）所需时长：1 秒 */
     public static final int PIN_TICKS = 20;
-    /**
-     * ★ r75：拔完销后**这么久以内**松手 ⇒ 视为「手滑了」，保险销自动弹回去。
-     *
-     * <p>手一直攥着超过这么久就不动 —— 那是有意把它保持在待投状态；
-     * 无论如何都**不会点燃引信**，引信只在左键出手那一刻点着。
-     */
-    public static final int AUTO_BACK_TICKS = 30;
     /** 引信总时长：5 秒 */
     public static final int FUSE_TICKS = 100;
     /**
@@ -72,8 +64,6 @@ public class GrenadeItem extends Item {
     private static final String TAG_HOLD_FROM = "hlc_g_hold_from";
     private static final String TAG_LIT_AT = "hlc_g_lit_at";
     private static final String TAG_FUSE = "hlc_g_fuse";
-    /** 销是什么时候拔出来的（用于「刚拔完就松手 ⇒ 自动插回」判定） */
-    private static final String TAG_PRIMED_AT = "hlc_g_primed_at";
 
     /** 爆炸类型 */
     public enum Kind {
@@ -125,20 +115,25 @@ public class GrenadeItem extends Item {
         tag.putLong(TAG_HOLD_FROM, gameTime);
     }
 
-    /** 拔销完成：销出、压杆仍被手压住、引信未点燃（安全待投）。不清掉引信标记，怕旧存档留有脏数据 */
+    /** 拔销完成：销出、压杆仍被手压住、引信未点燃（安全待投） */
     private static void setPrimed(ItemStack stack, long gameTime) {
         CompoundTag tag = stack.getOrCreateTag();
         tag.putInt(TAG_STATE, STATE_PRIMED);
         tag.remove(TAG_HOLD_FROM);
         tag.remove(TAG_LIT_AT);
         tag.remove(TAG_FUSE);
-        tag.putLong(TAG_PRIMED_AT, gameTime);
     }
 
-    /** 销是什么时候拔出来的（没拔过返回 0） */
-    private static long primedAt(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        return tag == null ? 0L : tag.getLong(TAG_PRIMED_AT);
+    /**
+     * ★ r77：撞针击发 —— 点燃引信（永远从满引信开始烧）。
+     * 触发时机：① 销已拔出时压杆脱手（松手 / 没及时按住）② 左键出手那一瞬
+     */
+    private static void lightFuse(ItemStack stack, long gameTime) {
+        CompoundTag tag = stack.getOrCreateTag();
+        tag.putInt(TAG_STATE, STATE_ARMED);
+        tag.remove(TAG_HOLD_FROM);
+        tag.putLong(TAG_LIT_AT, gameTime);
+        tag.putInt(TAG_FUSE, FUSE_TICKS);
     }
 
     private static void setState(ItemStack stack, int state) {
@@ -148,7 +143,6 @@ public class GrenadeItem extends Item {
             tag.remove(TAG_HOLD_FROM);
             tag.remove(TAG_LIT_AT);
             tag.remove(TAG_FUSE);
-            tag.remove(TAG_PRIMED_AT);
         }
     }
 
@@ -166,7 +160,7 @@ public class GrenadeItem extends Item {
         return (int) Math.max(0L, fuse - (gameTime - tag.getLong(TAG_LIT_AT)));
     }
 
-    /** 引信已点燃（手里攥着时不可能出现，只可能是旧存档或飞行中的抛射体） */
+    /** 引信已点燃（手里也会出现 —— r77 起松手就点） */
     public static boolean isArmed(ItemStack stack) {
         return state(stack) == STATE_ARMED;
     }
@@ -207,6 +201,7 @@ public class GrenadeItem extends Item {
      * 服务端：右键按下 —— 插着销就拔；销已拔出（压杆还被手压着）则**潜行 + 右键**把销插回去。
      *
      * <p>★ r69：插回销改成必须潜行 —— 以前随手右键就会开始插销，丢出去前手一抖就把销插回去了。
+     * ★ r77：引信已点燃（压杆已脱手）之后**插不回销**了，只能丢。
      */
     public static void serverBeginHold(Player player) {
         ItemStack stack = heldGrenade(player);
@@ -217,47 +212,53 @@ public class GrenadeItem extends Item {
             beginHold(stack, STATE_PULLING, now);
             player.swing(player.getMainHandItem() == stack
                     ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
-        } else if (state == STATE_PRIMED || state == STATE_ARMED) {
+        } else if (state == STATE_PRIMED) {
             if (!player.isShiftKeyDown()) {
                 tell(player, "message.hexalunar_calamity.pin_reinsert_hint", ChatFormatting.GRAY);
                 return;
             }
             beginHold(stack, STATE_REINSERTING, now);
+        } else if (state == STATE_ARMED) {
+            tell(player, "message.hexalunar_calamity.fuse_no_pin_back", ChatFormatting.RED);
         }
     }
 
     /**
-     * 服务端：右键松开。
+     * 服务端：右键松开 —— ★ r77 写实规则（用户要求「没及时按住 / 手滑了就该击发」）。
      *
-     * <p>★ r75（用户要求：中途不小心松手不能变成活雷、手牢牢压住击针就不会自爆）：
      * <ul>
-     *   <li>拔销没拔完就松手 —— 前功尽弃，回到 SAFE</li>
-     *   <li><b>刚拔完（{@link #AUTO_BACK_TICKS} tick 内）就松手</b> —— 视为「手滑了」，
-     *       保险销自动弹回去（不必再潜行 + 右键）</li>
-     *   <li>插销插到一半松手 —— 销还没进去，回到「已拔销、压杆被手压着」的安全待投态</li>
-     *   <li>手里还携着旧存档的 ARMED（引信标记）—— 折回安全待投态</li>
+     *   <li>拔销没拔完就松手 —— 销还没出来，回到 SAFE</li>
+     *   <li><b>销已拔出时松手 ⇒ 撞针击发、引信立刻点燃</b>（满 5 秒）——
+     *       必须在 5 秒内左键丢出去，不然就在掌心爆</li>
+     *   <li>插销插到一半松手 —— 销还没进去，回到「已拔销、压杆被手压着」的待投态</li>
      * </ul>
-     * 以上分支**都不会点燃引信**：引信只在左键出手那一刻点着。
      */
     public static void serverEndHold(Player player) {
         ItemStack stack = heldGrenade(player);
         if (stack == null) return;
-        int state = state(stack);
         long now = player.level().getGameTime();
+        int state = state(stack);
         if (state == STATE_PULLING) {
             setState(stack, STATE_SAFE);
             tell(player, "message.hexalunar_calamity.pin_slipped", ChatFormatting.GRAY);
-        } else if (state == STATE_PRIMED && now - primedAt(stack) <= AUTO_BACK_TICKS) {
-            // 刚拔完就松手：当「不小心」处理，销自动弹回去
-            setState(stack, STATE_SAFE);
-            player.playSound(SoundEvents.ARMOR_EQUIP_GENERIC, 0.35F, 1.45F);
-            tell(player, "message.hexalunar_calamity.pin_autoback", ChatFormatting.GREEN);
+        } else if (state == STATE_PRIMED) {
+            lightFuse(stack, now);
+            fuseLightFx(player);
+            tell(player, "message.hexalunar_calamity.fuse_lit", ChatFormatting.RED);
         } else if (state == STATE_REINSERTING) {
-            // 插到一半松手：销还没进去，仍旧是「已拔销、压杆被手压着」的安全待投态
             setPrimed(stack, now);
-        } else if (state == STATE_ARMED) {
-            // 手里攥着的雷永远回到安全待投态（引信只在飞行中的抛射体上烧）
-            setPrimed(stack, now);
+        }
+    }
+
+    /**
+     * 服务端：按住状态被动中止（开界面 / 切手持物 / 旁观）—— 手还在抓着，不当作「松手」，
+     * 所以**不点燃引信**（真要松手会走 {@link #serverEndHold}）。
+     */
+    public static void serverCancelHold(Player player) {
+        ItemStack stack = heldGrenade(player);
+        if (stack == null) return;
+        if (state(stack) == STATE_PULLING) {
+            setState(stack, STATE_SAFE);
         }
     }
 
@@ -278,9 +279,9 @@ public class GrenadeItem extends Item {
             player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.3F, 1.8F);
             return;
         }
-        // PRIMED（压杆还压着）= 引信从这一瞬开始烧，满引信；
-        // ARMED（旧存档里烧了一半）= 接着剩下的时间烧，但至少留 1 秒免得一出手就炸
-        int remaining = st == STATE_PRIMED ? FUSE_TICKS : Math.max(20, fuseLeft(stack, now));
+        // PRIMED（压杆刚脱手）= 引信从这一瞬开始烧，满引信；
+        // ARMED（已经烧了一半）= 接着剩下的时间烧（至少 5 tick，免得一出手就在脸上炸）
+        int remaining = st == STATE_PRIMED ? FUSE_TICKS : Math.max(5, fuseLeft(stack, now));
 
         GrenadeEntity grenade = new GrenadeEntity(level, player, g.kind, remaining);
         grenade.setPos(player.getEyePosition().add(player.getLookAngle().scale(0.55D)));
@@ -304,13 +305,90 @@ public class GrenadeItem extends Item {
         player.getCooldowns().addCooldown(g, 6);
     }
 
-    /** 服务端每 tick：推进拔销/插销、烧引信、处理「压杆离开手」的情况 */
+    /** 撞针击发的表现：金属脆响 + 扳机咔哒 + 引信嘶嘶 + 火星 */
+    private static void fuseLightFx(Player player) {
+        Level level = player.level();
+        var at = player.getEyePosition().subtract(0.0D, 0.55D, 0.0D);
+        level.playSound(null, at.x, at.y, at.z, SoundEvents.ARMOR_EQUIP_CHAIN,
+                SoundSource.PLAYERS, 0.55F, 1.9F);
+        level.playSound(null, at.x, at.y, at.z, SoundEvents.LEVER_CLICK,
+                SoundSource.PLAYERS, 0.5F, 1.4F);
+        level.playSound(null, at.x, at.y, at.z, ModSounds.FUSE.get(),
+                SoundSource.PLAYERS, 0.65F, 1.25F);
+        GrenadeBlasts.fuseSparks(level, at);
+    }
+
+    /** 引信在手里烧：到点就在掌心起爆（丢出去之前都得自己扁） */
+    private static void burnInHand(Player player, ItemStack stack, GrenadeItem g, long now) {
+        if (fuseLeft(stack, now) <= 0) {
+            GrenadeBlasts.detonateInHand(player.level(), player, g.kind);
+            consume(player, stack, g);
+            return;
+        }
+        if (now % 3L == 0L) {
+            GrenadeBlasts.fuseSparks(player.level(),
+                    player.getEyePosition().subtract(0.0D, 0.55D, 0.0D));
+        }
+    }
+
+    /** 引信烧完（或炸了）：创造模式复位，生存消耗掉这一个 */
+    private static void consume(Player player, ItemStack stack, GrenadeItem g) {
+        if (player.getAbilities().instabuild) {
+            setState(stack, STATE_SAFE);
+        } else {
+            stack.shrink(1);
+        }
+        player.getCooldowns().addCooldown(g, 10);
+    }
+
+    /**
+     * 副手的雷 + 主手是枪械：等于被胳臂夹着，压杆没脱手、销自己弹回去。
+     *
+     * <p>（也是为了避免「必死局面」：这种情况下 {@code heldGrenade} 不返回副手的手雷 ⇒
+     * 玩家根本左键丢不出去，引信要是还在烧就只能干等死。）
+     */
+    private static boolean clampedUnderArm(Player player, InteractionHand hand) {
+        return hand == InteractionHand.OFF_HAND
+                && player.getMainHandItem().getItem()
+                instanceof cn.blockforge.generated.hexalunarcalamity.weapon.WeaponAmmo;
+    }
+
+    /**
+     * 背包 / 护甲里的雷：★ r77 起引信点了就不会自己灭 —— 收回背包、换到别的格子照样烧，
+     * 到点就在身上炸；其余（销拔出但压杆已松）一律回 SAFE。
+     *
+     * @return true = 已经爆了，本 tick 别再继续扫
+     */
+    private static boolean tickStored(Player player, ItemStack stack, long now) {
+        int s = state(stack);
+        if (s == STATE_ARMED) {
+            if (fuseLeft(stack, now) <= 0) {
+                GrenadeItem g = (GrenadeItem) stack.getItem();
+                GrenadeBlasts.detonateInHand(player.level(), player, g.kind());
+                consume(player, stack, g);
+                return true;
+            }
+            if (now % 3L == 0L) {
+                GrenadeBlasts.fuseSparks(player.level(),
+                        player.getEyePosition().subtract(0.0D, 0.55D, 0.0D));
+            }
+        } else if (s != STATE_SAFE) {
+            setState(stack, STATE_SAFE);
+        }
+        return false;
+    }
+
+    /** 服务端每 tick：推进拔销/插销、烧引信（手里也会烧），并处理离开手的情况 */
     public static void serverTick(Player player) {
         Level level = player.level();
         long now = level.getGameTime();
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack stack = player.getItemInHand(hand);
             if (!(stack.getItem() instanceof GrenadeItem g)) continue;
+            if (clampedUnderArm(player, hand)) {
+                if (state(stack) != STATE_SAFE) setState(stack, STATE_SAFE);
+                continue;
+            }
             switch (state(stack)) {
                 case STATE_PULLING -> {
                     if (now - holdFrom(stack) >= PIN_TICKS) g.completePull(player, stack, now);
@@ -322,11 +400,8 @@ public class GrenadeItem extends Item {
                         tell(player, "message.hexalunar_calamity.pin_back", ChatFormatting.GREEN);
                     }
                 }
-                case STATE_ARMED -> {
-                    // 压杆还被手压住 ⇒ 撞针没释放 ⇒ 引信烧不起来。
-                    // 手里攥着绝不会自爆（飞行中那颗由 GrenadeEntity 自己读秒），一律折回安全待投
-                    setPrimed(stack, now);
-                }
+                // ★ r77：引信点着了就在手里继续烧 —— 5 秒内不丢出去就在掌心爆
+                case STATE_ARMED -> burnInHand(player, stack, g, now);
                 default -> {
                 }
             }
@@ -359,8 +434,8 @@ public class GrenadeItem extends Item {
     }
 
     /**
-     * 拔销完成：**引信不点燃** —— 压杆还被手压着（撞针没释放），这颗雷可以一直安全地拿在手里、
-     * 随时按住右键把销插回去。只有左键投掷、压杆脱手的那一刻才开始读秒。
+     * 拔销完成：**引信不点燃** —— 压杆还被手压着（撞针没释放），
+     * 但这之后**一松手就会点火**（r77），要反悔只能「潜行 + 右键」把销插回去。
      */
     private void completePull(Player player, ItemStack stack, long gameTime) {
         setPrimed(stack, gameTime);

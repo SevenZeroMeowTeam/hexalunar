@@ -174,6 +174,8 @@ public final class ModNetwork {
         public static final int RMB_UP = 1;
         /** 左键出手投掷 */
         public static final int THROW = 2;
+        /** 按住被被动中止（开界面 / 切手持物 / 旁观）—— 手还抓着，不当作松手 */
+        public static final int HOLD_CANCEL = 3;
 
         public static void encode(GrenadeAction msg, FriendlyByteBuf buf) {
             buf.writeVarInt(msg.action);
@@ -191,6 +193,7 @@ public final class ModNetwork {
                 switch (msg.action) {
                     case RMB_DOWN -> GrenadeItem.serverBeginHold(player);
                     case RMB_UP -> GrenadeItem.serverEndHold(player);
+                    case HOLD_CANCEL -> GrenadeItem.serverCancelHold(player);
                     case THROW -> GrenadeItem.serverThrow(player);
                     default -> {
                     }

@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r75**
+- 当前版本：**1.0.0-r77**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r75.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r77.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -149,12 +149,23 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r75.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r77.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r77** — 手雷 / 震爆弹改成**写实规则**（撞针会真的击发；**取代 r75 的「松手自动插销」**）：
+  - 拔销之后**必须一直按住右键**：一松手（没及时按住 / 手滑）⇒ 撞针击发、引信点燃（满 5 秒），
+    **5 秒内必须左键丢出去**，不然在掌心起爆（`GrenadeBlasts.detonateInHand`，自己吃满伤害）
+  - 引信点着后**插不回销**了（`fuse_no_pin_back`）；**收回背包 / 换到别的格子也照样烧**，到点爆在身上
+  - 新增网络包 `HOLD_CANCEL`：开界面 / 切手持物属于「手还抓着」⇒ **不点火**
+    （只有真的松开右键才发 `RMB_UP`）；副手的雷 + 主手枪械 = 被胳臂夹着 ⇒ 销自动弹回
+
+- **r76** — 修复 Mod 列表里的**显示名乱码**：`build.gradle` 的 `mod_name` 曾被写坏成
+  `閸忣厾娴夐張鍫绩`（UTF-8 双重编码），标题显示为乱码；现恢复为 `六相月灾`。
+  新增 `tools/_namecheck.py`：直接读 jar 里的 `META-INF/mods.toml` 校验 displayName 的原始字节
 
 - **r75** — 月相改成随机 + 全套管理指令 + 手雷保险销手感修正：
   - **月相不再按夜数轮转**（`MoonPhase.forNight` 已删）：每夜独立掷骰、六相同权重

@@ -170,22 +170,33 @@ public final class ClientWeaponInput {
         lastRmb = rmb;
     }
 
-    /** 切走手雷 / 打开界面 / 旁观：收尾按住状态，别让服务端挂着拔销中 */
+    /** 切走手雷 / 打开界面 / 旁观：收尾按住状态（手还抓着，所以不当作「松手」） */
     private static void releaseGrenadeHold() {
-        sendRelease();
+        sendHoldCancel();
         holdTicks = 0;
         lastRmb = false;
         GrenadeItem.clientPullProgress = -1.0F;
         GrenadeItem.clientReinsertProgress = -1.0F;
     }
 
+    /**
+     * 真的松开了右键 —— 这才会触发「压杆脱手 ⇒ 撞针击发」的逻辑（服务端决定）。
+     */
     private static void sendRelease() {
+        sendHoldEnd(ModNetwork.GrenadeAction.RMB_UP);
+    }
+
+    /** 按住状态被动中止（开界面 / 切手持物 / 旁观）：手还抓着，不算松手，不让引信点燃 */
+    private static void sendHoldCancel() {
+        sendHoldEnd(ModNetwork.GrenadeAction.HOLD_CANCEL);
+    }
+
+    private static void sendHoldEnd(int action) {
         if (!holdReported) return;
         holdReported = false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
-        ModNetwork.CHANNEL.sendToServer(
-                new ModNetwork.GrenadeAction(ModNetwork.GrenadeAction.RMB_UP));
+        ModNetwork.CHANNEL.sendToServer(new ModNetwork.GrenadeAction(action));
     }
 
     /** R 键的装填请求由 {@link ClientGunController} 统一发送，本类只管开火与手雷 */
