@@ -50,12 +50,20 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
     private static final float BOLT_TRAVEL = 1.9F;
 
     /**
-     * 开火后坐（模型像素，乘 WeaponAnim 的后坐冲量）：**只沿枪管方向后拖**（+Z 朝射手）+ 极小上抬。
+     * 当前这一遍渲染是不是「拿在手上」（第一/第三人称；由 {@link AkmGeoRenderer} 从 display context 设入）。
      *
-     * <p>【不给俯仰】：原来那 3.2° 会让枪和双手一起向前低头（用户要求「后坐力应该是平行的」）。
+     * <p>GeckoLib 的 {@code setCustomAnimations} 对 **GUI 图标 / 掉落物 / 展示框**一样会跑，
+     * 不加这个判断的话「举枪位移 + 开火后坐」会把物品栏里的图标也一起推走（用户反馈过）。
+     */
+    static boolean handPass = false;
+
+    /**
+     * 开火后坐（模型像素，乘 WeaponAnim 的后坐冲量）：**只沿枪管方向后拖**（+Z 朝射手）。
+     *
+     * <p>【不给上下、不给俯仰】：用户要求「只前后动不是上下动」—— 任何 Y 位移（包括 fire 动画里
+     * 推的 +0.15）和任何角度都会让枪和双手一起上下点头。
      */
     private static final float KICK_BACK = 1.35F;
-    private static final float KICK_UP = 0.10F;
 
     /**
      * 当前这一遍渲染的枪上装了哪个瞄具（由 {@link AkmGeoRenderer} 从被渲染的 ItemStack 读 NBT 设入）。
@@ -104,22 +112,23 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
         //  · camera 空骨骼：fire/bolt/reload 动画用它推镜头（后座上跳等），但动画跑完后 GeckoLib
         //    会把最后一帧留在骨骼上 → 镜头被永久歪掉/压低，所以「没有动作在跑」时每帧把它清零。
         // ------------------------------------------------------------------
-        float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F);
+        boolean held = handPass;
+        float aim = held ? Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F) : 0.0F;
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
             // ------------------------------------------------------------------
-            // ★ 枪在手里「不晃」+ 后坐/瞄准都「平行」：
-            //   · idle / run / run_fast / reload / bolt_pull / safety / fire 这些动画都会给 move 推
-            //     角度（fire 的 −2.8°、reload 的 +7°…），负角就是**枪口朝下低头** —— 枪和双手会
-            //     一起沉下去（用户要求后座与瞄准都应该是平行的）。所以角度一律清零。
-            //   · 位移只在**开火**那一瞬留（那是后坐后拖），其余时候（走路/待机/换弹/拉栓）收平。
+            // ★ 「只前后动，不上下动」：
+            //   · 角度一律清零（火/换弹/拉栓/走路推的角度会让枪斜/点头）；
+            //   · X / Y 位移一律清零 —— fire 动画还会给 move 推 +0.15 的 Y（上下）、
+            //     idle/run 推 ±0.11~0.9 的 Y，这些就是「开火上下晃」的来源；
+            //   · Z（沿枪管）只在**开火**那一瞬留：那是后坐后拖，松冲量后自己弹回去。
             // ------------------------------------------------------------------
             move.setRotX(0.0F);
             move.setRotY(0.0F);
             move.setRotZ(0.0F);
+            move.setPosX(0.0F);
+            move.setPosY(0.0F);
             if (!AkmAnimState.firing()) {
-                move.setPosX(0.0F);
-                move.setPosY(0.0F);
                 move.setPosZ(0.0F);
             }
             if (aim > 0.001F) {
@@ -130,17 +139,18 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
                 move.setPosY(WeaponMount.akmAimDy(sightNow) * aim);
                 move.setPosZ(WeaponMount.AKM_AIM_DZ * aim);
             }
-            // 后坐：沿枪管向后拖（走 move 骨骼而不是 display/pose —— 第一人称手臂（WeaponArms）
-            // 读的就是 move，所以「开火时双手跟着枪一起动」是自动的）。
-            // 举枪时收掉大半，别把「照门—准星」那条瞄准线顶跑。
-            float kick = WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim);
+            // 后坐：只沿枪管向后拖（走 move 骨骼而不是 display/pose —— 第一人称手臂（WeaponArms）
+            // 读的就是 move，所以「开火时双手跟着枪一起前后动」是自动的）。
+            // 举枪时收掉大半，别把「照门—准星」那条瞄准线顶跑；GUI 图标里完全不推。
+            float kick = held ? WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim) : 0.0F;
             if (kick > 0.001F) {
-                move.setPosY(move.getPosY() + KICK_UP * kick);
                 move.setPosZ(move.getPosZ() + KICK_BACK * kick);
             }
         }
         CoreGeoBone cam = getAnimationProcessor().getBone("camera");
-        if (cam != null && !AkmAnimState.action()) {
+        if (cam != null && !AkmAnimState.firing()) {
+            // ★ 镜头的后坐反馈**只留给开火**：换弹 / 拉栓（含换完弹那一下）时镜头必须稳，
+            //   否则就是用户说的「换完弹再上下动一下」。
             cam.setRotX(0.0F);
             cam.setRotY(0.0F);
             cam.setRotZ(0.0F);

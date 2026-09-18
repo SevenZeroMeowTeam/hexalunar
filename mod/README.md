@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r61**
+- 当前版本：**1.0.0-r62**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r61.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r62.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -143,12 +143,21 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r61.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r62.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r62** — 后坐只前后、物品栏图标不再跟着动、换弹稳定：
+  - **位移只留 Z（沿枪管前后）**：fire 动画自带的 +0.15px Y（上下）、reload 的 −1.2px / +7°
+    全部收掉 —— 用户要求「只前后动、不上下动」；AKM 1.35px / 弩 0.95px 纯后拖，冲量衰减后自己滑回去（十字弩同理）
+  - **镜头反馈只留给开火**：`camera` 骨骼只在 `firing()` 时叠到视角上，换弹 / 拉栓（含换完弹那一下）镜头稳定，
+    不再「换完弹再上下动一下」
+  - **举枪位移 / 后坐只在「拿在手上」时生效**：GeckoLib 的 `setCustomAnimations` 对 GUI 图标 / 掉落物 /
+    展示框一样会跑 ⇒ 开火时**物品栏里的图标也跟着往后拖**（用户反馈）。现在渲染器按 `ItemDisplayContext`
+    记 `handPass`（第一/第三人称才为 true），三个模型（AKM / 十字弩 / 复合弓）都按它决定推不推骨骼
 
 - **r61** — 十字弩换成参考网格里那把**现代复合弩**：
   - 新增 `tools/crossbow_vox.py`：把 `模型/十字弩_v2.bbmodel`（11 个 mesh 部件）**表面体素化**成

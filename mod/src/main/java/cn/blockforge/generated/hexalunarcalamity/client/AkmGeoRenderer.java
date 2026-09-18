@@ -37,11 +37,24 @@ public class AkmGeoRenderer extends GeoItemRenderer<AkmRifleItem> {
                             net.minecraft.client.renderer.MultiBufferSource bufferSource,
                             int packedLight, int packedOverlay) {
         AkmGeoModel.sightNow = cn.blockforge.generated.hexalunarcalamity.weapon.Sights.sight(stack);
+        AkmGeoModel.handPass = isHand(transformType);
         try {
             super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
         } finally {
             AkmGeoModel.sightNow = cn.blockforge.generated.hexalunarcalamity.weapon.Sights.IRON;
+            AkmGeoModel.handPass = false;
         }
+    }
+
+    /**
+     * 是不是「拿在手上」（第一/第三人称）—— 举枪位移与开火后坐只在这种语境下生效；
+     * GUI 图标 / 掉落物 / 展示框不算，否则物品栏里的图标会跟着一起动。
+     */
+    static boolean isHand(net.minecraft.world.item.ItemDisplayContext type) {
+        return type == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
+                || type == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_LEFT_HAND
+                || type == net.minecraft.world.item.ItemDisplayContext.THIRD_PERSON_RIGHT_HAND
+                || type == net.minecraft.world.item.ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
     }
 
     /** GeckoLib 4.8.4 的 getRenderLayers() 是 default 方法，重写即可挂上流光层 */

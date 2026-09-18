@@ -49,12 +49,17 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     /** 击发后弦震动持续 tick 数 */
     private static final int TWANG_TICKS = 9;
     /**
-     * 击发后坐（模型像素，乘 WeaponAnim 的后坐冲量）：**只沿弩身方向后拖**（+Z 朝射手）+ 极小上抬。
+     * 当前这一遍渲染是不是「拿在手上」（第一/第三人称；由 {@link CrossbowGeoRenderer} 设入）。
+     * GeckoLib 的 {@code setCustomAnimations} 对 GUI 图标 / 掉落物 / 展示框一样会跑。
+     */
+    static boolean handPass = false;
+
+    /**
+     * 击发后坐（模型像素，乘 WeaponAnim 的后坐冲量）：**只沿弩身方向后拖**（+Z 朝射手）。
      *
-     * <p>不给俯仰（原来那 2.4° 会让弩和双手一起低头）。弩比枪轻，幅度取小一半。
+     * <p>【不给上下、不给俯仰】：用户要求「只前后动不是上下动」。弩比枪轻，幅度取小一半。
      */
     private static final float KICK_BACK = 0.95F;
-    private static final float KICK_UP = 0.10F;
     /** 拉满时凸轮盘转过的角度（视觉：弦从凸轮上放开）；随 DRAW_DZ 等比放大 */
     private static final float CAM_SPIN = (float) Math.toRadians(60.0);
 
@@ -156,23 +161,21 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             bolt.setPosZ(draw * DRAW_DZ);
         }
 
-        // ★ 不「在手里晃」+ 后坐「平行」（同 AKM）：
-        //   idle / run / run_fast 给 move 推的上下位置与俯仰、以及 fire 动画的 +2.4° 抬头，
-        //   都会让弩在手里晃 / 斜着抬头 —— 角度一律清掉，位置只在击发那一瞬留（后拖）。
+        // ★ 「只前后动，不上下动」+「GUI 图标不能跟着动」（同 AKM）：
+        //   角度一律清零，X/Y 位移一律清零，Z（沿弩身）只在**击发**那一瞬留。
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
             move.setRotX(0.0F);
             move.setRotY(0.0F);
             move.setRotZ(0.0F);
+            move.setPosX(0.0F);
+            move.setPosY(0.0F);
             if (!CrossbowAnimState.firing()) {
-                move.setPosX(0.0F);
-                move.setPosY(0.0F);
                 move.setPosZ(0.0F);
             }
-            // 后坐：沿弩身后拖（走 move 骨骼，第一人称手臂读的就是它 ⇒ 手会跟着一起顿）
-            float kick = WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil;
+            // 后坐：只沿弩身后拖（走 move 骨骼，第一人称手臂读的就是它 ⇒ 手会跟着一起前后动）
+            float kick = handPass ? WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil : 0.0F;
             if (kick > 0.001F) {
-                move.setPosY(move.getPosY() + KICK_UP * kick);
                 move.setPosZ(move.getPosZ() + KICK_BACK * kick);
             }
         }

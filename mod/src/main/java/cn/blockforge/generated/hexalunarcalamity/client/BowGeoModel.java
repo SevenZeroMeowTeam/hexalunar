@@ -60,6 +60,8 @@ public class BowGeoModel extends GeoModel<CompoundBowItem> {
     public void setCustomAnimations(CompoundBowItem animatable, long instanceId,
                                     AnimationState<CompoundBowItem> animationState) {
         if (!net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) return;
+        // 只在「拿在手上」（第一/第三人称）时才推骨骼：GUI 图标 / 掉落物 / 展示框别跟着动
+        if (!BowGeoRenderer.handPass) return;
         float draw = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.BOW).draw, 0.0F, 1.0F);
         if (draw <= 0.001F) return;
         CoreGeoBone move = getAnimationProcessor().getBone("move");

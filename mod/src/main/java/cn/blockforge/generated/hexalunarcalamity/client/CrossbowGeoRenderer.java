@@ -20,6 +20,24 @@ public class CrossbowGeoRenderer extends GeoItemRenderer<CrossbowWeaponItem> {
                 WeaponAnim.Kind.CROSSBOW);
     }
 
+    /**
+     * 记下这一遍是不是「拿在手上」（第一/第三人称）：后坐在这些语境下才生效，
+     * 否则物品栏图标 / 掉落物 / 展示框也会跟着往后拖（见 {@link CrossbowGeoModel#handPass}）。
+     */
+    @Override
+    public void renderByItem(net.minecraft.world.item.ItemStack stack,
+                            net.minecraft.world.item.ItemDisplayContext transformType,
+                            com.mojang.blaze3d.vertex.PoseStack poseStack,
+                            net.minecraft.client.renderer.MultiBufferSource bufferSource,
+                            int packedLight, int packedOverlay) {
+        CrossbowGeoModel.handPass = AkmGeoRenderer.isHand(transformType);
+        try {
+            super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
+        } finally {
+            CrossbowGeoModel.handPass = false;
+        }
+    }
+
     @Override
     public List<GeoRenderLayer<CrossbowWeaponItem>> getRenderLayers() {
         return List.of(glint);

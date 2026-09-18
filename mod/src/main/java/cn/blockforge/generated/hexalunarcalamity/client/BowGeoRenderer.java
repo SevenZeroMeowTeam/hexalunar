@@ -17,6 +17,13 @@ public class BowGeoRenderer extends GeoItemRenderer<CompoundBowItem> {
 
     private static BowGeoRenderer instance;
 
+    /**
+     * 当前这一遍渲染是不是「拿在手上」（第一/第三人称）。
+     * GeckoLib 的 {@code setCustomAnimations} 对 GUI 图标 / 掉落物 / 展示框一样会跑，
+     * 不加这个判断的话「拉弦对心」的骨骼位移会把物品栏里的图标也一起推走。
+     */
+    static boolean handPass = false;
+
     /** 会动的光泽层：抛光高光处自发光 + 拉弦/放箭时更亮 */
     private final GlossGlintLayer<CompoundBowItem> glint;
 
@@ -24,6 +31,20 @@ public class BowGeoRenderer extends GeoItemRenderer<CompoundBowItem> {
         super(new BowGeoModel());
         this.glint = new GlossGlintLayer<>(this, GlossGlintLayer.mask("compound_bow_geo"),
                 0.55F, WeaponAnim.Kind.BOW);
+    }
+
+    @Override
+    public void renderByItem(net.minecraft.world.item.ItemStack stack,
+                            net.minecraft.world.item.ItemDisplayContext transformType,
+                            com.mojang.blaze3d.vertex.PoseStack poseStack,
+                            net.minecraft.client.renderer.MultiBufferSource bufferSource,
+                            int packedLight, int packedOverlay) {
+        handPass = AkmGeoRenderer.isHand(transformType);
+        try {
+            super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
+        } finally {
+            handPass = false;
+        }
     }
 
     /** GeckoLib 4.8.4 的 getRenderLayers() 是 default 方法，重写即可挂上流光层 */

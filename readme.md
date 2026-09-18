@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r61`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r62`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r61.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r62.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -106,6 +106,14 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
   - `move` 骨骼只允许在**开火**那一瞬动（后坐：沿枪管方向**平行后拖** 1.35px，弩 0.95px）；
     走路 / 待机 / 换弹 / 拉栓 / 拨保险这些动画推的位移与俯仰（idle ±0.11、run ±0.5、run_fast ±0.9 像素 + 3~5°）
     一律收平 —— 枪不再在手里晃
+  - **位移只留 Z（前后），X/Y 与角度一律清零（r62）**：用户要求「只前后动、不上下动」——
+    fire 动画自己还推了 +0.15px 的 Y（上下）、reload 推 −1.2px / +7°，全部收掉；
+    后坐就是纯后拖，冲量衰减后自己滑回去 ⇒ **真实的后坐感来自沿枪管的往复**
+  - **镜头的后坐反馈只留给开火（r62）**：`camera` 骨骼只在 `firing()` 时叠到视角上，
+    换弹 / 拉栓（含换完弹那一下）镜头是稳定的，不再“换完弹再上下动一下”
+  - **举枪位移 / 后坐只在「拿在手上」时生效（r62）**：GeckoLib 的 `setCustomAnimations`
+    对 **GUI 图标 / 掉落物 / 展示框**一样会跑 ⇒ 不加判断的话开火时**物品栏里的图标也往后跟**
+    （用户反馈）；现在按 `ItemDisplayContext` 只在第一/第三人称推骨骼（`*GeoRenderer.handPass`）
   - **枪身角度一律保持「平行」（r60）**：任何动画给 `move` 推的角度（fire 的 −2.8°、reload 的 +7°）
     都会让枪和双手一起低头/抬头，所以开火与瞄准时 `move` 的角度都清零；后座**只后拖不给俯仰**
   - 后坐走的是 **`move` 骨骼**（不是 display/pose），而手臂读的就是 `move` ⇒
@@ -256,6 +264,14 @@ tools/  开发辅助脚本（见第五节）
     另外 mesh 的 UV 要看是哪种空间（归一化 / 分辨率单位 / 像素）：
     用 `sqrt(uv面积 / 3D面积)` 算出来的「平均密度」在长条面上是不准的，
     体素面直接取**标称密度**（`step × 贴图/分辨率`）观感最好（详见 `crossbow_vox.py` 里的 `uv_space()`）。
+
+17. **GeckoLib 的 `setCustomAnimations` 对「GUI 图标 / 掉落物 / 展示框」一样会跑**
+    它只认「渲染这个物品」，不认语境。所以往 `move` 骨骼上推的**举枪位移**与**开火后坐**
+    会把**物品栏里的图标**也一起推走（用户反馈：开火时「物品栏物品也随之后移」）。
+    正确做法是让渲染器按 `ItemDisplayContext` 记一个 `handPass`（第一/第三人称 = true，
+    GUI / GROUND / FIXED = false），模型里再决定推不推骨骼
+    （见 `AkmGeoRenderer.isHand()` + `*GeoModel.handPass`）；
+    瞄准/拉弦这类「手持姿态」在第三人称也是要看的，所以判据要含第三人称，不能只判第一人称。
 
 ---
 
