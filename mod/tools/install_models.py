@@ -16,7 +16,7 @@ PAIRS = [
     ('grenade_v3', 'mud.geo.json', 'mud_geo.png'),
     ('flashbang_v3', 'flashbang.geo.json', 'flashbang_geo.png'),
     ('bow_v3', 'compound_bow.geo.json', 'compound_bow_geo.png'),
-    ('crossbow_v3', 'crossbow_geo.geo.json', 'crossbow_geo.png'),
+    ('crossbow_v4', 'crossbow_geo.geo.json', 'crossbow_geo.png'),
 ]
 
 

@@ -30,9 +30,9 @@ MAG_PIVOT = (0.0, 1.45, -3.78)
 MAG_DROP, MAG_TILT, BOLT_TRAVEL = 9.8, 34.0, 1.9
 
 CB_RIGHT = (0.0, -0.90, 0.60)
-CB_SUPPORT = (0.0, -1.10, -4.60)
-CB_FETCH = (0.20, -1.80, -6.20)
-CB_DRAW_DZ, CB_NOCK_Z = 3.40, -5.80
+CB_SUPPORT = (0.0, -0.65, -6.30)
+CB_FETCH = (0.20, -1.30, -7.20)
+CB_DRAW_DZ, CB_NOCK_Z = 1.80, -5.20
 
 
 def ease(t):
@@ -101,11 +101,11 @@ def akm_left(p):
 
 def cb_left(p):
     def string_point(draw):
-        return (0.26, 0.22, CB_NOCK_Z + draw * CB_DRAW_DZ + 0.30)
+        return (0.26, 1.30, CB_NOCK_Z + draw * CB_DRAW_DZ + 0.30)
 
     def bolt_point():
         draw = min(1.0, p / 0.65) if p >= 0 else 0.0
-        return (0.20, 0.25, -6.40 + draw * CB_DRAW_DZ)
+        return (0.20, 1.41, -5.80 + draw * CB_DRAW_DZ)
 
     if p < 0.05:
         return CB_SUPPORT

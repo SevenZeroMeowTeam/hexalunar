@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r60**
+- 当前版本：**1.0.0-r61**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r60.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r61.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -143,12 +143,19 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r60.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r61.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r61** — 十字弩换成参考网格里那把**现代复合弩**：
+  - 新增 `tools/crossbow_vox.py`：把 `模型/十字弩_v2.bbmodel`（11 个 mesh 部件）**表面体素化**成
+    GeckoLib 方块模型（824 方块 / 14 骨骼），逐格从原 512² 贴图采样 UV；弦 / 弦心 / 弩箭另外用方块画
+    （弦要能绕弓臂梢转）。弦面/拉弦行程/手部锚点全部重新推导（`TIP_X 6.0→2.62`、`DRAW_DZ 3.40→1.80`、
+    `NOCK_Z0 −5.80→−5.20`），骨骼名与握把原点不变 ⇒ 动画与手臂代码不用重写
+  - 为什么不用 GeckoLib 的 `poly_mesh`：4.8.4 只解析不渲染（渲染侧 `GeoBone` 只有 `getCubes()`）
 
 - **r60** — 后座与瞄准都「平行」+ 弩弦不再翘：
   - **后坐只沿枪管后拖，不给俯仰**：原来那点俯仰（AKM 3.2°、弩 2.4°）会让枪和双手一起低头；

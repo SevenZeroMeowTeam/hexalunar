@@ -11,18 +11,21 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 
 /**
- * 十字弩的 GeckoLib 模型（真骨骼，12 根）。
+ * 十字弩的 GeckoLib 模型（体素，824 方块 / 14 骨骼）。
  *
- * <p>模型由 {@code tools/crossbow_gen.py} 按参考模型 {@code 模型/十字弩.bbmodel} 的实测比例重建：
- * root → move → body（机匣导轨）→ stock / grip / scope / prod_left / prod_right /
- * string_left / string_right / nock / bolt。弩箭飞出方向 = <b>-Z（北）</b>，原点在握把上方。
+ * <p>模型由 {@code tools/crossbow_vox.py} 把参考网格 {@code 模型/十字弩_v2.bbmodel}
+ * （11 个 mesh 部件的「现代复合弩」：窄弓臂 + 高导轨 + 枪式握把 + 镜筒 + 线缆）**表面体素化**而来，
+ * 逐格从原贴图采样 UV；弦 / 弦心 / 弩箭用方块单独画（要能绕弓臂梢转）。
+ * 坐标系：以握把中心为原点、弩头朝 −Z，与旧模型同一套（{@code WeaponArms} 的握点不用改）。
  *
  * <p><b>拉弦装弹</b>是连续动作（按住/R 键共 {@code RELOAD_TICKS}=30 tick），所以按
  * {@code CrossbowWeaponItem.reloadProgress} 程序化推骨骼：
- * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 DRAW_Z，弩箭在后半段滑上弦。
- * 弦长取拉满所需（hypot(6.0, 3.40)=6.896），未拉时两段在中点重叠、被弦心缠绳盖住 ——
- * 与复合弓同一套算法。DRAW_DZ 必须与 {@code tools/crossbow_v3.py} 的同名常数一致：
- * 拉满时弦心落在 z = NOCK_Z0 + DRAW_DZ（生成器自检会打印该值）。
+ * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 DRAW_DZ，弩箭在后半段滑上弦。
+ * 弦长取拉满所需（hypot(2.62, 1.80)=3.18），未拉时两段在中点重叠、被弦心缠绳盖住。
+ * ★ TIP_X / DRAW_DZ / NOCK_Z0 必须与 {@code tools/crossbow_vox.py} 的同名常数一致
+ *   （生成器末尾会打印并自检「拉满时两段弦的内端正好落在弦心」）。
+ * ★ 上弦完成（cocked）后弦**不往后拉**（贴回两弓臂之间）——拉回去的弦心离镜头更近，
+ *   透视下会像一根浮在弩上方的「∧」。
  */
 public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
 
@@ -33,14 +36,14 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final ResourceLocation ANIMATION =
             new ResourceLocation(HexaLunarCalamity.MOD_ID, "animations/crossbow.animation.json");
 
-    /** 弓臂梢到弦心的横向距离（生成器 TIP_X） */
-    private static final float TIP_X = 6.0F;
+    /** 弓臂梢到弦心的横向距离（生成器 TIP_X：等于弦网格的半跨） */
+    private static final float TIP_X = 2.62F;
     /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
-    private static final float DRAW_DZ = 3.40F;
+    private static final float DRAW_DZ = 1.80F;
     /** 弦段转角 φ = atan(DRAW_DZ / TIP_X) */
     private static final float PHI_RAD = (float) Math.atan2(DRAW_DZ, TIP_X);
-    /** 弦心相对参考面的 z（生成器 TIP_Z，已含原点偏移） */
-    private static final float NOCK_Z0 = -2.20F - 3.60F;
+    /** 弦面中心的 z（生成器 NOCK_Z0；已含「以握把为原点」的平移） */
+    private static final float NOCK_Z0 = -5.20F;
     /** 弩箭收起时挪走的高度（挪到看不见） */
     private static final float BOLT_HIDE_Y = -40.0F;
     /** 击发后弦震动持续 tick 数 */
@@ -136,10 +139,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         if (camL != null) camL.setRotY(-draw * CAM_SPIN);
         if (camR != null) camR.setRotY(draw * CAM_SPIN);
 
-        // 弦心（缠绳）随拉弦后退；震动时跟着弦心一起前后抖（弦长 6.54·cosφ = 6.0）
+        // 弦心（缠绳）随拉弦后退；震动时跟着弦心一起前后抖（弦在 X 上的半投影 = TIP_X）
         CoreGeoBone nock = getAnimationProcessor().getBone("nock");
         if (nock != null) {
-            nock.setPosZ(draw * DRAW_DZ - 6.0F * tw);
+            nock.setPosZ(draw * DRAW_DZ - TIP_X * tw);
             nock.setPosY(0.0F);
         }
 
@@ -203,10 +206,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     // ------------------------------------------------------------------ 左手动作（模型像素）
     /** 十字弩 display 的缩放（models/item/crossbow.json） */
     private static final float CB_SCALE = 0.8F;
-    /** 托护木（平时：导轨前段下方） */
-    private static final float[] ARM_SUPPORT = {0.0F, -1.10F, -4.60F};
+    /** 托护木（平时：导轨前段下方）—— 导轨底面 y 0.33 / 前端 z −8.64 */
+    private static final float[] ARM_SUPPORT = {0.0F, -0.65F, -6.30F};
     /** 去下面取箭时的位置（在导轨下方、前面） */
-    private static final float[] ARM_FETCH = {0.20F, -1.80F, -6.20F};
+    private static final float[] ARM_FETCH = {0.20F, -1.30F, -7.20F};
     private static final float[] TMP_A = new float[3];
     private static final float[] TMP_B = new float[3];
 
@@ -235,10 +238,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         return lerp(TMP_B, ARM_SUPPORT, ease((p - 0.97F) / 0.03F), out);
     }
 
-    /** 弦心上的握点（弦心 z = NOCK_Z0 + draw·DRAW_DZ，手抓在它后面一点） */
+    /** 弦心上的握点（弦心 z = NOCK_Z0 + draw·DRAW_DZ，手抓在它后面一点、弦面下方） */
     private static float[] stringPoint(float draw, float[] out) {
         out[0] = 0.26F;
-        out[1] = 0.22F;
+        out[1] = 1.30F;
         out[2] = NOCK_Z0 + draw * DRAW_DZ + 0.30F;
         return out;
     }
@@ -246,8 +249,8 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     /** 弩箭上的握点（箭尾在弦心上，所以跟着 draw·DRAW_DZ 走） */
     private static float[] boltPoint(float[] out) {
         out[0] = 0.20F;
-        out[1] = 0.25F;
-        out[2] = -6.40F + lastDraw * DRAW_DZ;
+        out[1] = 1.41F;
+        out[2] = -5.80F + lastDraw * DRAW_DZ;
         return out;
     }
 
