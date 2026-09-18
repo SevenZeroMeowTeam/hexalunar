@@ -51,6 +51,8 @@ OPTIC_D = (30, 31, 34)       # 瞄具暗面
 GLASS = (66, 138, 158)       # 镜片
 DOT_RED = (255, 66, 48)      # 红点
 BRASS = (168, 132, 62)       # 黄铜（弹匣内可见的弹头）
+BRASS_HI = (214, 174, 84)    # 黄铜亮面（刚抛出来的弹壳）
+BRASS_D = (108, 82, 38)      # 黄铜暗面（壳身底部/凹槽）
 GLOVE = (46, 44, 48)         # 左手（战术手套：掌心/手指）
 GLOVE_CUFF = (34, 33, 36)    # 手套袖口（深一档）
 
@@ -318,6 +320,12 @@ BONES = [
     #   红点参照 (0, 3.79, -5.50)；4 倍镜光轴 Y=4.00。两者都在 X=0。
     ('dot_sight', 'body', (0.0, 3.79, -5.50)),
     ('scope_4x', 'body', (0.0, 4.00, -5.60)),
+    # ★ 抛壳动画（AkmGeoModel.driveCasings）：4 根弹壳骨骼轮流用，全自动时同时在空中的
+    #   弹壳就像一串往外冒；pivot = 抛壳口 (0.95, 2.62, -2.30)，弹壳绕它打转往外飞。
+    ('casing_0', 'body', (0.95, 2.62, -2.30)),
+    ('casing_1', 'body', (0.95, 2.62, -2.30)),
+    ('casing_2', 'body', (0.95, 2.62, -2.30)),
+    ('casing_3', 'body', (0.95, 2.62, -2.30)),
 ]
 
 CUBES = [
@@ -571,6 +579,33 @@ def build_scope_4x():
 
 CUBES += build_dot_sight()
 CUBES += build_scope_4x()
+
+
+# ------------------------------------------------------------------ 空弹壳（抛壳动画用）
+# ★ 每个弹壳骨骼 = 一枚 7.62×39 空壳，静止时就摆在抛壳口 (0.95, 2.62, -2.30) 上，
+#   由 Java（AkmGeoModel.driveCasings）按「开火后过了几 tick」让它往外飞 + 打转，
+#   飞完就 setHidden(true)。真实弹壳只有 0.6px，太小看不见，这里放大到 ~2.4px。
+CASE_PIVOT = (0.95, 2.62, -2.30)
+
+
+def build_casings():
+    out = []
+    for i in range(4):
+        bone = 'casing_%d' % i
+        px, py, pz = CASE_PIVOT
+        # 壳身（沿枪管方向躺着）+ 底部抽壳钩槽 + 颈部收口
+        out.append(C(bone, 'case_%d_body' % i, (px - 0.35, px + 0.35), (py - 0.35, py + 0.35),
+                     (pz - 1.20, pz + 0.95), BRASS_HI, tag='brass'))
+        out.append(C(bone, 'case_%d_rim' % i, (px - 0.42, px + 0.42), (py - 0.42, py + 0.42),
+                     (pz + 0.95, pz + 1.20), BRASS, tag='brass'))
+        out.append(C(bone, 'case_%d_groove' % i, (px - 0.36, px + 0.36), (py - 0.36, py + 0.36),
+                     (pz + 0.55, pz + 0.72), BRASS_D, tag='brass'))
+        out.append(C(bone, 'case_%d_neck' % i, (px - 0.20, px + 0.20), (py - 0.20, py + 0.20),
+                     (pz - 1.45, pz - 1.20), BRASS_HI, tag='brass'))
+    return out
+
+
+CUBES += build_casings()
 
 
 # ------------------------------------------------------------------ 生成

@@ -58,6 +58,25 @@ public final class AkmAnimState {
         return 1.0F - boltTicks / (float) BOLT_TICKS;
     }
 
+    // ------------------------------------------------------------------ 抛壳
+    /** 弹壳从抛出到消失的时长（≈0.6s = 12 tick） */
+    public static final int EJECT_TICKS = 12;
+    /** 同时在空中的弹壳数（模型里有 casing_0..3 四根骨骼轮流用） */
+    public static final int CASE_SLOTS = 4;
+    /** 第 slot 枚弹壳抛出的时刻（gameTime；没抛过是 0） */
+    private static final long[] shotAt = new long[CASE_SLOTS];
+    private static int shotSlot;
+
+    /** 第 slot 枚弹壳是什么时候抛出来的（{@link AkmGeoModel#driveCasings} 用） */
+    public static long shotTime(int slot) {
+        return shotAt[slot];
+    }
+
+    private static long now() {
+        net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
+        return level == null ? 0L : level.getGameTime();
+    }
+
     /** 正在换弹（读物品 NBT，客户端可见） */
     public static boolean reloading() {
         Player player = player();
@@ -118,6 +137,8 @@ public final class AkmAnimState {
         }
         if (lastMag >= 0 && mag < lastMag) {          // 打出一发
             fireTicks = FIRE_TICKS;
+            shotAt[shotSlot] = now();                 // 记下这一发的时刻（抛壳动画用）
+            shotSlot = (shotSlot + 1) % CASE_SLOTS;
             if (mag == 0) boltTicks = BOLT_TICKS;     // 打空自动拉栓
         } else if (lastMag >= 0 && mag > lastMag) {   // 换弹完成：上膛
             boltTicks = BOLT_TICKS;

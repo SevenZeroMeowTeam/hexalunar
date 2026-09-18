@@ -248,8 +248,9 @@ public final class ClientEvents {
     /**
      * 开镜（十字弩 / AKM+4 倍镜）时隐藏第一人称的手与武器（像原版望远镜那样只看镜内）。
      *
-     * <p>非开镜时，如果主手拿的是 AKM，再把玩家自己的**两条手臂**补上（见 {@link AkmArms}）——
-     * 原版对非空物品只画物品不画手，枪看着像浮在空中。
+     * <p>非开镜时，主手拿 AKM / 十字弩再把玩家自己的**两条手臂**补上（见 {@link WeaponArms}）——
+     * 原版对非空物品只画物品不画手；左手还会按换弹进度做事：AKM 托护木 / 抽弹匣 / 拉机柄，
+     * 十字弩拉弦 / 递箭上槽。
      */
     @SubscribeEvent
     public static void onRenderHand(net.minecraftforge.client.event.RenderHandEvent event) {
@@ -259,11 +260,15 @@ public final class ClientEvents {
             return;
         }
         if (event.getHand() != net.minecraft.world.InteractionHand.MAIN_HAND) return;
-        if (!(event.getItemStack().getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
-                .AkmRifleItem)) {
-            return;
+        net.minecraft.world.item.Item item = event.getItemStack().getItem();
+        if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.AkmRifleItem) {
+            WeaponArms.renderAkm(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .CrossbowWeaponItem) {
+            WeaponArms.renderCrossbow(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
         }
-        AkmArms.render(mc, event.getPoseStack(), event.getMultiBufferSource(), event.getPackedLight());
     }
 
     /** 开镜时绘制倍镜遮罩：圆形视野 + 镜缘暗角 + 对称十字分划 */

@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r55**
+- 当前版本：**1.0.0-r57**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r55.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r57.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -143,13 +143,15 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r55.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r57.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
 
+- **r57** — AKM 抛壳动画：抛壳口真的飞出黄铜空弹壳（4 根弹壳骨骼轮流用，抛物线 + 三轴翻滚，≈0.6s 后消失；全自动时空中同时 4~6 枚）
+- **r56** — 第一人称左手动作：AKM 抽/插弹匣 + 拉栓上膛、十字弩拉弦 + 递箭上槽（手臂自动跟随枪本体，含举枪位移）
 - **r55** — 十字弩拉弦行程加大：白弦（含弦心、弩箭）往玩家方向再拉 **0.8**（拉满时弦心 z −3.20 → **−2.40**）；弦长按 `hypot(6, 3.4)` 重算，弩箭同步前伸 0.8 保持箭尖外露，凸轮盘转角 46° → 60°
 - **r54** — 手感与供弹：
   - 子弹伤害提到 **10 点**（5 颗心），提成常量 `BulletEntity.BULLET_DAMAGE`
