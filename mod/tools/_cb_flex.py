@@ -26,10 +26,10 @@ GEO = os.path.join(HERE, '..', 'src', 'main', 'resources', 'assets', 'hexalunar_
                    'geo', 'crossbow_geo.geo.json')
 
 # ---- 与 CrossbowGeoModel 必须一致的常数 --------------------------------------
-TIP_X = 4.978          # 弦心到弓臂锚点的横向距离（生成器 TIP_X；r68 弓臂放大 1.9 倍后）
+TIP_X = 5.371          # 弦心到弓臂锚点的横向距离（生成器 TIP_X；r69 弓臂放大 2.05 倍后）
 DRAW_DZ = 1.80         # 拉满时弦心后退距离（生成器 DRAW_DZ）
 NOCK_Z0 = -5.20        # 弦面中心的 z（生成器 NOCK_Z0）
-STRING_LEN = 5.293     # 弦段方块长度（生成器按 hypot(4.978,1.80) 生成）
+STRING_LEN = 5.665     # 弦段方块长度（生成器按 hypot(5.371,1.80) 生成）
 FLEX_DEG = 8.0         # ★ 拉满时弓臂内收角（度）
 FLEX_BACK = 0.35       # ★ 拉满时两弓臂整体往射手方向滑的量（模型像素；只靠转的话外端主要只往内走）
 FLEX_PX = 1.599        # 弓臂弯折支点 x = 贴导轨内端的中心（生成器打印）
@@ -73,17 +73,19 @@ def flex_disp(pivot, p, side, draw):
     return (d[0], d[1] + draw * FLEX_BACK)
 
 
-def nock_travel(draw):
-    """弦心相对初始的后退量 —— 与 Java 的 CrossbowGeoModel.nockTravel 同一份：
-    锚点被弓臂带走的 z 位移 + 弦绷直所需的后退（弦长固定，锚点内移后能拉得更深）。"""
-    d = flex_disp((FLEX_PX, FLEX_PZ), (TIP_X, CAM_Z), 1, draw)
+def nock_travel(flex, draw):
+    """弦心相对初始的后退量 —— 与 Java 的 CrossbowGeoModel.nockTravel(flexAmt, draw) 同一份：
+    锚点被弓臂带走的 z 位移（弓臂内收 flex，上膛后保持 1）+ 弦绷直所需的后退（弦长固定，draw）。"""
+    d = flex_disp((FLEX_PX, FLEX_PZ), (TIP_X, CAM_Z), 1, flex)
     phi = math.atan2(DRAW_DZ, TIP_X)
     return d[1] + STRING_LEN * math.sin(draw * phi)
 
 
-def nock_z(draw):
-    """弦心 z"""
-    return NOCK_Z0 + nock_travel(draw)
+def nock_z(draw, flex=None):
+    """弦心 z（flex 缺省 = 与 draw 同步；上膛时传 flex=1.0, draw=0.0）"""
+    if flex is None:
+        flex = draw
+    return NOCK_Z0 + nock_travel(flex, draw)
 
 
 def limb_extents(name, side):
@@ -111,6 +113,11 @@ def sign_theta(draw, side):
     return -side * FLEX_DEG * draw
 
 
+# (弓臂内收 flex, 弦拉动 draw, 标签)：r69 起上膛后 flex 保持 1、draw 回到 0
+STATES = [(0.0, 0.0, '张开'), (0.5, 0.5, '拉弦 50%'), (1.0, 1.0, '拉满'),
+          (1.0, 0.0, '上膛保持内敛')]
+
+
 def check():
     print('常数 FLEX_DEG=%.1f  FLEX_BACK=%.2f  TIP_X=%.2f  DRAW_DZ=%.2f  NOCK_Z0=%.2f  L=%.3f'
           % (FLEX_DEG, FLEX_BACK, TIP_X, DRAW_DZ, NOCK_Z0, STRING_LEN))
@@ -119,29 +126,30 @@ def check():
         inn, out, z0, z1, outer = limb_extents(name, side)
         print('== %-11s 支点=(%+.2f,%+.2f)  方块 x[%.2f,%.2f] z[%.2f,%.2f] 外端≈(%+.2f,%+.2f)'
               % (name, piv[0], piv[1], inn, out, z0, z1, outer[0], outer[1]))
-        for draw in (0.5, 1.0):
-            th = sign_theta(draw, side)
-            do = flex_disp(piv, outer, side, draw)
-            print('   draw=%.1f θ=%+5.2f°  外端 (%+.2f,%+.2f) → (%+.2f,%+.2f)  Δ=(%+.2f,%+.2f) 向内%s 向后%s'
-                  % (draw, th, outer[0], outer[1], outer[0] + do[0], outer[1] + do[1],
+        for flex, draw, label in STATES:
+            th = sign_theta(flex, side)
+            do = flex_disp(piv, outer, side, flex)
+            print('   %-14s flex=%.1f θ=%+5.2f°  外端 (%+.2f,%+.2f) → (%+.2f,%+.2f)  Δ=(%+.2f,%+.2f) 向内%s 向后%s'
+                  % (label, flex, th, outer[0], outer[1], outer[0] + do[0], outer[1] + do[1],
                      do[0], do[1],
-                     'OK' if do[0] * side < 0 else 'BAD', 'OK' if do[1] > 0 else 'BAD'))
-    print('== 弦锚点 / 弦内端（弦心 = (0, NOCK_Z0 + draw·(DRAW_DZ+FLEX_BACK))）')
-    print('   draw |  θ(右)  | 锚点Δ=(dx,dz)   | 弦内端         | 弦心        | 偏差')
-    for draw in (0.0, 0.5, 1.0):
-        th = sign_theta(draw, 1)
+                     'OK' if do[0] * side < 0 or flex == 0.0 else 'BAD',
+                     'OK' if do[1] >= 0 else 'BAD'))
+    print('== 弦锚点 / 弦内端（flex = 弓臂内收，draw = 弦拉动；上膛后 flex=1 但 draw=0）')
+    print('   状态           | flex |  θ(右)  | 锚点Δ=(dx,dz)   | 弦内端         | 弦心        | 偏差')
+    for flex, draw, label in STATES:
+        th = sign_theta(flex, 1)
         a = (TIP_X, CAM_Z)
-        d = flex_disp((FLEX_PX, FLEX_PZ), a, 1, draw)
+        d = flex_disp((FLEX_PX, FLEX_PZ), a, 1, flex)
         phi = draw * math.degrees(math.atan2(DRAW_DZ, TIP_X))
         # 游戏里的弦内端 = (锚点 pivot + 平移 δ) + R(φ)·(−L, 0)
         r = roty(phi)
         off = r(-STRING_LEN, 0.0)
         e = (a[0] + d[0] + off[0], a[1] + d[1] + off[1])
-        nz = nock_z(draw)
-        flag = '  OK' if abs(e[0]) <= 0.75 and abs(e[1] - nz) <= NOCK_HALF_Z else '  BAD'
-        print('   %.1f  | %+5.2f° | (%+.2f,%+.2f) | (%+.2f,%+.2f) | (0.00,%+.2f) | (%.2f,%.2f)%s'
-              % (draw, th, d[0], d[1], e[0], e[1], nz, e[0], e[1] - nz, flag))
-    print('★ 判据：两段弦在弦心附近要**交叠**（|x| ≤ 0.75，本身就是刻意的搭接）且不落在弦心方块外（|z| ≤ %.2f）'
+        nz = nock_z(draw, flex)
+        flag = '  OK' if abs(e[0]) <= 1.0 and abs(e[1] - nz) <= NOCK_HALF_Z else '  BAD'
+        print('   %-14s | %.1f  | %+5.2f° | (%+.2f,%+.2f) | (%+.2f,%+.2f) | (0.00,%+.2f) | (%.2f,%.2f)%s'
+              % (label, flex, th, d[0], d[1], e[0], e[1], nz, e[0], e[1] - nz, flag))
+    print('★ 判据：两段弦的内端要**跨过中线**（搭接在一起，|x| ≤ 1.0 且内外交错）且落在弦心方块厚度内（|z| ≤ %.2f）'
           % NOCK_HALF_Z)
     a = os.path.join(HERE, '..', 'build', 'cb_flex_0p0.geo.json')
     b = os.path.join(HERE, '..', 'build', 'cb_flex_1p0.geo.json')
@@ -170,8 +178,8 @@ def span(path):
     return mx
 
 
-def bake(draw, out=None):
-    """把 draw 姿态烘焙成一份 geo，给 geo_texview.py 出图。
+def bake(draw, flex=None, out=None):
+    """把 (flex, draw) 姿态烘焙成一份 geo，给 geo_texview.py 出图（flex 缺省 = draw）。
 
     预览器只认「pivot + rotation（绕 pivot）」，没有 GeckoLib 的 pos（平移）通道，所以：
       · 弓臂：把 pivot 挪到弯折支点、方块不动 + rotation ⇒ 等价于「绕支点转」
@@ -179,6 +187,8 @@ def bake(draw, out=None):
     """
     geo = load()
     bs = bone_map(geo)
+    if flex is None:
+        flex = draw
     phi = draw * math.degrees(math.atan2(DRAW_DZ, TIP_X))
     pivots = {}
     shifts = {}
@@ -186,17 +196,17 @@ def bake(draw, out=None):
     for side, limb, cam, string in ((1, 'prod_right', 'cam_right', 'string_right'),
                                     (-1, 'prod_left', 'cam_left', 'string_left')):
         piv = (FLEX_PX * side, FLEX_PZ)
-        th = sign_theta(draw, side)
-        back = draw * FLEX_BACK
+        th = sign_theta(flex, side)
+        back = flex * FLEX_BACK
         # 弓臂：绕支点转 + 整体后滑 back ⇒ 预览器上等价于「pivot 与方块一起后挪 back + 绕新 pivot 转」
         pivots[limb] = (piv[0], bs[limb]['pivot'][1], piv[1] + back, th)
         shifts[limb] = (0.0, 0.0, back)
         a = (TIP_X * side, CAM_Z)
-        d = flex_disp(piv, a, side, draw)
+        d = flex_disp(piv, a, side, flex)
         shifts[cam] = (d[0], 0.0, d[1])
         shifts[string] = (d[0], 0.0, d[1])
         rots[string] = (0.0, -side * phi, 0.0)
-    travel = nock_travel(draw)
+    travel = nock_travel(flex, draw)
     shifts['nock'] = (0.0, 0.0, travel)
     shifts['bolt'] = (0.0, 0.0, travel)
 
@@ -217,7 +227,9 @@ def bake(draw, out=None):
         if r and any(abs(v) > 1e-9 for v in r):
             b['rotation'] = [round(v, 4) for v in r]
     out = out or os.path.join(HERE, '..', 'build',
-                              'cb_flex_%s.geo.json' % str(draw).replace('.', 'p'))
+                              'cb_flex_%s%s.geo.json' % (
+                                  str(flex).replace('.', 'p'),
+                                  '' if abs(flex - draw) < 1e-9 else '_d%s' % str(draw).replace('.', 'p')))
     with open(out, 'w', encoding='utf-8') as fh:
         json.dump(geo, fh, ensure_ascii=False, separators=(',', ':'))
     print('wrote', out)
@@ -230,10 +242,12 @@ def main():
         pass
     ap = argparse.ArgumentParser()
     ap.add_argument('--bake', type=float, default=None, help='烘焙该 draw 的姿态')
+    ap.add_argument('--flex', type=float, default=None,
+                    help='烘焙时的弓臂内收量（默认 = draw；上膛姿态：--bake 0 --flex 1）')
     a = ap.parse_args()
     check()
     if a.bake is not None:
-        bake(a.bake)
+        bake(a.bake, a.flex)
 
 
 if __name__ == '__main__':

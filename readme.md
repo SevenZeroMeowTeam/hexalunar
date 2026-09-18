@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r69`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r70`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r69.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r70.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -386,7 +386,7 @@ tools/  开发辅助脚本（见第五节）
 | 手雷引信、伤害、效果半径 | `entity/GrenadeEntity.java` |
 | 三武器的有效射程与超距下坠 | `weapon/Ballistics.java`（`AKM_RANGE` / `BOLT_RANGE` / `BOW_RANGE` 与各 `*_IN_RANGE_GRAVITY`） |
 | 武器手持姿态 / 物品栏图标大小 | 各 `models/item/*.json` 的 `display`，或跑 `tools/scale_weapons.py` |
-| **弩弓臂内收 / 后弯 / 长短 / 弦粗细** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`；**弓臂本身的长度与粗细**在 `tools/crossbow_vox.py` 的 `LIMB_SX` / `LIMB_SY`，**弦的粗细**在同文件画弦处的 `th`（半宽，弦截面 = 2×th）（改完跑生成器，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来；再手动装 `crossbow_geo.*`）|
+| **弩弓臂内收 / 后弯 / 长短 / 弦粗细** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`（**内收量**与**弦拉动量**是两个自变量：上膛后 flexAmt=1、draw=0 ⇒ 弓臂保持内敛）；**弓臂长度/粗细**与**弦/弦心/尾羽的尺寸**在 `tools/crossbow_vox.py`（`LIMB_SX` / `LIMB_SY` / 画弦处的 `th` / 弦心与尾羽的 box）；`SKIP_MESHES` 决定哪些参考网格**不**生成方块（弦与线缆必须跳过，否则就是“又厚又分叉”）（改完跑生成器，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来；再手动装 `crossbow_geo.*`）|
 | **第一人称手臂大小 / 位置** | `client/WeaponArms.java` 的 `SHOULDER_R/L`（必须放在画面外，否则一片色块挡住枪）、`THICK`、`ROLL_R/L`；离线故事板 `tools/_armstory.py akm|crossbow` |
 | **开火时的视角反馈** | `client/AkmGeoModel.java#zeroCamera`（清零 = 不点头）+ `client/ClientEvents.java#applyAkmCamera`（camera 骨骼→视角的管道）；要做「后坐上跳」就在 `computeMovePose` 里用冲量自己做 |
 | **月相效果** | `moon/MoonManager.java`；**颜色（月亮/光晕/天顶/地平线/雾色/全屏叠色/尘埃）** 全在 `moon/MoonPhase.java` 的枚举里，改完跑一遍 `tools/_moonsky_mock.py` 看配色 |
@@ -394,6 +394,27 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r70`
+
+- **十字弩：弦细到 0.07 像素、拆掉假弦、弓臂再外扩、上完膛保持内敛**
+  - **「又厚又分叉」的真凶找到了**：参考网格的 `string`（薄壳）与 `cables`（线缆）被体素化成
+    **0.45 像素的方块串**，位置恰好压在运行时那根细弦旁边 ——
+    string 在 y 1.67~1.74、|x| 到 5.37；cables 在 y 1.21~2.11、|x| 到 **5.82（比弓臂梢 5.16 还外）**。
+    于是画面上是「一根细弦 + 一串粗方块」，弓臂内收时两者还会分开 ⇒ 看着就是厚 + 分叉。
+    现在 `SKIP_MESHES = ('cables', 'string')`（参考 string 仍参与 TIP_X / NOCK_Z0 / 包围盒计算，
+    只是不生成方块）：body 体素 **464 → 339**，body 里再无 |x|>2.2 的方块。
+  - **弦与相关小件再收细**：弦方块截面 0.10 → **0.07 像素**（th 0.05 → 0.035）；
+    弦心（缠绳）1.2×0.52×0.52 → **0.9×0.32×0.32**；弩箭尾羽 0.72×0.6×0.48 → **0.52×0.42×0.40**
+    （从射手视角看，这三块才是「厚」的主因）。
+  - **未使用时弓臂再向外扩**：`LIMB_SX` 1.9 → **2.05**（跨度 9.76 → **10.32** 像素，每侧再多探出 0.28）；
+    同步 `CrossbowGeoModel.TIP_X` 4.978 → **5.371**、`STRING_LEN` 5.293 → **5.665**（`tools/_cb_flex.py` 同步）。
+  - **上完膛保持内敛**：把「弓臂内收量」与「弦拉动量」拆成两个自变量（`flexAmt` / `draw`）：
+    拉弦时 flexAmt 跟着 draw 走（0→1）；**装填完成（cocked）后 flexAmt 钉在 1** —— 弓臂不回弹，
+    击发（cocked → false）之后才张开。弦本身仍按原设计在上膛后贴回两弓臂之间（draw = 0，
+    否则弦心离镜头太近会像一根浮在弩上方的「∧」）。弦心 / 弩箭 / 左手三者的位移统一走
+    `nockTravel(flexAmt, draw)`，仍然严格一致（离线自检四状态全 OK）。
+  - 离线验算：`python tools/_cb_flex.py`（新增「上膛保持内敛」一行；出图用 `--bake 0 --flex 1`）
 
 > 版本 `1.0.0-r69`
 

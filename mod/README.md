@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r69**
+- 当前版本：**1.0.0-r70**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r69.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r70.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -144,12 +144,26 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r69.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r70.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r70** — 十字弩：弦细到 0.07 像素、拆掉假弦、弓臂再外扩、上完膛保持内敛：
+  - **「又厚又分叉」的真凶**：参考网格的 `string` 与 `cables` 被体素化成 **0.45 像素的方块串**，
+    位置恰好压在运行时那根细弦旁边（cables 的 |x| 到 5.82，比弓臂梢 5.16 还外）⇒ 看着就是
+    「一根细弦 + 一串粗方块」，弓臂内收时两者分开 ⇒ 分叉。
+    现在 `SKIP_MESHES = ('cables', 'string')`（参考 string 仍用于算 TIP_X / NOCK_Z0）：
+    body 体素 **464 → 339**
+  - **再收细**：弦截面 0.10 → **0.07 像素**；弦心 1.2×0.52×0.52 → **0.9×0.32×0.32**；
+    弩箭尾羽 0.72×0.6×0.48 → **0.52×0.42×0.40**
+  - **弓臂未使用时再外扩**：`LIMB_SX` 1.9 → **2.05**（跨度 10.32 像素）；
+    `CrossbowGeoModel.TIP_X` → **5.371**、`STRING_LEN` → **5.665**
+  - **上完膛保持内敛**：`flexAmt` 与 `draw` 拆开 —— 拉弦时一起走 0→1，
+    **装填完成后 flexAmt 钉在 1**（弓臂不回弹），击发后才张开；弦仍在上膛后贴回弓臂之间（draw=0）
+  - 离线验算：`python tools/_cb_flex.py`（四状态全 OK，含「上膛保持内敛」）
 
 - **r69** — 手雷 / 震爆弹：手上真的有动作了（拔销拽销、单手投掷、抛物线）：
   - **新增 `client/GrenadePose.java`**：碎片手雷与震爆弹共用一份 —— `move` 骨骼姿态（拔销时手腕外翻 16° +

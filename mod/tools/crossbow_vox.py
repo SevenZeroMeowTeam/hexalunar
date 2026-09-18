@@ -45,14 +45,23 @@ STEP = 0.45
 #   参考 v2 的弓臂只到 |x| 3.2、而机身带（riser）就到 1.9 ⇒ 弓臂只比机身探出 1.3 像素，看着就像贴在弩身上。
 #   X 拉长会让体素变成 0.45×0.77 的长条，所以厚度（Y/Z）另外再放一点，观感上更像参考的宽弓臂。
 #   ★ limb / cables / string 三个分件必须**一起**放（弦锚点在弓臂梢上），锚点取各自的内端，否则会和 riser 脱开。
-#   ★ r68：用户「弓臂再往外扩一点」⇒ 1.7 → 1.9（跨度 9.02 → 9.76，每侧再多探出 0.37 像素）。
-LIMB_SX = 1.9
+#   ★ r69：用户「弓臂再往外扩一点」⇒ 1.9 → 2.05（跨度 9.76 → 10.32，每侧再多探出 0.28 像素）。
+#   注意：这是**未拉弦**时的张开姿态 —— 拉弦/上膛后弓臂会向内收（Java 侧 FLEX_DEG/FLEX_BACK，
+#   r69 起上完膛会**保持内收**，不再弹回）。
+LIMB_SX = 2.05
 LIMB_SY = 1.25
 # 弓臂（单侧分件，绕自己的内端缩放，内端不动 ⇒ 不会跟 riser 脱开）
 LIMB_X_MESHES = ('limb_L', 'limb_R')
 # 横跨两侧的分件（弦 / 线缆）必须绕 x=0 缩放，否则整个模型会变成一边长一边短
 LIMB_MID_MESHES = ('string', 'cables')
 LIMB_THICK_MESHES = ('limb_L', 'limb_R')
+# ★ r69：**不要把参考模型的 cables（线缆）与 string（弦）体素化**。两者都是薄壳，
+#   被体素化成 0.45 像素的方块串，位置恰好压在弦旁边（string：y 1.67~1.74、|x| 到 5.37；
+#   cables：y 1.21~2.11、|x| 到 5.82，比弓臂梢 5.16 还外）——
+#   运行时那根**细弦**（0.07 像素方块）就在它旁边 ⇒ 看起来就是「拉弦又厚又分叉」（用户反馈）。
+#   弦真正要看的只有运行时那一根；参考网格的 string 仍然参与包围盒/TIP_X/NOCK_Z0 计算
+#   （`meshes['string']` 在体素化之前就算好了），cables 则整个不要。
+SKIP_MESHES = ('cables', 'string')
 # 贴图：v2 贴图缩到 480²，右下角留 32px 宽带子放「弦/弦心/弩箭」纯色块
 TEX_SIZE = 512
 PATCH = 480
@@ -284,6 +293,11 @@ def main(argv):
         print('弓臂放大: X x%.2f 厚度(Y) x%.2f   弓臂外端 X %.2f -> %.2f（内端不动）'
               % (LIMB_SX, LIMB_SY, lmax0[0], lmax1[0]))
 
+    if SKIP_MESHES:
+        n0 = len(tris)
+        tris = [t for t in tris if t[6] not in SKIP_MESHES]
+        print('跳过不生成方块的部件: %s（去掉 %d 个三角面）' % (', '.join(SKIP_MESHES), n0 - len(tris)))
+
     gmin, gmax = meshes['grip']
     gc = [(gmin[i] + gmax[i]) / 2 for i in range(3)]
     delta = tuple(GRIP_TARGET[i] - gc[i] for i in range(3))
@@ -325,15 +339,18 @@ def main(argv):
                 'size': [round(abs(x1 - x0), 4), round(abs(y1 - y0), 4), round(abs(z1 - z0), 4)],
                 'uv': {f: dict(rect(pat)) for f in FACES}}
 
-    # ★ r68：用户「拉弦再细一点」⇒ 弦方块截面 0.15 → 0.10 像素（th 0.075 → 0.05）。
+    # ★ r69：弦再细一档（用户：「拉弦还是太厚」）—— 方块截面 0.10 → 0.07 像素。
     #   th 是弦方块的**半**厚/半宽（弦段由 (str_y ± th, nock_z ± th) 扫出）。
-    th = 0.05
+    #   同一次还把「弦心」与「弩箭尾羽」都收小：从射手视角看，挡视线的其实是那两块厚方块
+    #   （弦心 1.2×0.52×0.52、尾羽 0.72×0.6×0.48），它们 + 细弦看起来就是「厚 + 分叉」。
+    th = 0.035
     buckets['string_left'].append(box(-tip_x, -tip_x + half, str_y - th, str_y + th,
                                       nock_z - th, nock_z + th, PAT_STRING))
     buckets['string_right'].append(box(tip_x - half, tip_x, str_y - th, str_y + th,
                                        nock_z - th, nock_z + th, PAT_STRING))
-    buckets['nock'].append(box(-0.60, 0.60, str_y - 0.26, str_y + 0.26,
-                               nock_z - 0.26, nock_z + 0.26, PAT_NOCK))
+    # 弦心（缠绳）：0.9 × 0.32 × 0.32（原 1.2 × 0.52 × 0.52）
+    buckets['nock'].append(box(-0.45, 0.45, str_y - 0.16, str_y + 0.16,
+                               nock_z - 0.16, nock_z + 0.16, PAT_NOCK))
 
     rmin, rmax = meshes['rail']
     rail_front, rail_top = rmin[2] + delta[2], rmax[1] + delta[1]
@@ -343,9 +360,10 @@ def main(argv):
                                bolt_tip + 0.6, bolt_rear - 0.6, PAT_BOLT_SH))
     buckets['bolt'].append(box(-0.26, 0.26, bolt_y - 0.26, bolt_y + 0.26,
                                bolt_tip, bolt_tip + 0.62, PAT_BOLT_HD))
+    # 尾羽（深橙色）：0.52 × 0.42 × 0.40（原 0.72 × 0.6 × 0.48）—— 收小一点，从射手视角看不再跟弦糊成一块
     for zz in (bolt_rear - 0.45, bolt_rear - 0.95):
-        buckets['bolt'].append(box(-0.36, 0.36, bolt_y - 0.30, bolt_y + 0.30,
-                                   zz - 0.24, zz + 0.24, PAT_VANE))
+        buckets['bolt'].append(box(-0.26, 0.26, bolt_y - 0.21, bolt_y + 0.21,
+                                   zz - 0.20, zz + 0.20, PAT_VANE))
 
     # ---- geo ----
     out_bones = []
