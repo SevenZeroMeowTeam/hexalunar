@@ -24,6 +24,9 @@ import net.minecraft.world.phys.HitResult;
  */
 public class BulletEntity extends ThrowableItemProjectile {
 
+    /** 命中伤害：10 点 = 5 颗心（原版铁剑 6 / 下界合金剑 8，所以这是一枪很痛的水平） */
+    public static final float BULLET_DAMAGE = 10.0F;
+
     public BulletEntity(EntityType<? extends BulletEntity> type, Level level) {
         super(type, level);
     }
@@ -74,7 +77,7 @@ public class BulletEntity extends ThrowableItemProjectile {
     @Override
     protected void onHitEntity(EntityHitResult result) {
         Entity hit = result.getEntity();
-        float damage = 9.0F;
+        float damage = BULLET_DAMAGE;
         LivingEntity attacker = getOwner() instanceof LivingEntity living ? living : null;
         if (attacker != null) {
             hit.hurt(level().damageSources().mobProjectile(this, attacker), damage);

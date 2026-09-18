@@ -47,7 +47,7 @@
   "tooltip.hexalunar_calamity.ammo_box": "库存：%1$s / %2$s",
   "tooltip.hexalunar_calamity.ammo_box_type": "适用弹药：%s",
   "tooltip.hexalunar_calamity.ammo_box_hint": "右键收纳背包中的同类弹药，装填时优先取用",
-  "tooltip.hexalunar_calamity.creative_box": "当前模式：%s（无限弹药）",
+  "tooltip.hexalunar_calamity.creative_box": "放在物品栏（背包 / 快捷栏 / 副手）里就生效：三把武器无限供弹，不用手持、不用切弹种",
   "tooltip.hexalunar_calamity.crossbow_controls": "按住右键开镜瞄准（4倍镜）· 左键射击（可按住连发）",
   "tooltip.hexalunar_calamity.akm_controls": "按住右键瞄准 · 左键全自动射击 · R 键装填（空仓自动）",
   "tooltip.hexalunar_calamity.sight_mount": "潜行 + 右键可拆下瞄具；副手持瞄具时潜行 + 右键装到顶部导轨",
@@ -79,6 +79,7 @@
   "message.hexalunar_calamity.pin_back": "保险销已插回",
   "message.hexalunar_calamity.pin_slipped": "拔到一半松手，保险销自己弹了回去",
   "message.hexalunar_calamity.need_pin": "先按住右键把保险销拔了才能丢出去",
+  "message.hexalunar_calamity.creative_box_hint": "创造弹药盒放在物品栏里就生效：所有武器无限供弹，不用手持、不用切弹种",
   "msg.hexalunar_calamity.sight_on": "已装上 %s",
   "msg.hexalunar_calamity.sight_off": "已拆下瞄具"
 }

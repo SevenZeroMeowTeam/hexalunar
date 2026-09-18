@@ -8,18 +8,22 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * 弹药供给：优先副手/主手弹药盒（创造盒无限），其次背包。
+ * 弹药供给：**物品栏里有创造弹药盒就是无限弹药**（不用手持、不用切弹种），
+ * 否则优先副手/主手弹药盒，再退到背包。
  * 三种武器只消耗各自弹药，不混装。
  */
 public final class AmmoUtil {
 
+    /** 创造弹药盒只要在物品栏里（快捷栏 / 背包 / 副手）就无限供弹 */
+    public static boolean infinite(Player player) {
+        return CreativeAmmoBoxItem.inInventory(player);
+    }
+
     public static int count(Player player, AmmoType type) {
+        if (infinite(player)) return Integer.MAX_VALUE;
         int n = countInventory(player, type.get());
         for (ItemStack hand : new ItemStack[]{player.getMainHandItem(), player.getOffhandItem()}) {
-            if (hand.getItem() instanceof CreativeAmmoBoxItem) {
-                AmmoType mode = CreativeAmmoBoxItem.modeFor(player);
-                if (mode == type) return Integer.MAX_VALUE;
-            } else if (hand.getItem() instanceof AmmoBoxItem box && box.type == type) {
+            if (hand.getItem() instanceof AmmoBoxItem box && box.type == type) {
                 n += AmmoBoxItem.stored(hand);
             }
         }
@@ -43,13 +47,8 @@ public final class AmmoUtil {
     }
 
     private static void consumeOne(Player player, AmmoType type) {
-        // 1. 创造盒无限
-        for (ItemStack hand : new ItemStack[]{player.getOffhandItem(), player.getMainHandItem()}) {
-            if (hand.getItem() instanceof CreativeAmmoBoxItem
-                    && CreativeAmmoBoxItem.modeFor(player) == type) {
-                return;
-            }
-        }
+        // 1. 创造盒：物品栏里有就不用扣
+        if (infinite(player)) return;
         // 2. 生存弹药盒内部库存（空时自动从背包补满）
         for (ItemStack hand : new ItemStack[]{player.getOffhandItem(), player.getMainHandItem()}) {
             if (hand.getItem() instanceof AmmoBoxItem box && box.type == type) {
@@ -72,13 +71,10 @@ public final class AmmoUtil {
         AmmoBoxItem.put(boxStack, have);
     }
 
-    /** 从手持弹药盒取弹（创造盒无限返回 want），返回实际取出数量 */
+    /** 从手持弹药盒取弹（物品栏里有创造盒则直接返回 want），返回实际取出数量 */
     public static int takeFromBox(Player player, AmmoType type, int want) {
+        if (infinite(player)) return want;
         for (ItemStack hand : new ItemStack[]{player.getOffhandItem(), player.getMainHandItem()}) {
-            if (hand.getItem() instanceof CreativeAmmoBoxItem
-                    && CreativeAmmoBoxItem.modeFor(player) == type) {
-                return want;
-            }
             if (hand.getItem() instanceof AmmoBoxItem box && box.type == type) {
                 return AmmoBoxItem.take(hand, want);
             }

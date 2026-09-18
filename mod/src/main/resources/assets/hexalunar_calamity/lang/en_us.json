@@ -47,7 +47,7 @@
   "tooltip.hexalunar_calamity.ammo_box": "Stored: %1$s / %2$s",
   "tooltip.hexalunar_calamity.ammo_box_type": "Holds: %s",
   "tooltip.hexalunar_calamity.ammo_box_hint": "Right-click to store matching ammo; reloading draws from it first",
-  "tooltip.hexalunar_calamity.creative_box": "Mode: %s (infinite ammo)",
+  "tooltip.hexalunar_calamity.creative_box": "Works from anywhere in your inventory (backpack / hotbar / off hand): infinite ammo for every weapon, no need to hold it or switch types",
   "tooltip.hexalunar_calamity.crossbow_controls": "Hold RMB to aim through the 4x scope · left-click to shoot (hold for auto)",
   "tooltip.hexalunar_calamity.akm_controls": "Hold RMB to aim · LMB full-auto fire · R to reload (auto when empty)",
   "tooltip.hexalunar_calamity.sight_mount": "Sneak + RMB: take the optic off · hold an optic in the off hand and sneak + RMB to mount it on the top rail",
@@ -79,6 +79,7 @@
   "message.hexalunar_calamity.pin_back": "Pin re-inserted",
   "message.hexalunar_calamity.pin_slipped": "You let go mid-pull, the pin slid back in",
   "message.hexalunar_calamity.need_pin": "Pull the pin first: hold RMB for a second",
+  "message.hexalunar_calamity.creative_box_hint": "The creative ammo box works from anywhere in your inventory: infinite ammo for every weapon",
   "msg.hexalunar_calamity.sight_on": "Mounted %s",
   "msg.hexalunar_calamity.sight_off": "Optic removed"
 }

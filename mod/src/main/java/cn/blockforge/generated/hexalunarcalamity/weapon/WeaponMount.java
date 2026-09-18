@@ -63,6 +63,23 @@ public final class WeaponMount {
     /** 4 倍镜光轴（模型 Y；与 akm_v3.py 的 build_scope_4x 一致） */
     public static final double AKM_SCOPE_Y = 4.00D;
 
+    // ------------------------------------------------ 第一人称双臂（双手持枪，见 client/AkmArms）
+    /**
+     * 袖口（pose 原点）在相机空间的位置，单位：<b>格</b>；角度是 {@code XP·YP·ZP} 依次旋转的度数；
+     * 长度是只沿手臂长度方向的拉伸（粗细不变）。
+     *
+     * <p>算法：手臂方块在 pose 坐标里占 {@code y[0,0.75]}（那是手动端），
+     * 所以 {@code 原点 = 手 − R·(方块x中心, 0.75, 0)}；手分别放在握把（模型 0,0.55,-0.15）
+     * 与护木下缘（模型 0,2.05,-6.3），均经 {@code Trans(±0.56,-0.52,-0.72)·Trans(display/16)} 换算。
+     * 由 {@code tools/_dblhold.py} 离线算并渲图确认，改模型 display 或调手位要重算。
+     */
+    public static final float[] AKM_ARM_R_ORIGIN = {1.002F, -0.776F, -0.095F};
+    public static final float[] AKM_ARM_R_ANGLE = {-19.06F, -31.49F, 28.21F};
+    public static final float AKM_ARM_R_LEN = 1.067F;
+    public static final float[] AKM_ARM_L_ORIGIN = {-0.189F, -0.745F, -0.498F};
+    public static final float[] AKM_ARM_L_ANGLE = {-16.59F, 31.33F, -25.58F};
+    public static final float AKM_ARM_L_LEN = 1.076F;
+
     /** 当前瞄具对应的「该顶到屏幕中心的参照高度」 */
     public static double akmAnchorY(int sight) {
         return switch (sight) {
