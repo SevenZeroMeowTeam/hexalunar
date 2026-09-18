@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r71`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r72`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r71.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r72.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -381,6 +381,7 @@ tools/  开发辅助脚本（见第五节）
 | 手持动作是否生效 | `client/AnimatedWeaponModel.java` + `ModClient.onModifyBakingResult`；日志里会打“手持动作动画已启用：包装了 N 个武器模型” |
 | AKM 弹匣容量 / 换弹时长 / 射速 / 散布 | `weapon/AkmRifleItem.java`（`MAG_SIZE` / `RELOAD_TICKS` / `FIRE_INTERVAL` / `fire()`） |
 | 弩的倍镜倍率 | `weapon/CrossbowWeaponItem.java` 的 `SCOPE_ZOOM`（`4.0F` = 4 倍）；开镜 FOV 由 `ClientEvents` 用 `1/SCOPE_ZOOM` 计算 |
+| **弩上弦 / 装填时机** | `weapon/CrossbowWeaponItem.java`：`RELOAD_TICKS`（上弦时长）、`tryStartReload()`（真正开始上弦，只有 R 键与右键两个入口）、`serverFire()`（击发后**只复位不复装**）、`cocked()`（图标/弩箭显隐就靠它） |
 | 手雷拔销时长 / 引信时长 / 投掷力道 | `item/GrenadeItem.java`（`PIN_TICKS` 20 / `FUSE_TICKS` 100 / `THROW_LIFT_DEG` 上抬角 / `THROW_INACCURACY`）；**各弹种初速**在 `FragGrenadeItem`（1.30）与 `FlashbangItem`（1.38）的构造参数 |
 | **手雷动作与手（拔销/投掷/左手拉环）** | `client/GrenadePose.java`（move 骨骼姿态 / 左右手模型点 / 手雷专用肩点）+ `client/WeaponArms.renderGrenade`；离线故事板 `tools/_gren_story.py mud\|flashbang` |
 | 手雷引信、伤害、效果半径 | `entity/GrenadeEntity.java` |
@@ -394,6 +395,19 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r72`
+
+- **十字弩：击发后不再自动上弦，什么时候装填由玩家决定**
+  - `serverFire()` 末尾原来会立刻 `tryStartReload()`（“击发后弦复位：立刻开始下一轮上弦”）——
+    现在**只把 `cocked` 置回 false 就停下**：弩箭不在箭槽、弦在初始位置、弓臂也回到张开姿态，
+    图标（`staticPose()` + `cockedNow`）同步显示“未使用”样子（拿在手上 / 放在背包里都一样）。
+  - **上弦入口改成两个都行**：`use()`（右键）——未上弦时右键 = 上弦装填（1.5 秒，拉弦 + 箭入槽）；
+    上弦之后右键才是开镜瞮准；R 键（`serverReload`）仍旧可以用。
+  - 未上弦时左键不再“自动上弦”，只空响 + 屏幕提示「未上弦：右键（或 R 键）上弦装填」
+    （新语言条目 `message.hexalunar_calamity.need_cock`）；客户端也同步：没上弦时按住左键
+    不会每 5 tick 刷一次请求（只在按下的那一下发一次）。
+  - 跨包提示文案重写：`tooltip.hexalunar_calamity.crossbow_controls`
 
 > 版本 `1.0.0-r71`
 

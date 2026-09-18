@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r71**
+- 当前版本：**1.0.0-r72**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r71.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r72.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -138,18 +138,26 @@
 |---|---|
 | 右键（按住） | 弓：蓄力瞄准 / 弩：开 4 倍镜 / AKM：据枪瞄准 / 手雷：拔销或插回保险销 |
 | 左键 | 射击 / 丢出手雷 |
-| `R` | AKM 装填（可在 设置 → 按键绑定 → 六相月灾 中修改） |
+| `R` | 装填（AKM 换弹 / 十字弩上弦）—— 可在 设置 → 按键绑定 → 六相月灾 中修改 |
 | 潜行 + 右键 | **AKM：装/拆瞄具**（副手拿瞄具 = 装上，空手 = 拆下）；**手雷：把保险销插回去**（1 秒） |
 
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r71.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r72.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r72** — 十字弩：击发后不再自动上弦：
+  - `CrossbowWeaponItem.serverFire()` 末尾不再 `tryStartReload()`，只把 `cocked` 置回 false
+    ⇒ 击发后弩箭不在箭槽、弦回到初始位置、弓臂回到张开姿态；图标（拿在手上 / 背包里）
+    同步显示“未使用”样子
+  - **右键 = 上弦装填**（未上弦时）；上弦之后再右键才是开镜瞮准；R 键仍可上弦
+  - 未上弦时左键只空响 + 提示「未上弦：右键（或 R 键）上弦装填」，不再自动上弦
+    （客户端也不会按住就每 5 tick 刷请求）；tooltip 文案同步重写
 
 - **r71** — 十字弩：按参考照片加回「两根细线缆」：
   - 每侧再画一根 **0.07 像素的细线缆**（新色块 `PAT_CABLE`），放在 `string_left / string_right`

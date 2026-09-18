@@ -25,9 +25,11 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 /**
  * 十字弩：右键按住瞄准（举弩），左键射击弩箭。
  *
- * <p><b>上弦（装填）</b>：每次击发后弦复位，必须重新上弦才能再射。上弦只要背包里
- * （含弹药盒）有弩箭即可，不需要手上拿着箭；耗时 {@link #RELOAD_TICKS} ≈ 1.5 秒，
- * 期间模型播放「弦拉回 + 弓臂内弯 + 弩箭滑入箭槽」的动画。
+ * <p><b>上弦（装填）</b>：每次击发后弦复位，且**不再自动上弦**（r72 用户要求）——
+ * 想再射就得玩家自己上弦：<b>右键</b>（未上弦时右键 = 上弦；上弦后右键才是开镜瞮准）或 <b>R 键</b>。
+ * 上弦只要背包（含弹药盒）里有弩箭即可，不需要手上拿着箭；耗时 {@link #RELOAD_TICKS} ≈ 1.5 秒，
+ * 期间模型播放「弦拉回 + 弓臂内弯 + 弩箭滑入箭槽」的动画。没上弦时弩箭不在箭槽里、
+ * 弦在初始位置、弓臂张开（图标也一样）。
  */
 public class CrossbowWeaponItem extends Item implements WeaponAmmo, GeoItem {
 
@@ -172,10 +174,27 @@ public class CrossbowWeaponItem extends Item implements WeaponAmmo, GeoItem {
                 && entity.getUseItem().getItem() instanceof CrossbowWeaponItem;
     }
 
-    /** 右键：进入瞄准姿态（不再直接击发） */
+    /**
+     * 右键：**未上弦时上弦装填**，已上弦时进入瞮准姿态。
+     *
+     * <p>★ r72（用户要求）：击发后**不再自动上弦** —— 「什么时候装填」完全由玩家决定。
+     * 右键 = 上弦（拉弦 + 弩箭入槽，{@link #RELOAD_TICKS} 秒），装好之后再右键才是开镜瞮准；
+     * R 键仍然可以直接上弦（两条路径都行）。没弹药就空响。
+     */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        boolean needLoad = !cocked(stack) && !reloading(stack, level.getGameTime());
+        if (needLoad) {
+            // 只让服务端真正开始：客户端自己写 NBT 会跟服务端不同步（声音也会播两次）
+            if (level.isClientSide) return InteractionResultHolder.success(stack);
+            if (tryStartReload(level, player, stack)) {
+                player.swing(hand);
+                return InteractionResultHolder.success(stack);
+            }
+            player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
+            return InteractionResultHolder.success(stack);
+        }
         if (AmmoUtil.count(player, AmmoType.BOLT) <= 0) {
             if (!level.isClientSide) {
                 player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
@@ -217,11 +236,12 @@ public class CrossbowWeaponItem extends Item implements WeaponAmmo, GeoItem {
         long now = level.getGameTime();
         // 上弦中不能射
         if (reloading(stack, now)) return;
-        // 弦没挂上：先自动上弦（背包有弹药的话）
+        // ★ r72：未上弦时**不自动**开始上弦（用户要求「什么时候装填由玩家决定」）—— 只提示右键上弦
         if (!cocked(stack)) {
-            if (!tryStartReload(level, player, stack)) {
-                player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
-            }
+            player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.hexalunar_calamity.need_cock").withStyle(
+                    net.minecraft.ChatFormatting.YELLOW), true);
             return;
         }
         if (!AmmoUtil.consume(player, AmmoType.BOLT, 1)) {
@@ -240,8 +260,9 @@ public class CrossbowWeaponItem extends Item implements WeaponAmmo, GeoItem {
                 ModSounds.CROSSBOW_SHOT.get(), SoundSource.PLAYERS, 1.0F,
                 0.95F + level.random.nextFloat() * 0.1F);
         player.swing(hand);
-        // 击发后弦复位：立刻开始下一轮上弦（背包还有弩箭时）
+        // ★ r72：击发后弦复位后就停在这里（cocked = false）—— **不自动上弦**。
+        //   模型/图标因此回到「未使用」样子：弩箭不在箭槽里、弦在初始位置、弓臂张开。
+        //   玩家用右键（或 R）上弦后才会重新拉弦 + 弩箭入槽。
         stack.getOrCreateTag().putBoolean(TAG_COCKED, false);
-        tryStartReload(level, player, stack);
     }
 }

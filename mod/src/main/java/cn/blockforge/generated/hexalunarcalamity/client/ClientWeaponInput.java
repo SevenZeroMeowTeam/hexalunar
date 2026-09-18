@@ -113,9 +113,17 @@ public final class ClientWeaponInput {
         if (cooldown > 0) cooldown--;
 
         if (down && cooldown == 0 && (auto || !lastDown)) {
-            ModNetwork.CHANNEL.sendToServer(new ModNetwork.WeaponFire());
-            // 手持动作：开火后坐（客户端先自己演，不必等服务端回包）
-            WeaponAnim.onFire(weapon, mc.player.isUsingItem() && mc.player.getUseItem() == weapon);
+            // ★ r72：十字弩未上弦时不「扫射」—— 只在按下的那一下发一次请求
+            //   （服务端会空响 + 提示右键上弦），按住不会每 5 tick 刷一次提示。
+            boolean dryCrossbow = weapon.getItem() instanceof CrossbowWeaponItem
+                    && !CrossbowWeaponItem.cocked(weapon);
+            if (!dryCrossbow) {
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.WeaponFire());
+                // 手持动作：开火后坐（客户端先自己演，不必等服务端回包）
+                WeaponAnim.onFire(weapon, mc.player.isUsingItem() && mc.player.getUseItem() == weapon);
+            } else if (!lastDown) {
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.WeaponFire());
+            }
             cooldown = interval;
         }
         lastDown = down;
