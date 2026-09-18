@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r70`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r71`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r70.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r71.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -394,6 +394,20 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r71`
+
+- **十字弩：按参考照片加回「两根线缆」（细线、交叉）**
+  - 参考图（`模型/` 里的实物照片）上，两根线从两片弓臂梢斜向内、在弦前方**交叉**。
+    现在在 `tools/crossbow_vox.py` 里给每侧再画一根 **0.07 像素的细线缆**（颜色 `COL_CABLE`，
+    新色块 `PAT_CABLE`），它们就放在 `string_left` / `string_right` **骨骼内部** ⇒
+    拉弦与弓臂内收时跟弦一起走（“使用时”的样子），静止时就是照片里那两根交叉的线（“未使用时”）。
+    · 线缆长度 = 弓臂桁 + 0.85 像素（越过中线 ⇒ 交叉）；两根分别放在弦后方 0.50 / 0.66 像素、
+      下方 0.26 像素处，交叉处一前一后，不会 z-fighting
+  - 弦/弦心/尾羽尺寸与弓臂跨度同 r70（弦 0.07 像素、跨度 10.32）；改用它的纹理重生成后
+    `crossbow_geo_glowmask.png` 也跟着重算（顺带把 r67 改了 AKM 贴图后一直没更新的
+    `akm_geo_glowmask.png` 一起刷新，4% 像素的高光位置归位）
+  - 离线核对：`python tools/_cb_flex.py`（弦/弦心/弩箭三者仍严格一致，四状态全 OK）
 
 > 版本 `1.0.0-r70`
 

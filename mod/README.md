@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r70**
+- 当前版本：**1.0.0-r71**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r70.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r71.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -144,12 +144,19 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r70.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r71.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r71** — 十字弩：按参考照片加回「两根细线缆」：
+  - 每侧再画一根 **0.07 像素的细线缆**（新色块 `PAT_CABLE`），放在 `string_left / string_right`
+    **骨骼内部** ⇒ 拉弦、弓臂内收时跟弦一起走（使用中）；静止时两根在弦前交叉（参考照片那样）
+  - 线缆长度 = 弓臂桁 + 0.85 像素（越过中线 ⇒ 交叉），两根前后错开 0.16 像素避免 z-fighting
+  - 弦 / 弦心 / 尾羽尺寸与弓臂跨度同 r70；重生成后 `crossbow_geo_glowmask.png` 同时刷新
+    （顺手把 r67 改过 AKM 贴图、一直没更新的 `akm_geo_glowmask.png` 也刷新了）
 
 - **r70** — 十字弩：弦细到 0.07 像素、拆掉假弦、弓臂再外扩、上完膛保持内敛：
   - **「又厚又分叉」的真凶**：参考网格的 `string` 与 `cables` 被体素化成 **0.45 像素的方块串**，

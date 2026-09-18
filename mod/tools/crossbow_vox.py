@@ -70,11 +70,13 @@ PAT_NOCK = (480, 16, 32, 10)
 PAT_BOLT_SH = (480, 32, 32, 10)
 PAT_BOLT_HD = (480, 48, 32, 10)
 PAT_VANE = (480, 64, 32, 10)
+PAT_CABLE = (480, 80, 32, 10)
 COL_STRING = (210, 203, 182)
 COL_NOCK = (38, 38, 40)
 COL_BOLT_SH = (58, 60, 64)
 COL_BOLT_HD = (168, 172, 178)
 COL_VANE = (214, 90, 44)
+COL_CABLE = (52, 54, 58)
 
 MESH_BONE = {
     'riser': 'body', 'rail': 'body', 'housing': 'body', 'detail': 'body', 'cables': 'body',
@@ -263,7 +265,7 @@ def build_texture(tex):
     img.paste(tex.resize((PATCH, PATCH), Image.LANCZOS), (0, 0))
     for (x, y, w, h), col in ((PAT_STRING, COL_STRING), (PAT_NOCK, COL_NOCK),
                               (PAT_BOLT_SH, COL_BOLT_SH), (PAT_BOLT_HD, COL_BOLT_HD),
-                              (PAT_VANE, COL_VANE)):
+                              (PAT_VANE, COL_VANE), (PAT_CABLE, COL_CABLE)):
         for yy in range(y, y + h):
             for xx in range(x, x + w):
                 img.putpixel((xx, yy), col)
@@ -351,6 +353,18 @@ def main(argv):
     # 弦心（缠绳）：0.9 × 0.32 × 0.32（原 1.2 × 0.52 × 0.52）
     buckets['nock'].append(box(-0.45, 0.45, str_y - 0.16, str_y + 0.16,
                                nock_z - 0.16, nock_z + 0.16, PAT_NOCK))
+
+    # ★ r71：再给弓臂梢加**两根线缆**（参考照片 model/图2：从两梢斜向内、在中间交叉的两根细线）。
+    #   它们就放在 string_left / string_right 骨骼里 ⇒ 拉弦、弓臂内收时跟弦一起走（“使用时”那条）；
+    #   静止时两根在中间交叉、弦在上方，就是“未使用”那张参考图的样子。
+    #   两根分前后两个 z（错开 0.16），交叉处才看得出一前一后，不会 z-fighting。
+    cable_len = tip_x + 0.85          # 越过中线 0.85 像素 ⇒ 形成交叉
+    buckets['string_left'].append(box(
+        -tip_x, -tip_x + cable_len, str_y - 0.26 - th, str_y - 0.26 + th,
+        nock_z + 0.50 - th, nock_z + 0.50 + th, PAT_CABLE))
+    buckets['string_right'].append(box(
+        tip_x - cable_len, tip_x, str_y - 0.26 - th, str_y - 0.26 + th,
+        nock_z + 0.66 - th, nock_z + 0.66 + th, PAT_CABLE))
 
     rmin, rmax = meshes['rail']
     rail_front, rail_top = rmin[2] + delta[2], rmax[1] + delta[1]
