@@ -10,8 +10,10 @@
 
 ★ 几何约定**不能动**（ADS 对准与动画都靠它）：
   - 前向 = -Z，上 = +Y，原点 = 握把；枪管轴线 Y = BORE = 1.75
-  - **瞄准线必须水平**：照门顶与准星顶同高 = SIGHT_Y = 3.44、都在 X = 0
-    （WeaponPose.AKM_SIGHT_Y 就是它；改了小面上这个数就得同步改 Java）
+  - **瞄准线必须水平且「三点共线」**：照门顶 = 准星顶 = **导轨齿顶** = SIGHT_Y = 3.44、
+    都在 X = 0（WeaponMount.SIGHT_Y 就是它；改了这个数就得同步改 Java）
+    ★ r67：用户要求「导管上方凸点（准星柱）与护木装倍镜的导轨顶面看着是一条直线」
+      ⇒ 导轨齿顶从 3.16 抬到 3.44（RAIL_LIFT = 0.28），瞄具组整体跟着抬同一量。
   - 骨骼名 root/move/body/barrel/sights/handguard/dust_cover/bolt/magazine/trigger/
     grip/stock/selector/camera/left_hand 不能改（动画 JSON 与 AkmGeoModel 都按名字取）
   - left_hand（左手手套）的父骨骼是 move：举枪偏移/跑步摆动都作用在 move 上，
@@ -27,7 +29,9 @@ from PIL import Image, ImageDraw
 
 SIZE = 512
 BORE = 1.75          # 枪管轴线高度
-SIGHT_Y = 3.44       # 瞄准线高度（照门顶 = 准星顶）
+SIGHT_Y = 3.44       # 瞄准线高度（照门顶 = 准星顶 = 导轨齿顶）
+RAIL_LIFT = 0.28     # r67：导轨齿顶 3.16 → 3.44 的抬升量；瞄具/瞄准线参照点同量上移
+RAIL_TOP = SIGHT_Y   # 导轨齿顶 = 瞄准线（原来 3.16，压在铁瞄下方）
 S = 13.0             # 每模型单位分配的贴图像素数（贴图密度）
 
 # ------------------------------------------------------------------ 调色板（照照片）
@@ -318,8 +322,8 @@ BONES = [
     #   再配 animation.json 里 move 的摆动（低头、侧倾、顿挫）就看得明白。
     # 两个瞄具骨骼（默认隐藏，由物品 NBT 决定显示哪个 —— AkmGeoModel.sightNbt）：
     #   红点参照 (0, 3.79, -5.50)；4 倍镜光轴 Y=4.00。两者都在 X=0。
-    ('dot_sight', 'body', (0.0, 3.79, -5.50)),
-    ('scope_4x', 'body', (0.0, 4.00, -5.60)),
+    ('dot_sight', 'body', (0.0, 3.79 + RAIL_LIFT, -5.50)),
+    ('scope_4x', 'body', (0.0, 4.00 + RAIL_LIFT, -5.60)),
     # ★ 抛壳动画（AkmGeoModel.driveCasings）：4 根弹壳骨骼轮流用，全自动时同时在空中的
     #   弹壳就像一串往外冒；pivot = 抛壳口 (0.95, 2.62, -2.30)，弹壳绕它打转往外飞。
     ('casing_0', 'body', (0.95, 2.62, -2.30)),
@@ -502,16 +506,18 @@ CUBES += build_hand()
 
 
 # ------------------------------------------------------------------ 顶部配件导轨
-# 用户要求「延申方便装配件」：把导轨从照门前方一路往前铺到护木前端（z −4.58 → −7.24），
-# 轨面 Y=2.96（= 护木顶面）、齿顶 3.16；照门顶/准星顶在 Y=3.44 ⇒ 导轨不会挡住铁瞄。
+# 用户要求「延申方便装配件」：把导轨从照门前方一路往前铺到护木前端（z −4.58 → −7.24）。
+# ★ r67：齿顶从 3.16 抬到 **3.44 = 瞄准线** —— 用户要求「看准星柱（导管上方凸点）与
+#   护木导轨顶面是一条直线」。导轨座同时加高（2.96 → 3.34）免得齿悬空；
+#   齿顶与照门顶/准星顶同高不会挡铁瞄（刚好共线，只是多出一条准星参考线）。
 def build_rail():
-    out = [C('handguard', 'rail_base', (-0.30, 0.30), (2.96, 3.06), (-7.24, -4.58), RAIL_D,
-             tag='rail_side')]
+    out = [C('handguard', 'rail_base', (-0.30, 0.30), (2.96, RAIL_TOP - 0.10), (-7.24, -4.58),
+             RAIL_D, tag='rail_side')]
     z = -7.24
     i = 0
     while z + 0.20 <= -4.58 + 0.001:
-        out.append(C('handguard', 'rail_tooth_%d' % i, (-0.30, 0.30), (3.06, 3.16),
-                     (z, z + 0.20), RAIL, tag='rail_side'))
+        out.append(C('handguard', 'rail_tooth_%d' % i, (-0.30, 0.30),
+                     (RAIL_TOP - 0.10, RAIL_TOP), (z, z + 0.20), RAIL, tag='rail_side'))
         z += 0.36
         i += 1
     return out
@@ -521,11 +527,10 @@ CUBES += build_rail()
 
 
 # ------------------------------------------------------------------ 瞄具（挂在导轨上，默认隐藏）
-# ★ 坐标硬约束（Java 里的 ADS 参照点必须与这里一致）：
-#   - 红点圆心 = 模型 (0, 3.79, -5.50)   → WeaponMount.AKM_DOT_Y = 3.79
-#   - 4 倍镜光轴 = 模型 Y 4.00           → WeaponMount.AKM_SCOPE_Y = 4.00
+# ★ 坐标硬约束（Java 里的 ADS 参照点必须与这里一致；r67 起随导轨抬 RAIL_LIFT）：
+#   - 红点圆心 = 模型 (0, 3.79+0.28, -5.50)   → WeaponMount.AKM_DOT_Y = 4.07
+#   - 4 倍镜光轴 = 模型 Y 4.00+0.28           → WeaponMount.AKM_SCOPE_Y = 4.28
 #   - 两者都压在 X=0（与枪管轴线同面）⇒ ADS 时它们才会落在屏幕正中
-RAIL_TOP = 3.16              # 导轨齿顶（build_rail 的轨面高度）
 # 4 倍镜整体后移量（模型像素）。枪口在 -Z，所以 +Z = 往射手/枪托方向后移。
 # 0.5（第一次「稍微后移」）+ 0.8（按用户箭头再平移）= 1.3
 SC_BACK = 1.3
@@ -533,17 +538,23 @@ SC_BACK = 1.3
 
 def build_dot_sight():
     """小红点：底座 + 立柱 + 开口护罩 + 镜片 + 中心一颗红点。"""
-    cy, cz = 3.79, -5.50
+    lift = RAIL_LIFT
+    cy, cz = 3.79 + lift, -5.50
     return [
-        C('dot_sight', 'dot_mount', (-0.42, 0.42), (RAIL_TOP, 3.26), (-6.20, -4.80), RAIL_D,
-          tag='rail_side'),
-        C('dot_sight', 'dot_riser', (-0.26, 0.26), (3.26, 3.58), (-5.80, -5.20), OPTIC),
+        C('dot_sight', 'dot_mount', (-0.42, 0.42), (RAIL_TOP, 3.26 + lift), (-6.20, -4.80),
+          RAIL_D, tag='rail_side'),
+        C('dot_sight', 'dot_riser', (-0.26, 0.26), (3.26 + lift, 3.58 + lift), (-5.80, -5.20),
+          OPTIC),
         # 护罩：左右壁 + 顶桥（中间是通的，才能“看到枪的本体”）
-        C('dot_sight', 'dot_hood_l', (-0.34, -0.22), (3.58, 3.98), (-5.92, -5.08), OPTIC),
-        C('dot_sight', 'dot_hood_r', (0.22, 0.34), (3.58, 3.98), (-5.92, -5.08), OPTIC),
-        C('dot_sight', 'dot_hood_top', (-0.34, 0.34), (3.90, 3.98), (-5.92, -5.08), OPTIC_D),
+        C('dot_sight', 'dot_hood_l', (-0.34, -0.22), (3.58 + lift, 3.98 + lift),
+          (-5.92, -5.08), OPTIC),
+        C('dot_sight', 'dot_hood_r', (0.22, 0.34), (3.58 + lift, 3.98 + lift),
+          (-5.92, -5.08), OPTIC),
+        C('dot_sight', 'dot_hood_top', (-0.34, 0.34), (3.90 + lift, 3.98 + lift),
+          (-5.92, -5.08), OPTIC_D),
         # 镜片（倾斜一点，看起来是玻琅）
-        C('dot_sight', 'dot_lens', (-0.21, 0.21), (3.62, 3.96), (-5.46, -5.40), GLASS),
+        C('dot_sight', 'dot_lens', (-0.21, 0.21), (3.62 + lift, 3.96 + lift), (-5.46, -5.40),
+          GLASS),
         # 红点本体（圆心 = ADS 参照点）
         C('dot_sight', 'dot_core', (-0.06, 0.06), (cy - 0.06, cy + 0.06), (-5.42, -5.36),
           DOT_RED, tag='dot_core'),
@@ -559,11 +570,12 @@ def build_scope_4x():
       （dc_top: x ±0.42、Y 3.14..3.28、Z -4.50..0.22），宽度相同就会两侧共面，
       渲染时 z-fighting 闪烁，所以比机匣盖窄 0.02。
     """
-    cy = 4.00
+    lift = RAIL_LIFT
+    cy = 4.00 + lift
     b = SC_BACK
     out = [
-        C('scope_4x', 'sc_mount', (-0.40, 0.40), (RAIL_TOP, 3.26), (-6.60 + b, -4.60 + b),
-          RAIL_D, tag='rail_side'),
+        C('scope_4x', 'sc_mount', (-0.40, 0.40), (RAIL_TOP, 3.26 + lift),
+          (-6.60 + b, -4.60 + b), RAIL_D, tag='rail_side'),
         C('scope_4x', 'sc_ring_f', (-0.40, 0.40), (cy - 0.38, cy + 0.38),
           (-4.98 + b, -4.80 + b), OPTIC),
         C('scope_4x', 'sc_ring_r', (-0.40, 0.40), (cy - 0.38, cy + 0.38),
@@ -745,7 +757,8 @@ def main():
         hx0 = min(c['x'][0] for c in hand)
         print('左手：%d 方块  X %.2f..%.2f  最高 Y=%.2f（瞄准线 %.2f，余量 %.2f）'
               % (len(hand), hx0, max(c['x'][1] for c in hand), hy, SIGHT_Y, SIGHT_Y - hy))
-    for bone, tag, ref in (('dot_sight', '红点  ', 3.79), ('scope_4x', '4倍镜', 4.00)):
+    for bone, tag, ref in (('dot_sight', '红点  ', 3.79 + RAIL_LIFT),
+                           ('scope_4x', '4倍镜', 4.00 + RAIL_LIFT)):
         cs = [c for c in CUBES if c['bone'] == bone]
         if not cs:
             continue
@@ -757,20 +770,22 @@ def main():
     if rail:
         rz = (min(c['z'][0] for c in rail), max(c['z'][1] for c in rail))
         ry = max(c['y'][1] for c in rail)
-        print('顶部导轨：%d 方块  Z %.2f..%.2f  齿顶 Y=%.2f（瞄准线 %.2f，余量 %.2f）%s'
-              % (len(rail), rz[0], rz[1], ry, SIGHT_Y, SIGHT_Y - ry,
-                 'OK' if ry < SIGHT_Y - 0.2 else '!! 太高会挡铁瞄'))
+        print('顶部导轨：%d 方块  Z %.2f..%.2f  齿顶 Y=%.2f（瞄准线 %.2f，差 %+.3f）%s'
+              % (len(rail), rz[0], rz[1], ry, SIGHT_Y, ry - SIGHT_Y,
+                 'OK' if abs(ry - SIGHT_Y) < 0.01 else '!! 齿顶不在瞄准线上'))
     tabs = {c['name']: c for c in CUBES}
     nl, nr, post = tabs.get('rs_notch_l'), tabs.get('rs_notch_r'), tabs.get('fs_post')
     if nl and nr and post:
         top = min(nl['y'][1], nr['y'][1])
-        dy = abs(top - post['y'][1])
+        ry = max(c['y'][1] for c in rail) if rail else top
+        dy = max(abs(top - post['y'][1]), abs(ry - post['y'][1]))
         gap_c = (nl['x'][1] + nr['x'][0]) / 2.0        # 照门缺口中心
         post_c = (post['x'][0] + post['x'][1]) / 2.0   # 准星柱中心
         off = abs(gap_c - post_c)
-        print('瞄准线：缺口顶 Y=%.2f 准星顶 Y=%.2f 高差 %.3f（要 0）；缺口/准星偏心 %.3f（要 0）%s'
-              % (top, post['y'][1], dy, off,
-                 'OK' if dy < 0.01 and off < 0.01 else '!! 瞄准线不水平/不居中'))
+        print('瞄准线：缺口顶 Y=%.2f 准星顶 Y=%.2f 导轨齿顶 Y=%.2f 高差 %.3f（要 0）；'
+              '缺口/准星偏心 %.3f（要 0）%s'
+              % (top, post['y'][1], ry, dy, off,
+                 'OK' if dy < 0.01 and off < 0.01 else '!! 瞄准线/导轨不共线'))
 
 
 if __name__ == '__main__':

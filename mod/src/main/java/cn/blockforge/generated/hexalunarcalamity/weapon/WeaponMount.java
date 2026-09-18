@@ -23,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
  * <p>AKM 的 display 是「无旋转 + scale 1」，所以 R/S 都是单位变换，上面这条链就是全部。
  *
  * <h2>举枪（ADS）平移</h2>
- * 让「照门顶—准星顶」那条线（模型 X=0、Y=SIGHT_Y）落到屏幕中心，需要的 display 平移增量：
+ * 让「照门顶—准星顶—导轨齿顶」那条线（模型 X=0、Y=SIGHT_Y）落到屏幕中心，需要的 display 平移增量：
  * <pre>
  * dx = -side*8.96 - TX      （右手 -6.36、左手 +11.56）
  * dy =  8.32 - 3.44 - TY    （= +3.48）
@@ -31,6 +31,10 @@ import net.minecraft.world.phys.Vec3;
  * </pre>
  * 这三个数与 {@code AkmGeoModel} 推 {@code move} 骨骼的偏移量是同一份数（骨骼位移也在
  * 模型空间、单位同样是模型像素），改一处必须同步另一处 —— 所以都放在这里。
+ *
+ * <p>★ r67：模型里护木顶部导轨的齿顶从 3.16 抬到了 3.44（{@code akm_v3.py} 的 RAIL_LIFT），
+ * 于是「准星柱顶 = 照门顶 = 导轨齿顶」三点共线 —— 用户要的「导管上方凸点和护木装倍镜
+ * 上方是一条直线」。SIGHT_Y 本身没变，所以这里的对准数学一行都不用改。
  */
 public final class WeaponMount {
 
@@ -38,7 +42,7 @@ public final class WeaponMount {
     private static final double ARM_X = 0.56D;
     private static final double ARM_Y = -0.52D;
     private static final double ARM_Z = -0.72D;
-    /** 瞄准参照点的模型 Y（照门顶 = 准星顶） */
+    /** 瞄准参照点的模型 Y（照门顶 = 准星顶 = 导轨齿顶，akm_v3.py 的 SIGHT_Y） */
     private static final double SIGHT_Y = 3.44D;
     /** 屏幕中心 ⇔ 相机空间 X = 0，对应 display 平移 = -8.96（模型像素） */
     private static final double HAND_X_PX = ARM_X * 16.0D;
@@ -58,10 +62,10 @@ public final class WeaponMount {
     public static final double[] AKM_EJECT = {0.95D, 2.62D, -2.30D};
     /** 弹匣换成手的位置（模型像素）：弹匣井上方 */
     public static final double[] AKM_MAG_GRIP = {0.0D, 1.55D, -3.95D};
-    /** 红点圆心（模型 Y；与 akm_v3.py 的 build_dot_sight 一致） */
-    public static final double AKM_DOT_Y = 3.79D;
-    /** 4 倍镜光轴（模型 Y；与 akm_v3.py 的 build_scope_4x 一致） */
-    public static final double AKM_SCOPE_Y = 4.00D;
+    /** 红点圆心（模型 Y；与 akm_v3.py 的 build_dot_sight 一致：3.79 + RAIL_LIFT 0.28） */
+    public static final double AKM_DOT_Y = 4.07D;
+    /** 4 倍镜光轴（模型 Y；与 akm_v3.py 的 build_scope_4x 一致：4.00 + RAIL_LIFT 0.28） */
+    public static final double AKM_SCOPE_Y = 4.28D;
 
     // ------------------------------------------------ 第一人称双臂（双手持枪，见 client/AkmArms）
     /**
@@ -85,7 +89,7 @@ public final class WeaponMount {
         return switch (sight) {
             case Sights.DOT -> AKM_DOT_Y;
             case Sights.SCOPE -> AKM_SCOPE_Y;
-            default -> SIGHT_Y;                 // 机械瞄具：照门顶 = 准星顶
+            default -> SIGHT_Y;                 // 机械瞄具：照门顶 = 准星顶 = 导轨齿顶
         };
     }
 

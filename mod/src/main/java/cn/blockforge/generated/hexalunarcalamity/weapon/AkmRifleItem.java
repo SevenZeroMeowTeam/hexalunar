@@ -268,9 +268,15 @@ public class AkmRifleItem extends Item implements WeaponAmmo, GeoItem {
 
         // ★ 从**枪口**出发，朝准星落点飞（不是从眼前 0.7 格沿视线飞）：
         //   这样弹道起点在枪口、终点在准星，画面上就是「枪口 → 准星」一条直线，
-        //   而不是从屏幕中间斜着飞出来。收敛距离夹在 8..96 格，近距离也不会出现大偏角。
+        //   而不是从屏幕中间斜着飞出来。
+        // ★ r67：收敛距离上限 96 → 举枪 16 / 腰射 24 格。枪口比眼睛低（腰射 0.32 格 /
+        //   举枪 0.11 格，因为枪口在枪管轴线上、瞄准线在导轨齿顶），收敛点越远、弹道与
+        //   准星射线的夹角越小，近距离就越明显地打在准星下方（96 格时 5~60 格偏低 0.31~0.65 格）。
+        //   当成「归零」用：战斗距离 5~60 格内最大偏差从 0.65 降到 0.26 格（腰射）、
+        //   0.49 降到 0.12 格（举枪）—— 离线验算见 tools/_akm_ballistic.py 的收敛上限扫描。
+        //   下限 8 格不变：太近时枪口横向偏移会被放大成大偏角。
         Vec3 muzzle = WeaponMount.akm(player, aiming, Sights.sight(stack), WeaponMount.AKM_MUZZLE);
-        Vec3 dir = WeaponMount.fireDir(player, level, muzzle, 8.0D, 96.0D);
+        Vec3 dir = WeaponMount.fireDir(player, level, muzzle, 8.0D, aiming ? 16.0D : 24.0D);
 
         BulletEntity bullet = new BulletEntity(level, player);
         bullet.setPos(muzzle.x, muzzle.y, muzzle.z);

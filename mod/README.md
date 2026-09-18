@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r66**
+- 当前版本：**1.0.0-r67**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r66.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r67.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -144,12 +144,24 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r66.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r67.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r67** — AKM 瞄准线三点共线 + 弹道归零：
+  - **修「手持 AKM 开火时弹道落在准星下方」**：枪口在枪管轴线上、比眼睛低（腰射 0.32 格 / 举枪 0.11 格），
+    而收敛距离上限原是 96 格 ⇒ 弹道几乎与准星射线平行、5~60 格全程偏低 0.31~0.65 格。
+    改成当**归零距离**用（`AkmRifleItem.fire()`：`fireDir(..., 8, aiming ? 16 : 24)`）：
+    5~60 格内最大偏差 **0.65 → 0.26 格（腰射）**、**0.49 → 0.12 格（举枪）**；下限 8 格不变
+  - **模型：准星柱顶 = 照门顶 = 护木导轨齿顶 = 3.44**（用户要求「导管上方凸点与护木装倍镜上方是一条直线」）：
+    `tools/akm_v3.py` 新增 `RAIL_LIFT = 0.28`，导轨齿顶 3.16 → 3.44（导轨座同时加高到 3.34）、
+    两种瞄具整体 +0.28（红点圆心 3.79→4.07、4 倍镜光轴 4.00→4.28，`WeaponMount.AKM_DOT_Y/AKM_SCOPE_Y` 同步）
+    ⇒ 举枪时参照点仍是 `SIGHT_Y = 3.44`（对准数学一行未改），三点都在屏幕中心那条水平线上
+  - 离线验收：`python tools/_ads_check.py akm akm_aim`（三点均 0.00% / 0.00%）、
+    `python tools/_akm_ballistic.py`（逐格偏差 + 收敛上限扫描）
 
 - **r66** — 每个月的「月亮颜色 + 天空颜色」：
   - 新增 `client/MoonSkyRenderer.java`：在 `Stage.AFTER_SKY` 自己叠两层 ——

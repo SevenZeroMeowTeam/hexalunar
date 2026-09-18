@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r66`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r67`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r66.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r67.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -92,8 +92,9 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | **红点瞄准镜** `red_dot_sight` | 只把屏幕正中画一个红点（与原版准星同心），**枪身照旧可见**，视野略微拉近（×0.88） |
 | **4 倍瞄准镜** `scope_4x` | 与十字弩同款**整屏开镜**：视野 ×1/4 + 圆形镜筒近黑遮罩 + 对称十字分划，开镜时隐藏手与武器 |
 
-- 两种瞄具的**光轴参照点**（模型 Y=3.79 / 4.00）写在 `weapon/WeaponMount.java` 里，
+- 两种瞄具的**光轴参照点**（模型 Y=4.07 / 4.28）写在 `weapon/WeaponMount.java` 里，
   举枪时会被顶到屏幕正中 —— 也就是说“瞄具装在哪，准镜就对哪”，**改模型高度必须同步改这里**
+  （r67 把护木导轨齿顶抬到瞄准线 3.44，两个参照点也随之 +0.28）
 - 目前只能在创造模式「六相月灾」页签取用（还没加合成配方）
 
 ### 双手持枪（第一人称）
@@ -369,9 +370,9 @@ tools/  开发辅助脚本（见第五节）
 | 想改什么 | 位置 |
 |---|---|
 | **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_vox.py`（体素化参考网格）、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`）→ 再跑 `install_models.py` + `gen_glowmask.py` |
-| **瞄具挂点高度 / 举枪对心** | `weapon/WeaponMount.java`（`SIGHT_Y` / `AKM_DOT_Y` / `AKM_SCOPE_Y` / `akmAimDy`）—— **必须**与生成器里 `build_dot_sight` / `build_scope_4x` 的注释值一致 |
+| **瞄具挂点高度 / 举枪对心** | `weapon/WeaponMount.java`（`SIGHT_Y` = 照门顶/准星顶/**导轨齿顶** = 3.44、`AKM_DOT_Y` / `AKM_SCOPE_Y` / `akmAimDy`）—— **必须**与生成器 `akm_v3.py` 里的 `SIGHT_Y` / `RAIL_LIFT` 及 `build_dot_sight` / `build_scope_4x` 的注释值一致 |
 | **红点 / 倍镜显示逻辑** | `client/AkmGeoModel.java`（`sightNow` 隐藏骨骼 + 举枪位移）+ `client/ClientEvents.java`（`scoping` / `drawRedDot` / `drawScopeOverlay`） |
-| **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞 |
+| **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞（收敛上限 = **归零距离**：举枪 16 / 腰射 24 格，`tools/_akm_ballistic.py` 验算） |
 | **手持动作幅度 / 速度** | `client/WeaponAnim.java`（冲量大小与衰减）+ `client/WeaponPose.java`（折算成 display 增量的数值） |
 | **后坐幅度 / 镜头反馈强度** | 各 `client/*GeoModel.java` 的 `KICK_BACK` 与 `kick` 计算（AKM 1.35px / 弩 0.95px）；`camera` 骨骼只在 `firing()` 时叠加，换弹期间镜头必须为零 |
 | **谁的手持变换被接管** | `client/WeaponHandGrip.java`（`applyForgeHandTransform` 的返回与基准平移）+ 各 `client/*ItemClientExtensions.java` |
@@ -392,6 +393,24 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r67`
+
+- **AKM 瞄准线：“准星柱 = 照门 = 护木导轨顶面”三点共线 + 弹道归零**
+  （用户反馈：手持 AKM 开火时弹道在准星下方；且举枪时应以「导管上方凸点（准星柱）与护木装倍镜的导轨顶面」为准）
+  - **模型**（`tools/akm_v3.py`，新常数 `RAIL_LIFT = 0.28`）：护木顶部导轨的**齿顶从 Y=3.16 抬到 3.44**，
+    与照门顶、准星柱顶同高（导轨座同时加高到 3.34，免得齿悬空）；两种瞄具整体跟着抬 0.28 ——
+    红点圆心 3.79→**4.07**、4 倍镜光轴 4.00→**4.28**（`WeaponMount.AKM_DOT_Y/AKM_SCOPE_Y` 同步改）。
+    因为举枪位姿只是纯平移（无旋转），模型里的水平线投影后仍是水平线 ⇒ 举枪时**三点精确落在屏幕中心那条水平线上**：
+    离线验算 `tools/_ads_check.py akm_aim` ⇒ 照门顶 / 准星柱顶 / 导轨齿顶 **X +0.00% Y +0.00%**（枪管轴 −14.61% = 瞄具高出膛线 0.11 格，正常）。
+  - **弹道**（`AkmRifleItem.fire()`）：枪口比眼睛低（腰射 0.32 格 / 举枪 0.11 格：枪口在枪管轴线上、瞄准线在导轨齿顶），
+    而收敛距离上限原来写死 96 格 ⇒ 弹道几乎与准星射线平行、近距离就整段压低（5~60 格偏低 0.31~0.65 格）。
+    改成当「归零距离」用：**举枪 16 格 / 腰射 24 格** ⇒ 5~60 格内最大偏差
+    **0.65 → 0.26 格（腰射）**、**0.49 → 0.12 格（举枪）**；下限 8 格不变（太近时枪口横向偏移会被放大成大偏角）。
+  - 验收工具 `tools/_akm_ballistic.py`：逐 tick 复刻 Java 的发射链（枪口模型点 → 收敛点 → 速度、再 `×0.99` 阻尼 + 重力），
+    输出各距离上「弹道 y − 准星射线 y」（负 = 偏低），并扫描收敛上限 16/24/32/40/48/96 的腰射/举枪最差偏差。
+  - 模型重生成后只手动装了 AKM 两个文件（`geo/akm.geo.json` md5 `0fa6a709`、`textures/models/akm_geo.png` md5 `920d278c`），
+    没跑 `install_models.py`（它会一次性覆盖五把武器，会把弩/弓的现调数值冲掉）。
 
 > 版本 `1.0.0-r66`
 
