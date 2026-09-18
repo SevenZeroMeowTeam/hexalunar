@@ -102,6 +102,59 @@ for label, scale, milestone in ((u"普通血月（第 7 天）", 1.0, False),
     print(u"  %-22s 四波: %-22s 合计 %d 只" %
           (label, u" / ".join(str(c) for c in counts), total))
 
+print(u"== 4. r75：月相改成随机 + 指令 ==")
+mgrtxt = mgr
+check(u"MoonPhase 不再按夜数轮转（forNight 已删）", "forNight" not in phase)
+check(u"MoonPhase 提供 random() / byId()",
+      "public static MoonPhase random(" in phase and "public static MoonPhase byId(" in phase)
+check(u"入夜走掷骰 rollNightPhase", "rollNightPhase" in mgrtxt)
+check(u"基础概率常量 + 旱情补偿",
+      "DEFAULT_MOON_CHANCE" in mgrtxt and "DROUGHT_GRACE" in mgrtxt)
+check(u"没有月相时尸潮也能走（波次循环移出血月分支）",
+      "if (data.hordeActive) {" in mgrtxt and "hordePhase(phase)" in mgrtxt)
+data75 = src("moon", "MoonPhaseData.java")
+for field in (u"moonChance", u"dryNights", u"forced"):
+    check(u"MoonPhaseData 有字段 %s" % field, field in data75)
+    check(u"MoonPhaseData 存/读 %s" % field,
+          (u'putFloat("MoonChance"' in data75 if field == u"moonChance"
+           else u'"%s"' % (u"DryNights" if field == u"dryNights" else u"Forced") in data75))
+
+cmd = src("moon", "MoonCommands.java")
+check(u"注册 hexalunar 与简写 hlc", '"hexalunar"' in cmd and '"hlc"' in cmd)
+check(u"需要 OP 2 级权限", "hasPermission(PERMISSION)" in cmd and "PERMISSION = 2" in cmd)
+for sub in (u"\"moon\"", u"\"set\"", u"\"clear\"", u"\"random\"", u"\"info\"", u"\"list\"", u"\"chance\"",
+            u"\"horde\"", u"\"start\"", u"\"stop\"", u"\"wave\"", u"\"barrage\""):
+    check(u"指令树含 %s" % sub, sub in cmd)
+check(u"set 支持 none / byId 查表", u'"none".equalsIgnoreCase(id)' in cmd and
+      "MoonPhase.byId(id)" in cmd)
+check(u"msg() 返回 MutableComponent（Component 接口没有 withStyle）",
+      "MutableComponent msg(" in cmd)
+check(u"方法名不叫 level（避开 `ServerLevel level = level(src)` 的同名遮蔽）",
+      "private static ServerLevel targetLevel(" in cmd)
+
+langzh = read(os.path.join(LANG, "zh_cn.json"))
+langen = read(os.path.join(LANG, "en_us.json"))
+for name, text in ((u"zh_cn.json", langzh), (u"en_us.json", langen)):
+    missing = [k for k in (u"moon.set", u"moon.cleared", u"moon.rolled", u"moon.rolled_none",
+                           u"moon.unknown", u"moon.list", u"moon.none", u"moon.info1",
+                           u"moon.info2", u"moon.info3", u"time.night", u"time.day",
+                           u"horde.state_active", u"horde.state_idle", u"horde.started",
+                           u"horde.stopped", u"horde.wave", u"barrage", u"chance.set")
+               if u'"command.hexalunar_calamity.%s"' % k not in text]
+    check(u"%s 指令文案齐全" % name, not missing, u"缺 %s" % missing if missing else u"")
+
+print(u"== 5. 随机月相：连旱概率推演（基础 25% + 第 10 夜后每夜 +1%，上限 60%） ==")
+
+def dry_after(nights):
+    p = 1.0
+    for k in range(1, nights + 1):
+        chance = min(0.60, 0.25 + 0.01 * max(0, k - 1 - 10))
+        p *= (1.0 - chance)
+    return p
+
+for n in (1, 3, 5, 10, 15, 20, 30, 40):
+    print(u"  连续 %2d 夜都没月相的概率：%8.4f%%" % (n, dry_after(n) * 100.0))
+
 print(u"")
 print(u"结果：" + (u"全部通过" if ok else u"有 FAIL，需要修"))
 sys.exit(0 if ok else 1)

@@ -20,6 +20,12 @@ public class MoonPhaseData extends SavedData {
     public int hordeWave = 0;
     /** 尸潮：下一波的时刻 */
     public long nextWaveTick = 0L;
+    /** 每晚出现月相的基础概率（0~1，指令可调） */
+    public float moonChance = MoonManager.DEFAULT_MOON_CHANCE;
+    /** 已经连续多少夜没有月相（旱得越久越容易出，见 MoonManager#effectiveChance） */
+    public int dryNights = 0;
+    /** 今夜月相已被指令指定 ⇒ 入夜时不再掷骰 */
+    public boolean forced = false;
 
     public static MoonPhaseData load(CompoundTag tag) {
         MoonPhaseData data = new MoonPhaseData();
@@ -31,6 +37,9 @@ public class MoonPhaseData extends SavedData {
         data.hordeActive = tag.getBoolean("HordeActive");
         data.hordeWave = tag.getInt("HordeWave");
         data.nextWaveTick = tag.getLong("NextWave");
+        if (tag.contains("MoonChance")) data.moonChance = tag.getFloat("MoonChance");
+        data.dryNights = tag.getInt("DryNights");
+        data.forced = tag.getBoolean("Forced");
         return data;
     }
 
@@ -44,6 +53,9 @@ public class MoonPhaseData extends SavedData {
         tag.putBoolean("HordeActive", hordeActive);
         tag.putInt("HordeWave", hordeWave);
         tag.putLong("NextWave", nextWaveTick);
+        tag.putFloat("MoonChance", moonChance);
+        tag.putInt("DryNights", dryNights);
+        tag.putBoolean("Forced", forced);
         return tag;
     }
 

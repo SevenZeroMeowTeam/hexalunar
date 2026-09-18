@@ -44,21 +44,27 @@ public final class MoonManager {
         boolean night = level.isNight();
         MoonPhase phase = data.phase();
 
-        // 夜晚开始：推进到下一个月相
+        // 夜晚开始：**掷**今晚有没有月相（r75：完全随机，可能连着两夜同一个，也可能几十夜都不出）
         if (night && !data.wasNight) {
             data.nightCount++;
-            MoonPhase next = MoonPhase.forNight(data.nightCount);
-            data.setPhase(next);
             data.wasNight = true;
             data.nextHordeTick = level.getGameTime() + HORDE_START_DELAY;
             data.nextBarrageTick = level.getGameTime() + 300;
             data.hordeActive = false;
             data.hordeWave = 0;
             data.nextWaveTick = 0L;
+            MoonPhase next;
+            if (data.forced) {
+                next = data.phase();          // 指令已经指定过 ⇒ 今夜就用它，不再掷骰
+                data.forced = false;
+            } else {
+                next = rollNightPhase(data, level.random);
+                data.setPhase(next);
+            }
             if (next != null) {
                 announce(server, next);
-                ModNetwork.syncToAll(MoonPhase.indexOf(next), data.nightCount);
             }
+            ModNetwork.syncToAll(MoonPhase.indexOf(next), data.nightCount);
             data.setDirty();
             return;
         }
@@ -66,6 +72,7 @@ public final class MoonManager {
         if (!night && data.wasNight) {
             boolean hadHorde = data.hordeWave > 0;
             data.wasNight = false;
+            data.forced = false;
             data.hordeActive = false;
             data.hordeWave = 0;
             data.nextHordeTick = 0L;
@@ -80,32 +87,17 @@ public final class MoonManager {
             return;
         }
 
-        if (!night || phase == null) return;
+        if (!night) return;
+        long now = level.getGameTime();
 
-        // 超级月相：延长夜晚（每 tick 回退时间）
-        if (phase.superMoon) {
-            server.setDayTime(level.getDayTime() - 3L);
-        }
-
-        // 血月：4 波尸潮（每波数量不同；超级血月 ×1.5；第 14 天倍数那晚概率更大）
-        if (phase.isBlood()) {
-            long now = level.getGameTime();
-            if (!data.hordeActive && data.nextHordeTick > 0L && now >= data.nextHordeTick) {
-                data.nextHordeTick = 0L;              // 今晚只掷一次
-                if (rollHorde(ZombieEvolution.dayOf(level), phase, level.random)) {
-                    data.hordeActive = true;
-                    data.hordeWave = 0;
-                    data.nextWaveTick = now;
-                    broadcast(server, "moon.hexalunar_calamity.horde_incoming",
-                            net.minecraft.ChatFormatting.DARK_RED);
-                }
-            }
-            if (data.hordeActive && now >= data.nextWaveTick) {
+        // 尸潮波次推进（血月夜自动开，指令也能随时开；无月之夜靠指令开的也走这里）
+        if (data.hordeActive) {
+            if (now >= data.nextWaveTick) {
                 data.hordeWave++;
                 if (data.hordeWave > HORDE_WAVES) {
                     data.hordeActive = false;
                 } else {
-                    runWave(server, phase, data.hordeWave);
+                    runWave(server, hordePhase(phase), data.hordeWave);
                     broadcast(server, "moon.hexalunar_calamity.horde_wave",
                             net.minecraft.ChatFormatting.RED, String.valueOf(data.hordeWave));
                     data.nextWaveTick = now + WAVE_GAP;
@@ -114,9 +106,27 @@ public final class MoonManager {
             data.setDirty();
         }
 
+        if (phase == null) return;
+
+        // 超级月相：延长夜晚（每 tick 回退时间）
+        if (phase.superMoon) {
+            server.setDayTime(level.getDayTime() - 3L);
+        }
+
+        // 血月：掷骰决定今晚要不要开四波尸潮（超级血月 ×1.5，第 14 天倍数那晚概率更大）
+        if (phase.isBlood()) {
+            if (!data.hordeActive && data.nextHordeTick > 0L && now >= data.nextHordeTick) {
+                data.nextHordeTick = 0L;              // 今晚只掷一次
+                if (rollHorde(ZombieEvolution.dayOf(level), phase, level.random)) {
+                    beginHorde(server, data, now);
+                }
+            }
+            data.setDirty();
+        }
+
         // 超级月相巨型箭矢弹幕
-        if (phase.superMoon && level.getGameTime() >= data.nextBarrageTick) {
-            data.nextBarrageTick = level.getGameTime() + 220 + level.random.nextInt(160);
+        if (phase.superMoon && now >= data.nextBarrageTick) {
+            data.nextBarrageTick = now + 220 + level.random.nextInt(160);
             runBarrage(server);
             data.setDirty();
         }
@@ -148,6 +158,100 @@ public final class MoonManager {
     private static final int HORDE_START_DELAY = 100;
     /** 第 14 天（含 28/42…）那些晚上的额外规模倍率 */
     private static final float MILESTONE_SCALE = 1.5F;
+
+    /* ---------------------------------------------------------------- 随机月相 */
+
+    /** 每晚出现月相的基础概率（存档数据里可被指令改） */
+    public static final float DEFAULT_MOON_CHANCE = 0.25F;
+    /** 连着这么多夜没出月相之后才开始「旱情补偿」（先让几十夜无月真的可能发生） */
+    private static final int DROUGHT_GRACE = 10;
+    /** 补偿步长：每多旱一夜 +1% */
+    private static final float DROUGHT_STEP = 0.01F;
+    /** 概率上限 */
+    private static final float MAX_MOON_CHANCE = 0.60F;
+
+    /** 今晚实际出月相的概率 = 基础概率 + 旱情补偿 */
+    public static float effectiveChance(MoonPhaseData data) {
+        float chance = data.moonChance
+                + DROUGHT_STEP * Math.max(0, data.dryNights - DROUGHT_GRACE);
+        return Mth.clamp(chance, 0.0F, MAX_MOON_CHANCE);
+    }
+
+    /** 掷今晚的月相：没中就是「无月之夜」，连旱计数 +1（六相同权重，可能连着两夜同一个） */
+    @Nullable
+    public static MoonPhase rollNightPhase(MoonPhaseData data, RandomSource rand) {
+        if (rand.nextFloat() >= effectiveChance(data)) {
+            data.dryNights++;
+            data.setDirty();
+            return null;
+        }
+        data.dryNights = 0;
+        return MoonPhase.random(rand);
+    }
+
+    /** 尸潮规模按谁算：没有月相时就当普通血月 */
+    private static MoonPhase hordePhase(@Nullable MoonPhase phase) {
+        return phase != null ? phase : MoonPhase.BLOOD;
+    }
+
+    /** 开一场四波尸潮（血月自动开与指令共用） */
+    private static void beginHorde(ServerLevel level, MoonPhaseData data, long now) {
+        data.hordeActive = true;
+        data.hordeWave = 0;
+        data.nextWaveTick = now;
+        broadcast(level, "moon.hexalunar_calamity.horde_incoming",
+                net.minecraft.ChatFormatting.DARK_RED);
+        data.setDirty();
+    }
+
+    /* ---------------------------------------------------------------- 指令接口 */
+
+    /** 指令：立刻指定月相（null = 今晚无月）；入夜时不再掷骰 */
+    public static void commandSetPhase(ServerLevel level, @Nullable MoonPhase phase) {
+        MoonPhaseData data = get(level);
+        data.setPhase(phase);
+        if (phase != null) data.dryNights = 0;
+        data.forced = true;
+        data.wasNight = level.isNight();
+        if (phase != null) announce(level, phase);
+        ModNetwork.syncToAll(MoonPhase.indexOf(phase), data.nightCount);
+        data.setDirty();
+    }
+
+    /** 指令：立刻按随机规则掷一次（可能掷出「无月相」） */
+    @Nullable
+    public static MoonPhase commandRollPhase(ServerLevel level) {
+        MoonPhaseData data = get(level);
+        MoonPhase phase = rollNightPhase(data, level.random);
+        commandSetPhase(level, phase);
+        return phase;
+    }
+
+    /** 指令：立刻开一场尸潮（不看月相） */
+    public static void commandStartHorde(ServerLevel level) {
+        MoonPhaseData data = get(level);
+        data.nextHordeTick = 0L;
+        beginHorde(level, data, level.getGameTime());
+    }
+
+    /** 指令：立刻收掉尸潮（残留的清理由天亮时的 dawnCleanup 负责） */
+    public static void commandStopHorde(ServerLevel level) {
+        MoonPhaseData data = get(level);
+        data.hordeActive = false;
+        data.hordeWave = 0;
+        data.nextWaveTick = 0L;
+        data.setDirty();
+    }
+
+    /** 指令：直接放第 n 波 */
+    public static void commandWave(ServerLevel level, int wave) {
+        runWave(level, hordePhase(current(level)), Mth.clamp(wave, 1, HORDE_WAVES));
+    }
+
+    /** 指令：立刻触发一次巨箭弹幕 */
+    public static void commandBarrage(ServerLevel level) {
+        runBarrage(level);
+    }
 
     /** 今晚要不要开尸潮：第 14 天倍数那晚概率更高，超级血月再高一截 */
     private static boolean rollHorde(long day, MoonPhase phase, RandomSource rand) {
@@ -223,7 +327,7 @@ public final class MoonManager {
     }
 
     /** 超级月相：跟踪玩家的巨型箭矢 */
-    private static void runBarrage(ServerLevel level) {
+    static void runBarrage(ServerLevel level) {
         RandomSource rand = level.getRandom();
         for (ServerPlayer player : level.players()) {
             if (player.isCreative() || player.isSpectator()) continue;

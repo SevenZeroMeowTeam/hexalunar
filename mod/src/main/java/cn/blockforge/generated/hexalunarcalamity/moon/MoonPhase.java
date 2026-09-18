@@ -43,11 +43,23 @@ public enum MoonPhase {
         return ORDER[index];
     }
 
-    /** 按夜晚序号取月相：第 1 夜血月，第 2 夜蓝月……循环推进 */
+    /**
+     * 随机抽一个月相：六相同权重。
+     *
+     * <p>r75：不再按夜数轮转 —— 所以**可能连着两夜同一个**，也**可能几十夜都不出月相**
+     * （出不出由 {@code MoonManager.rollNightPhase} 的概率决定）。
+     */
+    public static MoonPhase random(net.minecraft.util.RandomSource rand) {
+        return ORDER[rand.nextInt(ORDER.length)];
+    }
+
+    /** 按 id 找月相（"blood_moon" 这种），找不到返回 null */
     @Nullable
-    public static MoonPhase forNight(long nightCount) {
-        if (nightCount <= 0) return null;
-        return ORDER[(int) ((nightCount - 1) % ORDER.length)];
+    public static MoonPhase byId(String id) {
+        for (MoonPhase p : ORDER) {
+            if (p.id.equalsIgnoreCase(id)) return p;
+        }
+        return null;
     }
 
     /** 血月类（含超级）：亡灵会进化、玩家不能睡觉、会有尸潮 */
