@@ -43,6 +43,20 @@ def git(*args, check=True, quiet=False):
     return run(["git", *GIT_OVERRIDES, *args], check=check, quiet=quiet)
 
 
+def head_sha():
+    """本地 HEAD 的完整 sha（校验用）。"""
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                          text=True, encoding="utf-8", errors="replace").stdout.strip()
+
+
+def remote_sha(remote, branch):
+    """远端分支的 sha；拿不到就返回空串（不报错，校验失败不该把成功变成失败）。"""
+    code, out = git("ls-remote", remote, f"refs/heads/{branch}", check=False, quiet=True)
+    if code != 0 or not out.strip():
+        return ""
+    return out.split()[0]
+
+
 def commit_all(message):
     """提交说明写进仓库外的 UTF-8 临时文件再 -F，避开 PowerShell/Git 的中文编码坑，
     也避免 `git add -A` 把临时文件自己带进提交。"""
@@ -100,6 +114,15 @@ def main():
         code, out = git("push", args.remote, f"HEAD:refs/heads/{args.branch}", check=False)
         if code == 0:
             print(f"\n[完成] 已推送到 {args.remote}/{args.branch}；CI 会自动构建（见仓库 Actions）")
+            # ★ 光看 push 的输出不可靠：`Everything up-to-date` 也是 exit 0，
+            #   它可能表示「真的没东西可推」（远端已有这个提交），也可能被误读成「推失败了」。
+            #   所以再问一次远端，比对 sha，把结论明确打出来。
+            local, remote = head_sha(), remote_sha(args.remote, args.branch)
+            if remote and remote == local:
+                print(f"[校验] 远端 {args.remote}/{args.branch} = {local[:7]}，与本地一致 ✓")
+            else:
+                print(f"[校验] 远端 = {remote[:7] or '拿不到'}，本地 = {local[:7]}"
+                      " ⇒ 上面的「完成」不可信，请重跑一次或手动 push")
             return 0
         print("[重试] 本次推送失败，将重新扫描可用 IP 后再试")
     return 1
