@@ -356,7 +356,11 @@ public final class ClientEvents {
 
         MoonPhase phase = activePhase();
         if (phase != null && !mc.options.hideGui) {
-            g.fill(0, 0, g.guiWidth(), g.guiHeight(), phase.skyTint);
+            // ★ r66：天空与月盘已经按各自的阶段颜色单独画了（见 MoonSkyRenderer），
+            //   这层全屏叠色只留一半强度（它同时也会给地形/生物上一层氛围色）——
+            //   全强度会把刚上好的天空颜色又压成一片平色。
+            int a = Math.max(0, (phase.skyTint >>> 24) / 2);
+            g.fill(0, 0, g.guiWidth(), g.guiHeight(), (a << 24) | (phase.skyTint & 0xFFFFFF));
         }
 
         if (!mc.options.hideGui) {

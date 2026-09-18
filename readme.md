@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r65`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r66`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r65.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r66.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -185,7 +185,18 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 
 ### 月相
 
-血月 / 蓝月 / 黄月，以及更强的**超级**版本；不同月相影响尸潮数量、速度与掉落。
+血月 / 蓝月 / 黄月，以及更强的**超级**版本；不同月相影响尸潮数量、速度与掉落，
+**而且各自有专属的月亮颜色与天空颜色**（自画的月盘 + 天穹染色，见 `client/MoonSkyRenderer.java`）：
+
+| 月相 | 月亮颜色 | 天顶 / 地平线 | 效果 |
+|---|---|---|---|
+| **血月** | `#FF4A38` 红 30% | `#1C0608` / `#521114` | 尸潮数量 ×2 |
+| **蓝月** | `#AECBFF` 淡青蓝 | `#06101F` / `#143A6E` | 僵尸速度 +0.35 |
+| **黄月** | `#FFD35E` 金 | `#141005` / `#453512` | 掉落 ×2 |
+| **超级血月** | `#FF6E52` + 大光晕 | `#28070B` / `#6E1616` | 长夜漫漫、尸潮 ×3 |
+| **超级蓝月** | `#D2E8FF` + 大光晕 | `#08142E` / `#1C4A88` | 亡者速度 +0.60 |
+| **超级黄月** | `#FFE9A0` + 大光晕 | `#1C1608` / `#57431A` | 掉落 ×3 |
+
 伴随六种特殊感染者：自爆尸、喷吐尸、蛮兵尸、巨尸、突袭骷髅、剧毒骷髅。
 
 ---
@@ -376,11 +387,26 @@ tools/  开发辅助脚本（见第五节）
 | **弩弓臂内收 / 后弯 / 长短** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`；**弓臂本身的长度与粗细**在 `tools/crossbow_vox.py` 的 `LIMB_SX` / `LIMB_SY`（改完跑生成器 + `install_models.py`，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来） |
 | **第一人称手臂大小 / 位置** | `client/WeaponArms.java` 的 `SHOULDER_R/L`（必须放在画面外，否则一片色块挡住枪）、`THICK`、`ROLL_R/L`；离线故事板 `tools/_armstory.py akm|crossbow` |
 | **开火时的视角反馈** | `client/AkmGeoModel.java#zeroCamera`（清零 = 不点头）+ `client/ClientEvents.java#applyAkmCamera`（camera 骨骼→视角的管道）；要做「后坐上跳」就在 `computeMovePose` 里用冲量自己做 |
-| 月相效果 | `moon/MoonManager.java` |
+| **月相效果** | `moon/MoonManager.java`；**颜色（月亮/光晕/天顶/地平线/雾色/全屏叠色/尘埃）** 全在 `moon/MoonPhase.java` 的枚举里，改完跑一遍 `tools/_moonsky_mock.py` 看配色 |
 
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r66`
+
+- **给每个月相加「月亮颜色 + 天空颜色」**：
+  - 原版天空（天穹 + 日月）是在 `LevelRenderer.renderSky` 里用固定颜色画的，Forge 只给了雾色钩子，
+    没有「改天穹/月盘颜色」的事件 ⇒ 在 **`Stage.AFTER_SKY`**（原版天空画完、地形之前）自己叠两层：
+    · **天穹**：以相机为球心（该阶段的位姿原点就是相机，原版天体就是在 y=±100 画的）画一个半径 100 的球，
+      顶点色从天顶色渐变到地平线色（下半球另封一层很淡的暗色，避免天地交界出现硬缝）；
+    · **月盘**：照拄原版那两步旋转（`YP(-90°)` + `XP(时间×360°)`），在 **y=−100** 的平面上画
+      本阶段颜色的圆盘（半径 20.6 > 原版 ±20，不透明 ⇒ 把原版月亮整个盖住），加三个同色系陨石坑，
+      超级月相再叠一圈更大的叠加混合光晕
+  - 两层都关掉深度测试/深度写入（天空在最远处、不写深度），地形随后照常把它们盖住；
+    ★ 天穹的不透明度取 0.42~0.60，免得把原版星空压死
+  - 全屏那层属相叠色（`skyTint`）**只留一半强度**（它同时给地形/生物上氛围色，全强度会把天空压成一片平色）
+  - 配色离线预览（改色不用进游戏）：`python tools/_moonsky_mock.py` → `build/_moonsky_mock.png`
 
 > 版本 `1.0.0-r65`
 
