@@ -263,7 +263,7 @@ tools/  开发辅助脚本（见第五节）
 
 | 脚本 | 用途 |
 |---|---|
-| `akm_v3.py` / `crossbow_v3.py` / `bow_v3.py` / `grenade_v3.py` / `flashbang_v3.py` | **武器/投掷物模型生成器**（几何 + 逐面 UV 贴图 + 自检），产物写到 `build/*.geo.json` / `*.png`；自检会打印骨骼名、瞄准线水平/居中、弦端点、导轨高度余量 |
+| `akm_v3.py` / `bow_v3.py` / `grenade_v3.py` / `flashbang_v3.py` | **武器/投掷物模型生成器**（几何 + 逐面 UV 贴图 + 自检），产物写到 `build/*.geo.json` / `*.png`；自检会打印骨骼名、瞄准线水平/居中、弦端点、导轨高度余量（**十字弩 r61 起改用下表的 `crossbow_vox.py` 体素化**，`crossbow_v3.py` 仅作历史参考） |
 | `boxlib.py` | 上面各生成器共用的几何/上色库（倒角、圆角、椭圆、螺栓、通风口、布纹…） |
 | `install_models.py` | 把 `build/*.geo.json` + `*.png` 装进 `assets/.../geo` 与 `textures/models`（先备份旧文件） |
 | `gen_glowmask.py` | 按亮度阈值自动生成自发光遮罩 `*_glowmask.png`（**改完贴图必跑**） |
@@ -293,7 +293,7 @@ tools/  开发辅助脚本（见第五节）
 
 | 想改什么 | 位置 |
 |---|---|
-| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_v3.py`、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`）→ 再跑 `install_models.py` + `gen_glowmask.py` |
+| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_vox.py`（体素化参考网格）、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`）→ 再跑 `install_models.py` + `gen_glowmask.py` |
 | **瞄具挂点高度 / 举枪对心** | `weapon/WeaponMount.java`（`SIGHT_Y` / `AKM_DOT_Y` / `AKM_SCOPE_Y` / `akmAimDy`）—— **必须**与生成器里 `build_dot_sight` / `build_scope_4x` 的注释值一致 |
 | **红点 / 倍镜显示逻辑** | `client/AkmGeoModel.java`（`sightNow` 隐藏骨骼 + 举枪位移）+ `client/ClientEvents.java`（`scoping` / `drawRedDot` / `drawScopeOverlay`） |
 | **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞 |
