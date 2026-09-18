@@ -41,9 +41,16 @@ public final class WeaponArms {
     public static final double ARM_Y = -0.52D;
     public static final double ARM_Z = -0.72D;
 
-    /** 肩点（相机空间，格）：固定不动，手离得远手臂就按比例拉长 */
-    private static final float[] SHOULDER_R = {0.72F, -1.00F, -0.20F};
-    private static final float[] SHOULDER_L = {0.10F, -0.95F, -0.62F};
+    /**
+     * 肩点（相机空间，格）：固定不动，手离得远手臂就按比例拉长。
+     *
+     * <p>数值照抄原版第一人称手臂的落点（{@code ItemInHandRenderer#renderPlayerArm} 里那条链算出来
+     * 的方块起点大约在 {@code (0.58, -0.38, -0.50)}、朝 {@code (0.33, 0.47, -0.82)} 伸出去）：
+     * 也就是「从屏幕右下角外伸进来、朝前方」。所以肩点要**靠前**（z 约 -0.4），
+     * 太靠后（z ≈ -0.2）手臂根部会贴着相机，屏幕边上就是一片糊的色块。
+     */
+    private static final float[] SHOULDER_R = {0.62F, -0.70F, -0.42F};
+    private static final float[] SHOULDER_L = {0.05F, -0.72F, -0.50F};
     /** 原版手臂长度（格） */
     private static final float ARM_LEN = 0.75F;
     /** 手臂方块在 pose 坐标里的 x 中心（格） */
@@ -86,7 +93,8 @@ public final class WeaponArms {
                                 float[] shoulder, float rollDeg) {
         Vector3f y = new Vector3f(hand[0] - shoulder[0], hand[1] - shoulder[1], hand[2] - shoulder[2]);
         float dist = y.length();
-        if (dist < 1.0E-4F) return;
+        // 数值不对劲（还没捕获到 / 数据坏了）宁可这一帧不画，也别糊一大片在屏幕上
+        if (!(dist > 1.0E-4F) || dist > 3.0F) return;
         float s = dist / ARM_LEN;                   // 只沿长度方向拉伸，粗细保持原版
         y.div(dist);
         Vector3f ref = new Vector3f(0.0F, 1.0F, 0.0F);
@@ -98,13 +106,18 @@ public final class WeaponArms {
         float sr = Mth.sin(r);
         Vector3f xr = new Vector3f(x).mul(cr).add(new Vector3f(z).mul(sr));
         Vector3f zr = new Vector3f(z).mul(cr).sub(new Vector3f(x).mul(sr));
-        Matrix3f m = new Matrix3f(xr.x, y.x, zr.x,
-                                  xr.y, y.y, zr.y,
-                                  xr.z, y.z, zr.z);
-        Quaternionf q = m.getNormalizedRotation(new Quaternionf());
-        float ox = xr.x * HALF + y.x * ARM_LEN * s;
-        float oy = xr.y * HALF + y.y * ARM_LEN * s;
-        float oz = xr.z * HALF + y.z * ARM_LEN * s;
+        // ★ 必须用 setColumn 一列一列地填：JOML 的 9 参数构造是「列优先命名」
+        //   （m01 = 第 0 列第 1 行），照 (x,y,z) 顺序写进去得到的是**转置矩阵** = 反向旋转 ——
+        //   手臂会翻到相机后面去，近平面切一刀，屏幕上就是一大片皮肤色（r57 的 bug）。
+        Quaternionf q = new Matrix3f().setColumn(0, xr)
+                                      .setColumn(1, y)
+                                      .setColumn(2, zr)
+                                      .getNormalizedRotation(new Quaternionf());
+        // 手臂方块的局部 x 中心：右臂 -0.375、左臂 +0.375（左臂在模型里是 mirror 出来的）
+        float dx = right ? -HALF : HALF;
+        float ox = xr.x * dx + y.x * ARM_LEN * s;
+        float oy = xr.y * dx + y.y * ARM_LEN * s;
+        float oz = xr.z * dx + y.z * ARM_LEN * s;
         pose.pushPose();
         pose.translate(hand[0] - ox, hand[1] - oy, hand[2] - oz);
         pose.mulPose(q);

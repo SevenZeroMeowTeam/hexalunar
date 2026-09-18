@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r57`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r58`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r57.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r58.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -89,8 +89,8 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 - 手的目标点写在各自 GeoModel 里（模型像素），经 `client/GunFrame.java` 换成相机空间；
   `GunFrame` 记的是 `move` 骨骼（含**举枪位移**与跑步/开火/换弹动画），所以手臂自动跟着枪一起动，
   不需要在手臂代码里重复任何武器逻辑
-- 手臂摆放：�all嘴端=肩、局部 +0.75 格端=手，所以「把手放到 H」= 原点平移 `H − s·R·(x中心, 0.75, 0)`；
-  只沿长度方向拉伸（`pose.scale(1,s,1)`），粗细保持原版
+- 手臂摆放：手臂方块在 pose 坐标里是 **原点端=肩、局部 +0.75 格端=手**，所以「把手放到 H」= 原点平移 `H − R·(方块局部 x 中心, 0.75·s, 0)`；
+  只沿长度方向拉伸（`pose.scale(1,s,1)`），粗细保持原版。注意右臂方块局部 x 中心是 **−0.375**、左臂（mirror）是 **+0.375**，不补偿手就偏半个方块
 - 离线核对：`mod/tools/_armstory.py akm|crossbow` 会按进度渲出故事板（枪 + 双臂），
   改手位不用反复进游戏
 
@@ -208,6 +208,13 @@ tools/  开发辅助脚本（见第五节）
 13. **模型共面会 z-fighting 闪烁**
     两个方块的面完全重合时（例：后移的瞄具底座与机匣盖同为 `±0.42`），渲染会闪；把里面那层缩 0.02 就好。
 
+14. **JOML 的 `Matrix3f` 9 参数构造是「列优先命名」**
+    `new Matrix3f(m00, m01, m02, m10, …)` 里的 `m01` 是**第 0 列第 1 行**。照 `(x, y, z)` 的顺序
+    把三个基向量写进去，拿到的是**转置矩阵**（= 反向旋转）。第一人称手臂用它就会整条翻到相机后面去、
+    被近平面切一刀 → 屏幕上一大片皮肤色（r57 的 bug）。建正交基要**一列一列地填**：
+    `new Matrix3f().setColumn(0, x).setColumn(1, y).setColumn(2, z).getNormalizedRotation(q)`。
+    离线自查：`mod/tools/_joml_probe/`（`JomlProbe` 验 JOML 约定、`ArmSim` 算手臂方块落点）。
+
 ---
 
 ## 五、开发辅助工具（`tools/`）
@@ -222,6 +229,7 @@ tools/  开发辅助脚本（见第五节）
 | `bbmcp.py` | Blockbench MCP 的 JSON-RPC 直连客户端（`list` / `call` / `batch` / `schema`） |
 | `bbpush.py` | 把 geo + 贴图推进正在运行的 Blockbench 工程（现在的模型迭代主力） |
 | `_ads_check.py` | 离线验算举枪对心：按 `WeaponMount` 的变换链算出锚点落在屏幕哪里（要 0.00% / 0.00%） |
+| `_joml_probe/`（Java） | 第一人称手臂离线验算：`JomlProbe` 验 JOML 旋转约定（`Matrix3f` 构造顺序 / `rotateAxis` 语义），`ArmSim` 按 `WeaponArms` 同一套数学算出双臂方块 8 个角在相机空间的位置并投影到屏幕，顺带告警「是否越过相机平面」（越过了就是糊屏） |
 | `_scopemock.py` | 离线复刻倍镜遮罩绘制数学出 PNG（调分划参数不用反复进游戏） |
 | `gen_sight_icons.py` | 生成红点 / 4 倍镜的物品图标 PNG |
 | `fp_preview.py` | 第一人称 / GUI / 第三人称离线预览：读模型 JSON 的 `display` + OBJ，按游戏同样的矩阵光栅化出 PNG，并打印屏幕像素包围盒。<br>调手持姿态用它：`python fp_preview.py --json akm.json --obj akm.obj --ctx firstperson_righthand --rot 0,0,0 --trans=-5,-3,4.5 --scale=0.5 --out t.png` |
@@ -260,7 +268,7 @@ tools/  开发辅助脚本（见第五节）
 
 ## 七、更新日志（本次开发）
 
-> 版本 `1.0.0-r57`
+> 版本 `1.0.0-r58`
 
 - **AKM 抛壳动画**：抛出的是真的黄铜空弹壳（模型里 4 根 `casing_0..3` 骨骼 + 黄铜方块），
   不再只有粒子：
