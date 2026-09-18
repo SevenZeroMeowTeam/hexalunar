@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r73.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r75.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -54,6 +54,7 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | 右键按住 | 瞄准（各武器行为不同） |
 | 左键 | 开火 / 投掷（按住连发由武器决定） |
 | `R` | 换弹（AKM，默认键位，可在设置里改） |
+| 右键按住（手雷 / 震爆弹） | **拔保险销**（1 秒）；销已拔出时 **潜行 + 右键 1 秒** = 把销插回 |
 | 潜行 + 右键 | **装/拆 AKM 顶部导轨上的瞄具**：副手拿着瞄具 = 装上（消耗一个），空着 = 拆下还给你 |
 
 ### 武器
@@ -176,27 +177,58 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 
 **操作流程（两者相同）**：
 
-1. **按住右键 1 秒** → 拔掉保险销（有咔哒声与提示）
-2. **左键丢出**；直接砸中生物会提前起爆
-3. **压杆规则**（引信何时开始跑）：
-   - **还握在手里**（主手/副手）→ 压杆被手压住，**引信不走表**，绝对安全
-   - **一离开手**（换到其它格 / 放回背包 / 丢出去）→ 压杆弹开，从那一瞬开始计 **5 秒**
-   - 到点在它所在的位置起爆 —— **在背包里也会炸**
-4. **潜行 + 右键** → 把保险销插回去（前提正是“压杆还被手压着”）；离开手之后就插不回去了
+1. **按住右键 1 秒** → 拔掉保险销（有咔哒声与提示）。
+   **拔销拔到一半松手** = 前功尽弃，保险销自己弹回（`pin_slipped`）
+2. **左键丢出** —— **引信只在出手这一瞬点燃**（满 5 秒，飞行中读秒）。
+   扔出去撞到方块弹一下、**撞到生物不会停**，引信说了算
+3. **压杆规则**（★ r75 起「手里攥着永远不响」是代码里的硬保证）：
+
+| 手雷状态 | 行为 |
+|---|---|
+| 插着销 | 完全安全，拿多久都行 |
+| 销已拔出、**手还压着压杆** | **引信不走表**，绝对安全（左键可投，也可以把销插回去）|
+| **刚拔完 1.5 秒内松手** | 视为手滑 ⇒ **保险销自动插回**（不必再潜行 + 右键）|
+| 攥着超过 1.5 秒再松 | 保持「已拔销」的待投状态（说明是故意的）|
+| 离开手（换格 / 收回背包 / 副手被枪占） | 压杆失去手的压力 ⇒ **保险销自动弹回**，不会在背包里炸 |
+
+   - 硬保证：`ARMED`（引信燃烧）**只存在于飞行中的抛射体**；手持 / 背包 / 副手 / 护甲槽里的雷
+     一律被 `GrenadeItem.serverTick` 折回安全态（旧存档里的脏数据也一样）
+4. **潜行 + 右键 1 秒** → 手动把保险销插回去（插到一半松手 = 回到「已拔销」的待投态）
 
 ### 月相
 
-血月 / 蓝月 / 黄月，以及更强的**超级**版本；不同月相影响尸潮数量、速度与掉落，
-**而且各自有专属的月亮颜色与天空颜色**（自画的月盘 + 天穹染色，见 `client/MoonSkyRenderer.java`）：
+六种月相（血月 / 蓝月 / 黄月 + 各自的**超级**版本）**随机出现**，各有专属的月亮颜色与天空颜色
+（自画的月盘 + 天穹染色，见 `client/MoonSkyRenderer.java`）：
+
+- ★ **不再是按夜数轮转**（r75）：每夜独立掷骰、六相同权重 ⇒ **可能连着两夜同一个月相，
+  也可能几十夜都不出月相**；基础概率 **25%**，连续 10 夜没出之后每夜 +1%（上限 60%）。
+  连续无月概率：3 夜 42% / 5 夜 24% / 10 夜 5.6% / 15 夜 1.2% / 20 夜 0.17%
+- 月升时全服弹标题与提示、客户端同步（`MoonManager` → `ModNetwork.syncToAll`）
 
 | 月相 | 月亮颜色 | 天顶 / 地平线 | 效果 |
 |---|---|---|---|
-| **血月** | `#FF4A38` 红 30% | `#1C0608` / `#521114` | 尸潮数量 ×2 |
-| **蓝月** | `#AECBFF` 淡青蓝 | `#06101F` / `#143A6E` | 僵尸速度 +0.35 |
-| **黄月** | `#FFD35E` 金 | `#141005` / `#453512` | 掉落 ×2 |
-| **超级血月** | `#FF6E52` + 大光晕 | `#28070B` / `#6E1616` | 长夜漫漫、尸潮 ×3 |
-| **超级蓝月** | `#D2E8FF` + 大光晕 | `#08142E` / `#1C4A88` | 亡者速度 +0.60 |
-| **超级黄月** | `#FFE9A0` + 大光晕 | `#1C1608` / `#57431A` | 掉落 ×3 |
+| **血月** | `#FF4A38` 红 | `#1C0608` / `#521114` | **四波尸潮**（每波 6/9/13/18 只·人）+ **亡灵随时间进化**（黄昏 ×1 → 天亮 ×2）+ **晚上不能睡觉** |
+| **蓝月** | `#AECBFF` 淡青蓝 | `#06101F` / `#143A6E` | **玩家获得幸运 I**（僵尸没有任何加成）|
+| **黄月** | `#FFD35E` 金 | `#141005` / `#453512` | **作物加速生长**（每 20 tick 催一次）|
+| **超级血月** | `#FF6E52` + 大光晕 | `#28070B` / `#6E1616` | 同上 + **尸潮 ×1.5** + **巨箭弹幕** + 长夜不眠 |
+| **超级蓝月** | `#D2E8FF` + 大光晕 | `#08142E` / `#1C4A88` | **玩家获得幸运 II** |
+| **超级黄月** | `#FFE9A0` + 大光晕 | `#1C1608` / `#57431A` | 作物生长更快（每 7 tick）+ **巨箭弹幕** |
+
+- **尸潮细节（r74）**：固定 **4 波**（波间隔 6 秒），开波与每波都有 action bar 播报；
+  **第 14 天（含 28 / 42…）那晚**开波概率 0.35 → 0.75 且规模再 ×1.5；
+  **天亮自动收尾**：按离玩家最近排序，每个玩家只留 4 只徘徊者，其余清除，留下的**白天不燃烧**
+- **管理指令（OP 2 级 / 单人开作弊，`/hlc` 是简写别名）**：
+
+| 指令 | 作用 |
+|---|---|
+| `/hexalunar moon set <blood_moon\|blue_moon\|yellow_moon\|super_blood\|super_blue\|super_yellow\|none>` | 强制指定月相（今夜不再掷骰）|
+| `/hexalunar moon clear` | 清除月相 = 今夜无月 |
+| `/hexalunar moon random` | 立刻按随机规则掷一次 |
+| `/hexalunar moon info` | 看状态（已入夜次数 / 当前月相 / 概率 / 连旱夜数 / 尸潮）|
+| `/hexalunar moon list` | 列出全部月相 id |
+| `/hexalunar moon chance <0~1>` | 改每晚出月相的概率（写进存档）|
+| `/hexalunar horde start \| stop \| wave <1~4>` | 手动开 / 停尸潮、单放某一波 |
+| `/hexalunar barrage` | 立刻触发巨箭弹幕 |
 
 伴随六种特殊感染者：自爆尸、喷吐尸、蛮兵尸、巨尸、突袭骷髅、剧毒骷髅。
 
@@ -213,7 +245,7 @@ mod/
 │   ├── client/     输入、FOV/瞄准、HUD、**GeckoLib 模型与渲染器**（*GeoModel / *GeoRenderer）、物品属性注册
 │   ├── net/        网络包（月相同步 / 命中反馈 / 开火 / 装填）
 │   ├── registry/   物品、实体、音效、效果、创造页签
-│   └── moon/       月相管理 + 僵尸进化（ZombieEvolution）
+│   └── moon/       月相管理（MoonPhase / MoonManager / MoonPhaseData / **MoonCommands**）+ 月相效果（**MoonBlessings**）+ 僵尸进化（ZombieEvolution）
 └── src/main/resources/
     ├── assets/hexalunar_calamity/geo/         ★ GeckoLib 骨骼模型（.geo.json）
     ├── assets/hexalunar_calamity/animations/  ★ GeckoLib 动画（.animation.json）
@@ -332,6 +364,15 @@ tools/  开发辅助脚本（见第五节）
     · `move` 骨骼的 Z 在开火时给动画放行 ⇒ 枪在动画首/末帧跳一下 —— 修法：Z 只由冲量驱动。
     结论：**位置只用能自己控阶跃的量（冲量/插值），动画键值只当「要不要演动作」的开关**。
 
+19. **javac 只报「找不到符号」而 `tools/_check.py` 会把明细过滤掉**
+    r75 一次报 13 个「找不到符号」但看不出原因，真因有两个：
+    · **`Component` 接口没有 `withStyle()`**（只有 `MutableComponent` 有）⇒ 辅助方法声明返回 `Component` 时，
+      调用处 `.withStyle(...)` 全栈编译不过；把返回类型改成 `MutableComponent` 即可。
+    · **局部变量会遮蔽同名方法**：`ServerLevel level = level(src);` 里正在声明的 `level`
+      从声明处就开始生效 ⇒ 右边的 `level(src)` 被当成访问变量 ⇒ 一行代码 13 个错误。方法改名 `targetLevel`。
+    取明细：`cmd /c "gradlew.bat compileJava --offline --console=plain > build\err.log 2>&1"` 再读日志
+    （`--offline` 顺带绕开本机偶发的依赖卡网络）。改完记得用 `get_errors`（语言服务器）交叉核对。
+
 ---
 
 ## 五、开发辅助工具（`tools/`）
@@ -346,6 +387,8 @@ tools/  开发辅助脚本（见第五节）
 | `bbmcp.py` | Blockbench MCP 的 JSON-RPC 直连客户端（`list` / `call` / `batch` / `schema`） |
 | `bbpush.py` | 把 geo + 贴图推进正在运行的 Blockbench 工程（现在的模型迭代主力） |
 | `_ads_check.py` | 离线验算举枪对心：按 `WeaponMount` 的变换链算出锚点落在屏幕哪里（要 0.00% / 0.00%） |
+| `_gren_pin.py` | 手雷 / 震爆弹**保险销行为**离线自检：核对手持状态机规则（尤其是「手里攥着永远不点燃引信」这条硬保证）、检查语言键，并把状态转移表打印出来 |
+| `_moon_r74.py` | 月相系统离线自检：月相数值（蓝=幸运 / 黄=催作物 / 血=四波尸潮）、尸潮规模推演、**随机出现与连旱概率**、指令树完整性 |
 | `_joml_probe/`（Java） | 第一人称手臂离线验算：`JomlProbe` 验 JOML 旋转约定（`Matrix3f` 构造顺序 / `rotateAxis` 语义），`ArmSim` 按 `WeaponArms` 同一套数学算出双臂方块 8 个角在相机空间的位置并投影到屏幕，顺带告警「是否越过相机平面」（越过了就是糊屏） |
 | `crossbow_vox.py` | 把**参考网格**（`模型/十字弩_v2.bbmodel`，11 个 mesh 部件）**表面体素化**成 GeckoLib 方块模型：逐格从原贴图采 UV、按 mesh 名分骨骼、弦/弦心/弩箭另外用方块画；末尾打印并自检「拉满时两段弦内端是否正好落在弦心」。`--step` 调体素大小（0.45 → ~820 方块） |
 | `_cb_flex.py` | 十字弩**弓臂内收**的离线验算 + 姿态烘焙：打印「弓臂外端往内/往后走了多少」「弦内端相对弦心的偏差」，`--bake 1.0` 能把该姿态烘成 `build/cb_flex_*.geo.json` 直接用 `geo_texview.py` 出图。<br>★ 常数（`FLEX_DEG` / `FLEX_PX` / `FLEX_PZ`）必须与 `client/CrossbowGeoModel.java` 一致 |
@@ -382,7 +425,7 @@ tools/  开发辅助脚本（见第五节）
 | AKM 弹匣容量 / 换弹时长 / 射速 / 散布 | `weapon/AkmRifleItem.java`（`MAG_SIZE` / `RELOAD_TICKS` / `FIRE_INTERVAL` / `fire()`） |
 | 弩的倍镜倍率 | `weapon/CrossbowWeaponItem.java` 的 `SCOPE_ZOOM`（`4.0F` = 4 倍）；开镜 FOV 由 `ClientEvents` 用 `1/SCOPE_ZOOM` 计算 |
 | **弩上弦 / 装填时机** | `weapon/CrossbowWeaponItem.java`：`RELOAD_TICKS`（上弦时长）、`tryStartReload()`（真正开始上弦，只有 R 键与右键两个入口）、`serverFire()`（击发后**只复位不复装**）、`cocked()`（图标/弩箭显隐就靠它） |
-| 手雷拔销时长 / 引信时长 / 投掷力道 | `item/GrenadeItem.java`（`PIN_TICKS` 20 / `FUSE_TICKS` 100 / `THROW_LIFT_DEG` 上抬角 / `THROW_INACCURACY`）；**各弹种初速**在 `FragGrenadeItem`（1.30）与 `FlashbangItem`（1.38）的构造参数 |
+| 手雷拔销时长 / 引信时长 / 投掷力道 | `item/GrenadeItem.java`（`PIN_TICKS` 20 / `FUSE_TICKS` 100 / **`AUTO_BACK_TICKS` 30（刚拔完就松手 ⇒ 自动插回销）** / `THROW_LIFT_DEG` 上抬角 / `THROW_INACCURACY`）；**各弹种初速**在 `FragGrenadeItem`（1.30）与 `FlashbangItem`（1.38）的构造参数 |
 | **手雷动作与手（拔销/投掷/左手拉环）** | `client/GrenadePose.java`（move 骨骼姿态 / 左右手模型点 / 手雷专用肩点）+ `client/WeaponArms.renderGrenade`；离线故事板 `tools/_gren_story.py mud\|flashbang` |
 | 手雷引信、伤害、效果半径 | `entity/GrenadeEntity.java` |
 | 三武器的有效射程与超距下坠 | `weapon/Ballistics.java`（`AKM_RANGE` / `BOLT_RANGE` / `BOW_RANGE` 与各 `*_IN_RANGE_GRAVITY`） |
@@ -390,11 +433,35 @@ tools/  开发辅助脚本（见第五节）
 | **弩弓臂内收 / 后弯 / 长短 / 弦粗细** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`（**内收量**与**弦拉动量**是两个自变量：上膛后 flexAmt=1、draw=0 ⇒ 弓臂保持内敛）；**弓臂长度/粗细**与**弦/弦心/尾羽的尺寸**在 `tools/crossbow_vox.py`（`LIMB_SX` / `LIMB_SY` / 画弦处的 `th` / 弦心与尾羽的 box）；`SKIP_MESHES` 决定哪些参考网格**不**生成方块（弦与线缆必须跳过，否则就是“又厚又分叉”）（改完跑生成器，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来；再手动装 `crossbow_geo.*`）|
 | **第一人称手臂大小 / 位置** | `client/WeaponArms.java` 的 `SHOULDER_R/L`（必须放在画面外，否则一片色块挡住枪）、`THICK`、`ROLL_R/L`；离线故事板 `tools/_armstory.py akm|crossbow` |
 | **开火时的视角反馈** | `client/AkmGeoModel.java#zeroCamera`（清零 = 不点头）+ `client/ClientEvents.java#applyAkmCamera`（camera 骨骼→视角的管道）；要做「后坐上跳」就在 `computeMovePose` 里用冲量自己做 |
-| **月相效果** | `moon/MoonManager.java`；**颜色（月亮/光晕/天顶/地平线/雾色/全屏叠色/尘埃）** 全在 `moon/MoonPhase.java` 的枚举里，改完跑一遍 `tools/_moonsky_mock.py` 看配色 |
+| **月相效果** | 颜色（月亮/光晕/天顶/地平线/雾色/全屏叠色/尘埃）全在 `moon/MoonPhase.java` 枚举里；蓝月幸运 / 黄月催作物 / 血月不眠 + 天亮收尾在 `moon/MoonBlessings.java`；四波尸潮在 `moon/MoonManager.java`；改配色跑一遍 `tools/_moonsky_mock.py` |
+| **月相出现概率 / 随机规则** | `moon/MoonManager.java`（`DEFAULT_MOON_CHANCE` 0.25、`DROUGHT_GRACE` 10、`DROUGHT_STEP` 0.01、上限 0.60）+ 存档字段 `MoonPhaseData.moonChance`（也可用 `/hexalunar moon chance` 改） |
+| **新增月相 / 改指令** | 枚举加一项（`moon/MoonPhase.java`：7 个颜色参数 + `superMoon`）+ `lang` 补 `moon.<id>` / `moon.title.<id>`；指令树在 `moon/MoonCommands.java` |
 
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r75`
+
+- **月相改成随机 + 管理指令 + 手雷保险销手感**
+  - 月相不再按夜数轮转：每夜独立掷骰（基础 25% + 旱情补偿），**可能连着两夜同一个月相，
+    也可能连旱几十夜**；随时可用 `/hexalunar moon set|random|chance|info` 调用（`/hlc` 简写）
+  - 尸潮波次推进移出血月分支 ⇒ 无月之夜用指令开的尸潮也能走完 4 波
+  - 手雷 / 震爆弹：**刚拔完 1.5 秒内松手 ⇒ 保险销自动插回**；手里攥着（任何状态）
+    **永远不点燃引信**（`ARMED` 只属于飞行中的抛射体，背包 / 副手 / 护甲里的雷一律折回安全态）
+
+> 版本 `1.0.0-r74`
+
+- **六相月灾重做：每个月相各管各的事**
+  - **蓝月 / 超级蓝月 = 玩家的幸运 I / II**（`MoonBlessings` 每 40 tick 续 300 tick），
+    **僵尸不再有任何加成** —— 旧版蓝月的移速修改器（`MoonSpawnEvents` 里的 `AttributeModifier`）已删
+  - **黄月 / 超级黄月 = 只催作物**：每 20 / 7 tick 在玩家 18 格内抽 24 处作物替它们跑一次原版
+    `randomTick`（`BlockTags.CROPS` / `SAPLINGS` 通吃）；**掉落翻倍已删**
+  - **血月 / 超级血月 = 四波尸潮 + 亡灵随时间进化 + 不能睡觉**：
+    尸潮固定 4 波（每波 6/9/13/18 只·人，间隔 6 秒，超级 ×1.5，第 14 天倍数那晚概率 0.75 且规模 ×1.5）；
+    `ZombieEvolution.nightRamp()` 让进化概率黄昏 ×1 → 天亮 ×2；
+    `PlayerSleepInBedEvent` → `NOT_POSSIBLE_NOW`；天亮 `dawnCleanup()` 清场只留 4 只孅徊者、白天不燃烧
+  - HUD 第三行跟着月相走：蓝 = 幸运等级 / 黄 = 作物加速 / 血 = 进化% + 夜不能寐
 
 > 版本 `1.0.0-r73`
 
