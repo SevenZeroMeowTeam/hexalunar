@@ -26,10 +26,10 @@ GEO = os.path.join(HERE, '..', 'src', 'main', 'resources', 'assets', 'hexalunar_
                    'geo', 'crossbow_geo.geo.json')
 
 # ---- 与 CrossbowGeoModel 必须一致的常数 --------------------------------------
-TIP_X = 4.454          # 弦心到弓臂锚点的横向距离（生成器 TIP_X；r65 弓臂放大后）
+TIP_X = 4.978          # 弦心到弓臂锚点的横向距离（生成器 TIP_X；r68 弓臂放大 1.9 倍后）
 DRAW_DZ = 1.80         # 拉满时弦心后退距离（生成器 DRAW_DZ）
 NOCK_Z0 = -5.20        # 弦面中心的 z（生成器 NOCK_Z0）
-STRING_LEN = 4.804     # 弦段方块长度（生成器按 hypot(4.454,1.80) 生成）
+STRING_LEN = 5.293     # 弦段方块长度（生成器按 hypot(4.978,1.80) 生成）
 FLEX_DEG = 8.0         # ★ 拉满时弓臂内收角（度）
 FLEX_BACK = 0.35       # ★ 拉满时两弓臂整体往射手方向滑的量（模型像素；只靠转的话外端主要只往内走）
 FLEX_PX = 1.599        # 弓臂弯折支点 x = 贴导轨内端的中心（生成器打印）

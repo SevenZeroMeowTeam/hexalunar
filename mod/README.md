@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r67**
+- 当前版本：**1.0.0-r68**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r67.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r68.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -144,12 +144,23 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r67.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r68.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r68** — 十字弩：弓臂再往外扩 + 拉弦变细：
+  - **弓臂外扩**：`tools/crossbow_vox.py` 的 `LIMB_SX` **1.7 → 1.9**（弓臂 / 线缆 / 弦三个分件一起放，
+    锚点取各自内端与 x=0）⇒ 外端 ±4.51 → **±4.88**、跨度 **9.02 → 9.76**（每侧再多探出 0.37 像素）。
+    Java 常数同步：`CrossbowGeoModel.TIP_X` 4.454 → **4.978**、`STRING_LEN` 4.804 → **5.293**
+    （= hypot(4.978, 1.80)）；`FLEX_PX/FLEX_PZ`（弓臂弯折支点）不动（锚点就在内端）
+  - **弦变细**：画弦处的 `th` **0.075 → 0.05**（弦截面 0.15 → **0.10 像素**）；弦长度与位置不变，
+    拉弦数学与「弦内端落在弦心」不受影响
+  - 自检：`python tools/crossbow_vox.py`（弦拉满内端 X 0.0000 / Z −3.4000 OK）、
+    `python tools/_cb_flex.py`（外端向内 0.52 / 向后 0.82，弦内端偏差 0.00）
+  - 只换了弩的 geo（贴图 md5 未变，glowmask 无需重生）
 
 - **r67** — AKM 瞄准线三点共线 + 弹道归零：
   - **修「手持 AKM 开火时弹道落在准星下方」**：枪口在枪管轴线上、比眼睛低（腰射 0.32 格 / 举枪 0.11 格），

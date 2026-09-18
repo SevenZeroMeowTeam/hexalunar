@@ -21,7 +21,7 @@ import software.bernie.geckolib.model.GeoModel;
  * <p><b>拉弦装弹</b>是连续动作（按住/R 键共 {@code RELOAD_TICKS}=30 tick），所以按
  * {@code CrossbowWeaponItem.reloadProgress} 程序化推骨骼：
  * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 DRAW_DZ，弩箭在后半段滑上弦。
- * 弦长取拉满所需（hypot(2.62, 1.80)=3.18），未拉时两段在中点重叠、被弦心缠绳盖住。
+ * 弦长取拉满所需（hypot(4.978, 1.80)=5.293），未拉时两段在中点重叠、被弦心缠绳盖住。
  * ★ TIP_X / DRAW_DZ / NOCK_Z0 必须与 {@code tools/crossbow_vox.py} 的同名常数一致
  *   （生成器末尾会打印并自检「拉满时两段弦的内端正好落在弦心」）。
  * ★ 上弦完成（cocked）后弦**不往后拉**（贴回两弓臂之间）——拉回去的弦心离镜头更近，
@@ -42,12 +42,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final ResourceLocation ANIMATION =
             new ResourceLocation(HexaLunarCalamity.MOD_ID, "animations/crossbow.animation.json");
 
-    /** 弓臂梢到弦心的横向距离（生成器 TIP_X）；★ r65 弓臂放大 1.7 倍后 = 4.454 */
-    private static final float TIP_X = 4.454F;
+    /** 弓臂梢到弦心的横向距离（生成器 TIP_X）；★ r68 弓臂放大 1.9 倍后 = 4.978 */
+    private static final float TIP_X = 4.978F;
     /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
     private static final float DRAW_DZ = 1.80F;
-    /** 弦段长度（生成器按 hypot(TIP_X, DRAW_DZ) 生成） */
-    private static final float STRING_LEN = 4.804F;
+    /** 弦段长度（生成器按 hypot(TIP_X, DRAW_DZ) 生成）；r68 = hypot(4.978, 1.80) */
+    private static final float STRING_LEN = 5.293F;
     /** 弦段转角 φ = atan(DRAW_DZ / TIP_X) */
     private static final float PHI_RAD = (float) Math.atan2(DRAW_DZ, TIP_X);
     /** 弦面中心的 z（生成器 NOCK_Z0；已含「以握把为原点」的平移） */

@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r67`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r68`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r67.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r68.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -385,7 +385,7 @@ tools/  开发辅助脚本（见第五节）
 | 手雷引信、伤害、效果半径 | `entity/GrenadeEntity.java` |
 | 三武器的有效射程与超距下坠 | `weapon/Ballistics.java`（`AKM_RANGE` / `BOLT_RANGE` / `BOW_RANGE` 与各 `*_IN_RANGE_GRAVITY`） |
 | 武器手持姿态 / 物品栏图标大小 | 各 `models/item/*.json` 的 `display`，或跑 `tools/scale_weapons.py` |
-| **弩弓臂内收 / 后弯 / 长短** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`；**弓臂本身的长度与粗细**在 `tools/crossbow_vox.py` 的 `LIMB_SX` / `LIMB_SY`（改完跑生成器 + `install_models.py`，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来） |
+| **弩弓臂内收 / 后弯 / 长短 / 弦粗细** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`；**弓臂本身的长度与粗细**在 `tools/crossbow_vox.py` 的 `LIMB_SX` / `LIMB_SY`，**弦的粗细**在同文件画弦处的 `th`（半宽，弦截面 = 2×th）（改完跑生成器，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来；再手动装 `crossbow_geo.*`）|
 | **第一人称手臂大小 / 位置** | `client/WeaponArms.java` 的 `SHOULDER_R/L`（必须放在画面外，否则一片色块挡住枪）、`THICK`、`ROLL_R/L`；离线故事板 `tools/_armstory.py akm|crossbow` |
 | **开火时的视角反馈** | `client/AkmGeoModel.java#zeroCamera`（清零 = 不点头）+ `client/ClientEvents.java#applyAkmCamera`（camera 骨骼→视角的管道）；要做「后坐上跳」就在 `computeMovePose` 里用冲量自己做 |
 | **月相效果** | `moon/MoonManager.java`；**颜色（月亮/光晕/天顶/地平线/雾色/全屏叠色/尘埃）** 全在 `moon/MoonPhase.java` 的枚举里，改完跑一遍 `tools/_moonsky_mock.py` 看配色 |
@@ -393,6 +393,19 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r68`
+
+- **十字弩：弓臂再往外扩一点 + 拉弦变细**
+  - **弓臂外扩**：`tools/crossbow_vox.py` 的 `LIMB_SX` **1.7 → 1.9**（弓臂/线缆/弦三个分件一起放，
+    锚点仍是各自内端/ x=0）⇒ 弓臂外端 ±4.51 → **±4.88**、跨度 **9.02 → 9.76**（每侧再多探出 0.37 像素）。
+    同步的 Java 常数：`CrossbowGeoModel.TIP_X` 4.454 → **4.978**、`STRING_LEN` 4.804 → **5.293**
+    （= hypot(4.978, 1.80)，`tools/_cb_flex.py` 同步）；`FLEX_PX/FLEX_PZ`（弓臂弯折支点）没动，因为锚点在内端。
+  - **弦变细**：画弦处的 `th` **0.075 → 0.05**（弦方块截面 0.15 → **0.10 像素** = 0.6 cm）。
+    弦长/位置没变，所以拉弦数学与“弦内端落在弦心”的判据不受影响。
+  - 自检：`python tools/crossbow_vox.py`（弦拉满内端 → X 0.0000 / Z −3.4000，目标一致 OK）、
+    `python tools/_cb_flex.py`（拉满时外端向内 0.52 / 向后 0.82，弦内端与弦心偏差 0.00）。
+  - 只换了弩的 geo（贴图 md5 未变，glowmask 不用重生）；没跑 `install_models.py`（会覆盖五行）。
 
 > 版本 `1.0.0-r67`
 

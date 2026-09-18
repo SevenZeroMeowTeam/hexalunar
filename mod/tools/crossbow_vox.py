@@ -45,7 +45,8 @@ STEP = 0.45
 #   参考 v2 的弓臂只到 |x| 3.2、而机身带（riser）就到 1.9 ⇒ 弓臂只比机身探出 1.3 像素，看着就像贴在弩身上。
 #   X 拉长会让体素变成 0.45×0.77 的长条，所以厚度（Y/Z）另外再放一点，观感上更像参考的宽弓臂。
 #   ★ limb / cables / string 三个分件必须**一起**放（弦锚点在弓臂梢上），锚点取各自的内端，否则会和 riser 脱开。
-LIMB_SX = 1.7
+#   ★ r68：用户「弓臂再往外扩一点」⇒ 1.7 → 1.9（跨度 9.02 → 9.76，每侧再多探出 0.37 像素）。
+LIMB_SX = 1.9
 LIMB_SY = 1.25
 # 弓臂（单侧分件，绕自己的内端缩放，内端不动 ⇒ 不会跟 riser 脱开）
 LIMB_X_MESHES = ('limb_L', 'limb_R')
@@ -324,7 +325,9 @@ def main(argv):
                 'size': [round(abs(x1 - x0), 4), round(abs(y1 - y0), 4), round(abs(z1 - z0), 4)],
                 'uv': {f: dict(rect(pat)) for f in FACES}}
 
-    th = 0.075
+    # ★ r68：用户「拉弦再细一点」⇒ 弦方块截面 0.15 → 0.10 像素（th 0.075 → 0.05）。
+    #   th 是弦方块的**半**厚/半宽（弦段由 (str_y ± th, nock_z ± th) 扫出）。
+    th = 0.05
     buckets['string_left'].append(box(-tip_x, -tip_x + half, str_y - th, str_y + th,
                                       nock_z - th, nock_z + th, PAT_STRING))
     buckets['string_right'].append(box(tip_x - half, tip_x, str_y - th, str_y + th,
