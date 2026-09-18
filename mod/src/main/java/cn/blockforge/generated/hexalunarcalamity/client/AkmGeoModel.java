@@ -50,12 +50,12 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
     private static final float BOLT_TRAVEL = 1.9F;
 
     /**
-     * 开火后坐（乘 WeaponAnim 的后坐冲量 recoil）：往射手方向后拖 + 略上抬 + 枪口微上跳。
-     * 单位与骨骼位移一致（模型像素 / 度）。
+     * 开火后坐（模型像素，乘 WeaponAnim 的后坐冲量）：**只沿枪管方向后拖**（+Z 朝射手）+ 极小上抬。
+     *
+     * <p>【不给俯仰】：原来那 3.2° 会让枪和双手一起向前低头（用户要求「后坐力应该是平行的」）。
      */
     private static final float KICK_BACK = 1.35F;
-    private static final float KICK_UP = 0.32F;
-    private static final float KICK_PITCH = 3.20F;
+    private static final float KICK_UP = 0.10F;
 
     /**
      * 当前这一遍渲染的枪上装了哪个瞄具（由 {@link AkmGeoRenderer} 从被渲染的 ItemStack 读 NBT 设入）。
@@ -108,39 +108,35 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
             // ------------------------------------------------------------------
-            // ★ 枪在手里「不晃」：idle / run / run_fast 会给 move 推上下位置（±0.11~0.9 像素）与俯仰
-            //   （3~5°），换弹动画还会低头（+7° / −1.2 像素），拉栓、拨保险也都动 move ——
-            //   这些都会让枪在两只手里一上一下地晃。只有**开火**那一瞬允许 move 动（那是后坐，
-            //   而且下面的双手是读 move 的，所以开枪时手会跟着枪一起顿）。
+            // ★ 枪在手里「不晃」+ 后坐/瞄准都「平行」：
+            //   · idle / run / run_fast / reload / bolt_pull / safety / fire 这些动画都会给 move 推
+            //     角度（fire 的 −2.8°、reload 的 +7°…），负角就是**枪口朝下低头** —— 枪和双手会
+            //     一起沉下去（用户要求后座与瞄准都应该是平行的）。所以角度一律清零。
+            //   · 位移只在**开火**那一瞬留（那是后坐后拖），其余时候（走路/待机/换弹/拉栓）收平。
             // ------------------------------------------------------------------
+            move.setRotX(0.0F);
+            move.setRotY(0.0F);
+            move.setRotZ(0.0F);
             if (!AkmAnimState.firing()) {
                 move.setPosX(0.0F);
                 move.setPosY(0.0F);
                 move.setPosZ(0.0F);
-                move.setRotX(0.0F);
-                move.setRotY(0.0F);
-                move.setRotZ(0.0F);
             }
             if (aim > 0.001F) {
-                float k = 1.0F - aim;
-                move.setRotX(move.getRotX() * k);
-                move.setRotY(move.getRotY() * k);
-                move.setRotZ(move.getRotZ() * k);
                 Player local = Minecraft.getInstance().player;
                 float aimDx = local == null ? WeaponMount.AKM_AIM_DX : WeaponMount.akmAimDx(local);
-                move.setPosX(move.getPosX() * k + aimDx * aim);
+                move.setPosX(aimDx * aim);
                 // ★ 举枪参照点随瞄具变：机械瞄具 3.44 / 红点 3.79 / 4 倍镜 4.00
-                move.setPosY(move.getPosY() * k + WeaponMount.akmAimDy(sightNow) * aim);
-                move.setPosZ(move.getPosZ() * k + WeaponMount.AKM_AIM_DZ * aim);
+                move.setPosY(WeaponMount.akmAimDy(sightNow) * aim);
+                move.setPosZ(WeaponMount.AKM_AIM_DZ * aim);
             }
-            // 后坐：走 move 骨骼而不是 display/pose —— 第一人称手臂（WeaponArms）读的就是 move，
-            // 所以「开火时双手跟着枪一起动」是自动的，不用在手臂那边再补一套。
+            // 后坐：沿枪管向后拖（走 move 骨骼而不是 display/pose —— 第一人称手臂（WeaponArms）
+            // 读的就是 move，所以「开火时双手跟着枪一起动」是自动的）。
             // 举枪时收掉大半，别把「照门—准星」那条瞄准线顶跑。
             float kick = WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim);
             if (kick > 0.001F) {
                 move.setPosY(move.getPosY() + KICK_UP * kick);
                 move.setPosZ(move.getPosZ() + KICK_BACK * kick);
-                move.setRotX(move.getRotX() - KICK_PITCH * kick * Mth.DEG_TO_RAD);
             }
         }
         CoreGeoBone cam = getAnimationProcessor().getBone("camera");

@@ -46,12 +46,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     /** 击发后弦震动持续 tick 数 */
     private static final int TWANG_TICKS = 9;
     /**
-     * 击发后坐（模型像素 / 度，乘 WeaponAnim 的后坐冲量）：后拖 + 略上抬 + 微上跳。
-     * 弩比枪轻，幅度取小一半。
+     * 击发后坐（模型像素，乘 WeaponAnim 的后坐冲量）：**只沿弩身方向后拖**（+Z 朝射手）+ 极小上抬。
+     *
+     * <p>不给俯仰（原来那 2.4° 会让弩和双手一起低头）。弩比枪轻，幅度取小一半。
      */
     private static final float KICK_BACK = 0.95F;
-    private static final float KICK_UP = 0.22F;
-    private static final float KICK_PITCH = 2.40F;
+    private static final float KICK_UP = 0.10F;
     /** 拉满时凸轮盘转过的角度（视觉：弦从凸轮上放开）；随 DRAW_DZ 等比放大 */
     private static final float CAM_SPIN = (float) Math.toRadians(60.0);
 
@@ -106,7 +106,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         float p = progress < 0.0F ? 0.0F : Mth.clamp(progress, 0.0F, 1.0F);
 
         // 前 65% 拉弦，后 35% 把箭推上弦
-        float draw = cocked ? 1.0F : Mth.clamp(p / 0.65F, 0.0F, 1.0F);
+        // ★ 上弦完成（cocked）后弦**不再往后拉**，直接贴回两弓臂之间（draw = 0）：
+        //   拉回去的弦心离镜头近 0.17 格，透视下会像一根浮在弩上方的「∧」（用户要求看不到）。
+        //   拉弦动作本身照旧（装填期间 draw 从 0 拉到 1），一上弦就弹回弓臂前面。
+        float draw = cocked ? 0.0F : Mth.clamp(p / 0.65F, 0.0F, 1.0F);
         float load = cocked ? 1.0F : Mth.clamp((p - 0.55F) / 0.45F, 0.0F, 1.0F);
 
         // 击发那一瞬（已上弦 → 未上弦）触发弦震动：两段同相摆动，弦心跟着前后抖
@@ -150,25 +153,24 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             bolt.setPosZ(draw * DRAW_DZ);
         }
 
-        // ★ 不「在手里晃」（同 AKM）：idle / run / run_fast 会给 move 推上下位置（±0.4~0.8 像素）
-        //   与俯仰（2.4~3.8°）——装填完成之后它还在摆，看起来就是弩在自己晃。
-        //   除击发那一瞬，一律把 move 收平，弩稳稳端在手里。
+        // ★ 不「在手里晃」+ 后坐「平行」（同 AKM）：
+        //   idle / run / run_fast 给 move 推的上下位置与俯仰、以及 fire 动画的 +2.4° 抬头，
+        //   都会让弩在手里晃 / 斜着抬头 —— 角度一律清掉，位置只在击发那一瞬留（后拖）。
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
+            move.setRotX(0.0F);
+            move.setRotY(0.0F);
+            move.setRotZ(0.0F);
             if (!CrossbowAnimState.firing()) {
                 move.setPosX(0.0F);
                 move.setPosY(0.0F);
                 move.setPosZ(0.0F);
-                move.setRotX(0.0F);
-                move.setRotY(0.0F);
-                move.setRotZ(0.0F);
             }
-            // 击发后坐：走 move 骨骼（第一人称手臂读的就是它，所以手会跟着弩一起顿）
+            // 后坐：沿弩身后拖（走 move 骨骼，第一人称手臂读的就是它 ⇒ 手会跟着一起顿）
             float kick = WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil;
             if (kick > 0.001F) {
                 move.setPosY(move.getPosY() + KICK_UP * kick);
                 move.setPosZ(move.getPosZ() + KICK_BACK * kick);
-                move.setRotX(move.getRotX() - KICK_PITCH * kick * Mth.DEG_TO_RAD);
             }
         }
 
