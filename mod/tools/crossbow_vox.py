@@ -41,6 +41,17 @@ GRIP_TARGET = (0.0, -0.95, 0.66)
 DRAW_DZ = 1.80
 # 体素大小（模型像素）：0.45 -> ~820 方块（0.35 要 1400+，太贵；0.5 -> ~690）
 STEP = 0.45
+# ★ 弓臂放大（r65）：用户要求「弓臂明显探出机身」（参照 模型/十字弩.bbmodel 那个宽弓臂）。
+#   参考 v2 的弓臂只到 |x| 3.2、而机身带（riser）就到 1.9 ⇒ 弓臂只比机身探出 1.3 像素，看着就像贴在弩身上。
+#   X 拉长会让体素变成 0.45×0.77 的长条，所以厚度（Y/Z）另外再放一点，观感上更像参考的宽弓臂。
+#   ★ limb / cables / string 三个分件必须**一起**放（弦锚点在弓臂梢上），锚点取各自的内端，否则会和 riser 脱开。
+LIMB_SX = 1.7
+LIMB_SY = 1.25
+# 弓臂（单侧分件，绕自己的内端缩放，内端不动 ⇒ 不会跟 riser 脱开）
+LIMB_X_MESHES = ('limb_L', 'limb_R')
+# 横跨两侧的分件（弦 / 线缆）必须绕 x=0 缩放，否则整个模型会变成一边长一边短
+LIMB_MID_MESHES = ('string', 'cables')
+LIMB_THICK_MESHES = ('limb_L', 'limb_R')
 # 贴图：v2 贴图缩到 480²，右下角留 32px 宽带子放「弦/弦心/弩箭」纯色块
 TEX_SIZE = 512
 PATCH = 480
@@ -139,6 +150,54 @@ def load_ref(path=REF):
     return meshes, tris, tex, float(res.get('width') or 16), raw_uv_max
 
 
+def limb_anchor_x(xs):
+    """分件所在的 ±X 侧以及它的内端 x（弓臂放大时以它为锚点，内端不动 ⇒ 不会跟 riser 脱开）"""
+    sign = 1.0 if (min(xs) + max(xs)) > 0 else -1.0
+    return sign * min(abs(v) for v in xs)
+
+
+def scale_limbs(tris, meshes):
+    """把弓臂（+ 线缆 / 弦）按 LIMB_SX / LIMB_SY 放大，并回写这些分件的包围盒。"""
+    if LIMB_SX == 1.0 and LIMB_SY == 1.0:
+        return tris, meshes
+    cy = 0.0
+    n = 0
+    for name in LIMB_THICK_MESHES:
+        (_, y0, _), (_, y1, _) = meshes[name]
+        cy += (y0 + y1) / 2.0
+        n += 1
+    cy = cy / n
+    # ★ 锚点必须取**整个分件**的内端 x（按三角形算的话，梢部那几片会以自己的最小 x 为轴 ⇒ 几乎不动）
+    anchors = {}
+    for name in LIMB_X_MESHES:
+        (x0, _, _), (x1, _, _) = meshes[name]
+        anchors[name] = limb_anchor_x([x0, x1])
+    for name in LIMB_MID_MESHES:
+        anchors[name] = 0.0
+    out = []
+    for t in tris:
+        name = t[6]
+        if name not in anchors:
+            out.append(t)
+            continue
+        ax = anchors[name]
+        pts = []
+        for p in t[:3]:
+            nx = ax + LIMB_SX * (p[0] - ax)
+            if name in LIMB_THICK_MESHES:
+                pts.append((nx, cy + LIMB_SY * (p[1] - cy), p[2]))
+            else:
+                pts.append((nx, p[1], p[2]))
+        out.append(tuple(pts) + t[3:])
+    for name in LIMB_X_MESHES + LIMB_MID_MESHES:
+        pts = [p for t in out if t[6] == name for p in t[:3]]
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        zs = [p[2] for p in pts]
+        meshes[name] = ((min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs)))
+    return out, meshes
+
+
 def uv_space(tex_w, res_w, raw_uv_max):
     """判断 mesh 的 UV 存在哪个空间：归一化 / 分辨率单位 / 已经是像素。"""
     if raw_uv_max <= 1.0001:
@@ -217,6 +276,13 @@ def main(argv):
           % (len(meshes), len(tris), tex.size, res_w, raw_max))
     print('UV 空间判定: %s  ->  x%.1f' % (kind, uv_scale))
 
+    if LIMB_SX != 1.0 or LIMB_SY != 1.0:
+        lmin0, lmax0 = meshes['limb_L']
+        tris, meshes = scale_limbs(tris, meshes)
+        lmin1, lmax1 = meshes['limb_L']
+        print('弓臂放大: X x%.2f 厚度(Y) x%.2f   弓臂外端 X %.2f -> %.2f（内端不动）'
+              % (LIMB_SX, LIMB_SY, lmax0[0], lmax1[0]))
+
     gmin, gmax = meshes['grip']
     gc = [(gmin[i] + gmax[i]) / 2 for i in range(3)]
     delta = tuple(GRIP_TARGET[i] - gc[i] for i in range(3))
@@ -269,7 +335,7 @@ def main(argv):
     rmin, rmax = meshes['rail']
     rail_front, rail_top = rmin[2] + delta[2], rmax[1] + delta[1]
     bolt_y = rail_top + 0.16
-    bolt_rear, bolt_tip = nock_z + 0.55, rail_front - 2.40
+    bolt_rear, bolt_tip = nock_z + 0.55, rail_front - 2.90
     buckets['bolt'].append(box(-0.20, 0.20, bolt_y - 0.18, bolt_y + 0.18,
                                bolt_tip + 0.6, bolt_rear - 0.6, PAT_BOLT_SH))
     buckets['bolt'].append(box(-0.26, 0.26, bolt_y - 0.26, bolt_y + 0.26,
@@ -330,6 +396,13 @@ def main(argv):
           % (str_y, half, math.degrees(math.atan2(DRAW_DZ, tip_x))))
     print('导轨前端 z=%.3f 顶面 y=%.3f   弩箭 尾 z=%.3f 尖 z=%.3f y=%.3f'
           % (rail_front, rail_top, bolt_rear, bolt_tip, bolt_y))
+    lmin, lzmax = meshes['limb_L'][0], meshes['limb_L'][1]
+    print('FLEX_PX = %.3f  FLEX_PZ = %.3f  （弓臂内端最前角 = 弓臂弯折支点，模型像素）'
+          % (lmin[0] + delta[0] + step / 2.0, lmin[2] + delta[2]))
+    lminx = min(abs(meshes['limb_L'][0][0]), abs(meshes['limb_R'][1][0]))
+    lmaxx = max(abs(meshes['limb_L'][1][0]), abs(meshes['limb_R'][0][0]))
+    print('弓臂 X 范围 %.3f ~ %.3f（模型像素）  跨度 %.2f'
+          % (lminx + delta[0], lmaxx + delta[0], (lmaxx + delta[0]) * 2))
 
     phi = math.atan2(DRAW_DZ, tip_x)
     ok = True

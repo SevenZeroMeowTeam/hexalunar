@@ -42,10 +42,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final ResourceLocation ANIMATION =
             new ResourceLocation(HexaLunarCalamity.MOD_ID, "animations/crossbow.animation.json");
 
-    /** 弓臂梢到弦心的横向距离（生成器 TIP_X：等于弦网格的半跨） */
-    private static final float TIP_X = 2.62F;
+    /** 弓臂梢到弦心的横向距离（生成器 TIP_X）；★ r65 弓臂放大 1.7 倍后 = 4.454 */
+    private static final float TIP_X = 4.454F;
     /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
     private static final float DRAW_DZ = 1.80F;
+    /** 弦段长度（生成器按 hypot(TIP_X, DRAW_DZ) 生成） */
+    private static final float STRING_LEN = 4.804F;
     /** 弦段转角 φ = atan(DRAW_DZ / TIP_X) */
     private static final float PHI_RAD = (float) Math.atan2(DRAW_DZ, TIP_X);
     /** 弦面中心的 z（生成器 NOCK_Z0；已含「以握把为原点」的平移） */
@@ -74,9 +76,9 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final float FLEX_DEG = 8.0F;
     /** ★ 拉满时两弓臂整体**向后（射手方向）**滑的量（模型像素）—— 只靠转的话外端主要只往内走 */
     private static final float FLEX_BACK = 0.35F;
-    /** 弓臂弯折支点（模型像素）＝贴导轨那一端（最前端）—— 必须与 tools/_cb_flex.py 的同名常数一致 */
-    private static final float FLEX_PX = 1.50F;
-    private static final float FLEX_PZ = -8.60F;
+    /** 弓臂弯折支点（模型像素）：贴导轨那一端（最前端）—— 由 tools/crossbow_vox.py 打印 */
+    private static final float FLEX_PX = 1.599F;
+    private static final float FLEX_PZ = -8.697F;
     /** cam / 弦锚点所在平面的 z（= 这两个骨骼 pivot 的 z） */
     private static final float CAM_Z = -5.20F;
 
@@ -171,9 +173,11 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         if (left != null) left.setRotY(-draw * PHI_RAD + tw);
         if (right != null) right.setRotY(draw * PHI_RAD - tw);
 
-        // ★ 弓臂内收（r63/r64）：拉弦时两弓臂绕「贴导轨的内端」向内转 + 整体往射手方向滑 ——
-        //   外端**向内约 0.5 + 向后约 0.35**（用户选的「又向内又向后」），松开/击发后回到
+        // ★ 弓臂内收（r63/r64/r65）：拉弦时两弓臂绕「贴导轨的内端」向内转 + 整体往射手方向滑 ——
+        //   外端**向内约 0.5 + 向后约 0.7**（用户选的「又向内又向后」），松开/击发后回到
         //   参考网格（图片）那个张开姿态。弦与凸轮盘挂在弓臂梢上，跟着走。
+        //   ★ 弦锚点因此产生的位移要用到弦心/弩箭/左手上（见 nockTravel），三者必须严格一致，
+        //   否则弦会落在弦心后面（拉满时差 0.36 像素，肉眼就是“弦没贴住弦心”）。
         float flex = draw * FLEX_DEG * Mth.DEG_TO_RAD;
         float back = draw * FLEX_BACK;
         flexLimb("prod_right", "cam_right", "string_right", 1, -flex, back);
@@ -185,11 +189,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         if (camL != null) camL.setRotY(-draw * CAM_SPIN);
         if (camR != null) camR.setRotY(draw * CAM_SPIN);
 
-        // 弦心（缠绳）随拉弦后退（行程 = DRAW_DZ + 弓臂后弯量，弦与弓臂一起往后挪）；
+        // 弦心（缠绳）随拉弦后退：行程 = 弦绷直所需（弦段长度固定 ⇒ 锚点内移后能拉得更深）+ 弓臂后滑量；
         // 震动时跟着弦心一起前后抖（弦在 X 上的半投影 = TIP_X）
+        float travel = nockTravel(draw);
         CoreGeoBone nock = getAnimationProcessor().getBone("nock");
         if (nock != null) {
-            nock.setPosZ(draw * (DRAW_DZ + FLEX_BACK) - TIP_X * tw);
+            nock.setPosZ(travel - TIP_X * tw);
             nock.setPosY(0.0F);
         }
 
@@ -200,7 +205,7 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             //   否则箭会先凭空出现在导轨上、手再慢吞吞地过去「假装」放箭。
             boolean hasBolt = cocked || p > 0.84F;
             bolt.setPosY(hasBolt ? 0.0F : BOLT_HIDE_Y);
-            bolt.setPosZ(draw * (DRAW_DZ + FLEX_BACK));
+            bolt.setPosZ(travel);
         }
         // ★ 「只前后动，不上下动」（同 AKM）：角度一律清零，X/Y 一律清零，Z 只由后坐冲量驱动。
         //   以前在开火时给动画的 Z 放行 —— 那是阶跃值，每发都让弩顿一下（「多一帧」）。
@@ -272,24 +277,60 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         return lerp(TMP_B, ARM_SUPPORT, ease((p - 0.97F) / 0.03F), out);
     }
 
-    /** 弦心上的握点（弦心 z = NOCK_Z0 + draw·(DRAW_DZ+FLEX_BACK)，手抓在它后面一点、弦面下方） */
+    /** 弦心上的握点（弦心 z = NOCK_Z0 + nockTravel(draw)，手抓在它后面一点、弦面下方） */
     private static float[] stringPoint(float draw, float[] out) {
         out[0] = 0.26F;
         out[1] = 1.30F;
-        out[2] = NOCK_Z0 + draw * (DRAW_DZ + FLEX_BACK) + 0.30F;
+        out[2] = NOCK_Z0 + nockTravel(draw) + 0.30F;
         return out;
     }
 
-    /** 弩箭上的握点（箭尾在弦心上，所以跟着 draw·(DRAW_DZ+FLEX_BACK) 走） */
+    /** 弩箭上的握点（箭尾在弦心上，所以跟着 nockTravel 走） */
     private static float[] boltPoint(float[] out) {
         out[0] = 0.20F;
         out[1] = 1.41F;
-        out[2] = -5.80F + lastDraw * (DRAW_DZ + FLEX_BACK);
+        out[2] = -5.80F + nockTravel(lastDraw);
         return out;
     }
 
     /**
-     * 弓臂内收：绕「贴导轨的内端」（{@link #FLEX_PX}/{@link #FLEX_PZ}）转 θ，
+     * 弦锚点（cam / 弦骨骼的 pivot，它在弓臂梢上）在「弓臂绕内端转 θ + 整体后滑 back」后的位移。
+     *
+     * <p>δ = R(θ)·(A − P) + P − A + (0, 0, back)，其中 A = (side·TIP_X, CAM_Z)、P = (side·FLEX_PX, FLEX_PZ)。
+     */
+    private static float[] anchorShift(int side, float theta, float back, float[] out) {
+        float fpx = side * FLEX_PX;
+        float ax = side * TIP_X;
+        float adx = ax - fpx;
+        float adz = CAM_Z - FLEX_PZ;
+        float c = Mth.cos(theta);
+        float s = Mth.sin(theta);
+        out[0] = (adx * c + adz * s + fpx) - ax;
+        out[1] = (-adx * s + adz * c + FLEX_PZ) - CAM_Z + back;
+        return out;
+    }
+
+    /** 右弓臂内收角（弧度，负 = 外端向内 + 向后） */
+    private static float flexTheta(float draw) {
+        return -draw * FLEX_DEG * Mth.DEG_TO_RAD;
+    }
+
+    /**
+     * 弦心相对初始位置的后退量 —— **弦 / 弩箭 / 左手共用的唯一一份**。
+     *
+     * <p>= 弦锚点被弓臂带走的 z 位移 + 弦绷直所需的后退（弦段长度固定为 Stringlen，
+     * 锚点往内移之后，同样的弦能把弦心拉得更靠后），第二项即 L·sin(draw·φ)。
+     */
+    private static float nockTravel(float draw) {
+        float[] sh = anchorShift(1, flexTheta(draw), draw * FLEX_BACK, TMP_SHIFT);
+        return sh[1] + STRING_LEN * Mth.sin(draw * PHI_RAD);
+    }
+
+    /** nockTravel 用的临时缓冲（渲染单线程） */
+    private static final float[] TMP_SHIFT = new float[2];
+
+    /**
+     * 弓臂内收：绕「贴导轨的内端」（{@link #FLEX_PX}/{@link #FLEX_PZ}）转 θ、再整体后滑 back，
      * 外端因此**向内 + 向后**走 —— 就是「拉弦时弓臂向内收缩」。
      *
      * <p>GeckoLib 的骨骼变换是 {@code pivot + pos + R(rot)·(p − pivot)}，绕任意点 A 转
@@ -312,13 +353,9 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         limb.setPosZ(dz - (-dx * s + dz * c) + back);
 
         // 弦锚点随弓臂走：δ = R(θ)·(A − P) + P − A，再加弓臂整体后滑的 back
-        float ax = side * TIP_X;
-        float adx = ax - fpx;
-        float adz = CAM_Z - FLEX_PZ;
-        float ox = (adx * c + adz * s + fpx) - ax;
-        float oz = (-adx * s + adz * c + FLEX_PZ) - CAM_Z + back;
-        shift(camName, ox, oz);
-        shift(stringName, ox, oz);
+        float[] sh = anchorShift(side, theta, back, new float[2]);
+        shift(camName, sh[0], sh[1]);
+        shift(stringName, sh[0], sh[1]);
     }
 
     /** 整段平移骨骼（只挪 pos，不动旋转） */

@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r64`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r65`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r64.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r65.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -73,14 +73,17 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 > 拉弦动作本身照旧（装填期间 `draw` 0→1，能看到弦被拉回），一上弦就弹回弓臂前面。
 > 实现在 `client/CrossbowGeoModel.java`（`draw = cocked ? 0 : p/0.65`）。
 
-> **十字弩的弓臂（r63/r64）**：拉弦时两弓臂**向内收 + 往射手方向后弯**——
+> **十字弩的弓臂（r63~r65）**：拉弦时两弓臂**向内收 + 往射手方向后弯** ——
 > 绕「贴导轨的内端」向内转 **8°**，同时整根弓臂**后滑 0.35**（只靠转的话外端主要只往内走，看着像贴在弩身上）：
-> 外端实测**向内 0.49 + 向后 0.63**（模型像素），弓臂外缘宽度 7.06 → 6.24。
+> 外端实测**向内 0.51 + 向后 0.77**（模型像素）。
+> **弓臂本身在 r65 被拉长加粗了一轮**（生成器 `LIMB_SX = 1.7` / `LIMB_SY = 1.25`，绕各自内端缩放）：
+> 弓臂外端从 ±3.77 到 **±4.51**、跨度 **7.06 → 9.02**（另一份参考 `十字弩.bbmodel` 的弓臂是 ±6.8、
+> 而机身带只 ±0.8，所以我们这版弓臂偏短、看着总像贴在弩身上）。
 > 弦与凸轮盘的 pivot 就在弓臂梢上，所以它们跟着弓臂一起走（弦不会脱开）；
-> 弦心与弩箭的行程同步加上那 0.35（保持弦贴在弦心上）。
+> 弦心 / 弩箭 / 左手的目标点共用同一份 `nockTravel(draw)`（弦锚点被弓臂带走的位移 + 弦绷直所需的后退），
+> 这样弦内端永远正落在弦心上（拉满时偏差 0.00）。
 > **击发/未拉弦时回到参考网格（图片）那个张开姿态**（`draw = 0` ⇒ 转角与后滑量都为 0）。
-> 离线验算 + 出图：`python tools/_cb_flex.py [--bake 1.0]`（打印收进量/后弯量与弦内端偏差，
-> 烘焙出来的 `build/cb_flex_*.geo.json` 直接丢给 `geo_texview.py` 就能出对比图）。
+> 离线验算 + 出图：`python tools/_cb_flex.py [--bake 1.0]`。
 
 ### 光学瞄具（AKM 顶部导轨）
 
@@ -140,7 +143,10 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
     （开火那一 tick 加上去、之后每 tick ×0.55 衰减，天生平滑）
   - **枪身角度一律保持「平行」（r60）**：任何动画给 `move` 推的角度（fire 的 −2.8°、reload 的 +7°）
     都会让枪和双手一起低头/抬头，所以开火与瞄准时 `move` 的角度都清零；后座**只后拖不给俯仰**
-  - 后坐走的是 **`move` 骨骼**（不是 display/pose），而手臂读的就是 `move` ⇒
+  - **肩点必须放在画面外（r65）**：肩点原来在 `z≈−0.42`（离相机只有 0.42 格），为了够到枪还要把手臂
+    拉到 1.7 倍长 ⇒ 屏幕上就是**一大片皮肤色梯形把枪遮住**（用户录屏里的主要问题）。
+    现在肩点放到画面下缘外、约 0.8 格处，肩距≈0.9 格（拉伸只有 ~1.2 倍），手臂粗细再乘 0.85
+  - **后坐走的是 **`move` 骨骼**（不是 display/pose），而手臂读的就是 `move` ⇒
     **开火时双手一定跟着枪动**，不用在手臂那边再补一套
 - 手臂摆放：手臂方块在 pose 坐标里是 **原点端=肩、局部 +0.75 格端=手**，所以「把手放到 H」= 原点平移 `H − R·(方块局部 x 中心, 0.75·s, 0)`；
   只沿长度方向拉伸（`pose.scale(1,s,1)`），粗细保持原版。注意右臂方块局部 x 中心是 **−0.375**、左臂（mirror）是 **+0.375**，不补偿手就偏半个方块
@@ -367,13 +373,29 @@ tools/  开发辅助脚本（见第五节）
 | 手雷引信、伤害、效果半径 | `entity/GrenadeEntity.java` |
 | 三武器的有效射程与超距下坠 | `weapon/Ballistics.java`（`AKM_RANGE` / `BOLT_RANGE` / `BOW_RANGE` 与各 `*_IN_RANGE_GRAVITY`） |
 | 武器手持姿态 / 物品栏图标大小 | 各 `models/item/*.json` 的 `display`，或跑 `tools/scale_weapons.py` |
-| **弩弓臂内收 / 后弯** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`（拉弦时弓臂绕「贴导轨内端」向内转 + 整体往射手方向滑）；**必须**与 `tools/_cb_flex.py` 的同名常数一致，改完跑一遍那个脚本看位移与弦内端偏差 |
+| **弩弓臂内收 / 后弯 / 长短** | `client/CrossbowGeoModel.java` 的 `FLEX_DEG` / `FLEX_BACK` / `FLEX_PX` / `FLEX_PZ`；**弓臂本身的长度与粗细**在 `tools/crossbow_vox.py` 的 `LIMB_SX` / `LIMB_SY`（改完跑生成器 + `install_models.py`，它会把新的 TIP_X / FLEX_PX / FLEX_PZ 打印出来） |
+| **第一人称手臂大小 / 位置** | `client/WeaponArms.java` 的 `SHOULDER_R/L`（必须放在画面外，否则一片色块挡住枪）、`THICK`、`ROLL_R/L`；离线故事板 `tools/_armstory.py akm|crossbow` |
 | **开火时的视角反馈** | `client/AkmGeoModel.java#zeroCamera`（清零 = 不点头）+ `client/ClientEvents.java#applyAkmCamera`（camera 骨骼→视角的管道）；要做「后坐上跳」就在 `computeMovePose` 里用冲量自己做 |
 | 月相效果 | `moon/MoonManager.java` |
 
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r65`
+
+- **修「第一人称手臂巨大，一大片皮肤色挡住枪」**（用户录屏里的主要问题）：
+  - 肩点原来在 `z≈−0.42`（离相机只有 0.42 格），而手在 `z≈−0.9` ⇒ 既要拉长 1.7 倍去够、近端又离镜头极近，
+    屏幕上就是一大片梯形。现在肩点放到**画面下缘外约 0.8 格**（右 `x 0.55` / 左 `x −0.42`，两只手从
+    下方两个角伸进来，像原版那样），肩距≈0.9 格（拉伸降到 ~1.2 倍），手臂粗细再乘 **0.85**
+  - 离线可先看故事板：`python tools/_armstory.py akm`（`tools/_dblhold.py` 的肩点/粗细已与 Java 同步）
+- **十字弩弓臂拉长加粗**（用户要求「像参考模型那样明显探出机身」）：
+  - 参考 `模型/十字弩.bbmodel` 的弓臂是 ±6.8、而 `十字弩_v2`（现在用的这版）机身带就 ±2.8 ⇒
+    弓臂只探出 0.76，看着就贴在弩身上。生成器新增 `LIMB_SX = 1.7` / `LIMB_SY = 1.25`：
+    **弓臂（连同线缆、弦）绕各自内端横向拉长**（单侧分件绕内端、横跨两侧的绕 x=0，否则模型会不对称），
+    外端 ±3.77 → **±4.51**、跨度 **7.06 → 9.02**；同时弩箭前端再前伸 0.5（弦心后退变多，不然拉满时箭头会缩进导轨）
+  - 弦心 / 弩箭 / 左手的目标点改用**同一份** `nockTravel(draw)`（锚点被弓臂带走的位移 + 弦绷直所需的后退），
+    弦内端永远精确落在弦心上（之前弓臂一放大就差了 0.36）
 
 > 版本 `1.0.0-r64`
 

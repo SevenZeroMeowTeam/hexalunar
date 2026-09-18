@@ -56,13 +56,18 @@ public final class WeaponArms {
      * 的方块起点大约在 {@code (0.58, -0.38, -0.50)}、朝 {@code (0.33, 0.47, -0.82)} 伸出去）：
      * 也就是「从屏幕右下角外伸进来、朝前方」。所以肩点要**靠前**（z 约 -0.4），
      * 太靠后（z ≈ -0.2）手臂根部会贴着相机，屏幕边上就是一片糊的色块。
+     * ★ r65 修正：肩点再也不能放到 z≈-0.42（离相机只有 0.42 格）——那时整条手臂在屏幕上
+     *   就是一大片皮肤色梯形，把枪遮住（用户录屏里的问题）。现在放到画面下缘外、约 0.8 格处，
+     *   并且**不再为了够到肩点把手臂拉长**（肩距≈0.9 格 ⇒ 拉伸只有 ~1.2 倍）。
      */
-    private static final float[] SHOULDER_R = {0.62F, -0.70F, -0.42F};
-    private static final float[] SHOULDER_L = {0.05F, -0.72F, -0.50F};
+    private static final float[] SHOULDER_R = {0.55F, -0.85F, -0.80F};
+    private static final float[] SHOULDER_L = {-0.42F, -0.85F, -0.78F};
     /** 原版手臂长度（格） */
     private static final float ARM_LEN = 0.75F;
     /** 手臂方块在 pose 坐标里的 x 中心（格） */
     private static final float HALF = 0.375F;
+    /** 手臂粗细（相对原版 0.25 格的倍率）：略细一点，少挡视野 */
+    private static final float THICK = 0.85F;
     /** 绕手臂轴的自转（度）：让掌心大致朝向枪身 */
     private static final float ROLL_R = 155.0F;
     private static final float ROLL_L = 24.0F;
@@ -126,14 +131,14 @@ public final class WeaponArms {
                                       .setColumn(2, zr)
                                       .getNormalizedRotation(new Quaternionf());
         // 手臂方块的局部 x 中心：右臂 -0.375、左臂 +0.375（左臂在模型里是 mirror 出来的）
-        float dx = right ? -HALF : HALF;
+        float dx = (right ? -HALF : HALF) * THICK;
         float ox = xr.x * dx + y.x * ARM_LEN * s;
         float oy = xr.y * dx + y.y * ARM_LEN * s;
         float oz = xr.z * dx + y.z * ARM_LEN * s;
         pose.pushPose();
         pose.translate(hand[0] - ox, hand[1] - oy, hand[2] - oz);
         pose.mulPose(q);
-        pose.scale(1.0F, s, 1.0F);
+        pose.scale(THICK, s, THICK);
         if (right) {
             pr.renderRightHand(pose, buffer, light, player);
         } else {

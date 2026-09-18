@@ -26,14 +26,14 @@ GEO = os.path.join(HERE, '..', 'src', 'main', 'resources', 'assets', 'hexalunar_
                    'geo', 'crossbow_geo.geo.json')
 
 # ---- 与 CrossbowGeoModel 必须一致的常数 --------------------------------------
-TIP_X = 2.62           # 弦心到弓臂锚点的横向距离（生成器 TIP_X）
+TIP_X = 4.454          # 弦心到弓臂锚点的横向距离（生成器 TIP_X；r65 弓臂放大后）
 DRAW_DZ = 1.80         # 拉满时弦心后退距离（生成器 DRAW_DZ）
 NOCK_Z0 = -5.20        # 弦面中心的 z（生成器 NOCK_Z0）
-STRING_LEN = 3.18      # 弦段方块长度（生成器按 hypot(2.62,1.80)=3.179 生成）
+STRING_LEN = 4.804     # 弦段方块长度（生成器按 hypot(4.454,1.80) 生成）
 FLEX_DEG = 8.0         # ★ 拉满时弓臂内收角（度）
 FLEX_BACK = 0.35       # ★ 拉满时两弓臂整体往射手方向滑的量（模型像素；只靠转的话外端主要只往内走）
-FLEX_PX = 1.50         # 弓臂弯折支点 x = 贴导轨内端的中心
-FLEX_PZ = -8.60        # 弓臂弯折支点 z = 最前端
+FLEX_PX = 1.599        # 弓臂弯折支点 x = 贴导轨内端的中心（生成器打印）
+FLEX_PZ = -8.697       # 弓臂弯折支点 z = 最前端（生成器打印）
 CAM_Z = -5.20          # cam / 弦锚点的 z（= 这两个骨骼 pivot 的 z）
 NOCK_HALF_X = 0.60     # 弦心方块半宽（判据用）
 NOCK_HALF_Z = 0.26     # 弦心方块半深
@@ -73,9 +73,17 @@ def flex_disp(pivot, p, side, draw):
     return (d[0], d[1] + draw * FLEX_BACK)
 
 
+def nock_travel(draw):
+    """弦心相对初始的后退量 —— 与 Java 的 CrossbowGeoModel.nockTravel 同一份：
+    锚点被弓臂带走的 z 位移 + 弦绷直所需的后退（弦长固定，锚点内移后能拉得更深）。"""
+    d = flex_disp((FLEX_PX, FLEX_PZ), (TIP_X, CAM_Z), 1, draw)
+    phi = math.atan2(DRAW_DZ, TIP_X)
+    return d[1] + STRING_LEN * math.sin(draw * phi)
+
+
 def nock_z(draw):
-    """弦心 z：行程 = DRAW_DZ + 弓臂后滑量（弦与弓臂一起往后挪）"""
-    return NOCK_Z0 + draw * (DRAW_DZ + FLEX_BACK)
+    """弦心 z"""
+    return NOCK_Z0 + nock_travel(draw)
 
 
 def limb_extents(name, side):
@@ -188,7 +196,7 @@ def bake(draw, out=None):
         shifts[cam] = (d[0], 0.0, d[1])
         shifts[string] = (d[0], 0.0, d[1])
         rots[string] = (0.0, -side * phi, 0.0)
-    travel = draw * (DRAW_DZ + FLEX_BACK)
+    travel = nock_travel(draw)
     shifts['nock'] = (0.0, 0.0, travel)
     shifts['bolt'] = (0.0, 0.0, travel)
 

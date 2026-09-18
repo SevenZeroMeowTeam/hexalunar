@@ -35,10 +35,12 @@ PX = 16.0                                            # 像素 → 格
 ARM_FP = np.array([0.56, -0.52, -0.72])              # 格
 ARM_W, ARM_L, ARM_D = 0.25, 0.75, 0.25               # 手臂方块（格）
 ARM_XC = {'right': -0.375, 'left': 0.375}            # 方块在 pose 坐标系里的 x 中心
+# 手臂粗细倍率（对应 Java 的 WeaponArms.THICK）
+THICK = 0.85
 
 # 可调参数（格）：肩点 / 手要放到的模型像素点 / 掌朝向自转
-# 可调参数：肩点（格，相机空间）/ 手要放到的模型像素点 / 掌朝向自转
-SHOULDER = {'right': np.array([0.72, -1.00, -0.20]), 'left': np.array([0.10, -0.95, -0.62])}
+# ★ 必须与 WeaponArms.SHOULDER_R / SHOULDER_L 一致
+SHOULDER = {'right': np.array([0.55, -0.85, -0.80]), 'left': np.array([-0.42, -0.85, -0.78])}
 HAND_PX = {'right': [0.0, 0.55, -0.15], 'left': [0.0, 2.05, -6.30]}
 HAND_NUDGE = {'right': np.array([0.0, 0.0, 0.0]), 'left': np.array([0.0, 0.0, 0.0])}
 ROLL = {'right': 155.0, 'left': 24.0}
@@ -86,7 +88,7 @@ def arm_frame(side, hand, shoulder):
     back = rx(a) @ ry(b) @ rz(c)
     err = float(np.abs(back - basis).max())
     # 只沿手臂长度方向拉伸（粗细保持原版），否则整条胳膊会变成大棒子
-    origin = np.asarray(hand, dtype=float) - basis @ np.array([ARM_XC[side], ARM_L * s, 0.0])
+    origin = np.asarray(hand, dtype=float) - basis @ np.array([ARM_XC[side] * THICK, ARM_L * s, 0.0])
     return origin, s, (a, b, c), err, basis
 
 
@@ -100,9 +102,9 @@ def box_faces(origin_px, s, basis, xc_px):
 
     只有长度方向乘 s，粗细不变 —— 对应 Java 里的 pose.scale(1, s, 1)。
     """
-    xs = [xc_px - 2.0, xc_px + 2.0]
+    xs = [xc_px - 2.0 * THICK, xc_px + 2.0 * THICK]
     ys = [0.0, 12.0 * s]
-    zs = [-2.0, 2.0]
+    zs = [-2.0 * THICK, 2.0 * THICK]
     pts = [origin_px + (basis @ np.array([x, y, z]))
            for x in xs for y in ys for z in zs]
     idx = [(0, 1, 3, 2), (4, 5, 7, 6), (0, 1, 5, 4), (2, 3, 7, 6), (0, 2, 6, 4), (1, 3, 7, 5)]
