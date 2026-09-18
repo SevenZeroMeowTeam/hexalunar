@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r58`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r59`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r58.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r59.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -87,8 +87,18 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | **十字弩** | 托护木 → 抓住弩弦往后拉（跟着弦心）→ 松手下去取箭 → 把箭推上箭槽 → 回护木 |
 
 - 手的目标点写在各自 GeoModel 里（模型像素），经 `client/GunFrame.java` 换成相机空间；
-  `GunFrame` 记的是 `move` 骨骼（含**举枪位移**与跑步/开火/换弹动画），所以手臂自动跟着枪一起动，
+  `GunFrame` 记的是 `move` 骨骼（含**举枪位移**与**开火后坐**），所以手臂自动跟着枪一起动，
   不需要在手臂代码里重复任何武器逻辑
+- **枪稳在手里、开火时双手跟着一起顿**（r59）：
+  - 原版对非空物品会套一段「**攻击挥动**」（`applyItemArmAttackTransform`，最多 `rotX −80°`），
+    而 `LivingEntity#swing` 在 swingTime 过半时会重置 ⇒ **按住左键就一直重触发**；
+    全自动射击时枪就一直在手里上下点头。现在用 Forge 的
+    `IClientItemExtensions#applyForgeHandTransform` 接管这一步（只保留手部基准平移，见 `client/WeaponHandGrip.java`）
+  - `move` 骨骼只允许在**开火**那一瞬动（后坐：后拖 1.35px + 上抬 0.32px + 枪口 3.2°）；
+    走路 / 待机 / 换弹 / 拉栓 / 拨保险这些动画推的位移与俯仰（idle ±0.11、run ±0.5、run_fast ±0.9 像素 + 3~5°）
+    一律收平 —— 枪不再在手里晃
+  - 后坐走的是 **`move` 骨骼**（不是 display/pose），而手臂读的就是 `move` ⇒
+    **开火时双手一定跟着枪动**，不用在手臂那边再补一套
 - 手臂摆放：手臂方块在 pose 坐标里是 **原点端=肩、局部 +0.75 格端=手**，所以「把手放到 H」= 原点平移 `H − R·(方块局部 x 中心, 0.75·s, 0)`；
   只沿长度方向拉伸（`pose.scale(1,s,1)`），粗细保持原版。注意右臂方块局部 x 中心是 **−0.375**、左臂（mirror）是 **+0.375**，不补偿手就偏半个方块
 - 离线核对：`mod/tools/_armstory.py akm|crossbow` 会按进度渲出故事板（枪 + 双臂），
@@ -214,6 +224,15 @@ tools/  开发辅助脚本（见第五节）
     被近平面切一刀 → 屏幕上一大片皮肤色（r57 的 bug）。建正交基要**一列一列地填**：
     `new Matrix3f().setColumn(0, x).setColumn(1, y).setColumn(2, z).getNormalizedRotation(q)`。
     离线自查：`mod/tools/_joml_probe/`（`JomlProbe` 验 JOML 约定、`ArmSim` 算手臂方块落点）。
+
+15. **原版会给第一人称的「非空物品」套一段攻击挥动**
+    `ItemInHandRenderer#renderArmWithItem` 的物品分支 = `applyItemArmTransform`（手部基准
+    `(±0.56, −0.52 − 0.6·equip, −0.72)`）+ `applyItemArmAttackTransform`（挥剑用的，最多 `rotX −80°`）。
+    而 `LivingEntity#swing` 在 swingTime 过半时会重置 ⇒ **按住左键（全自动射击）就一直重触发**，
+    枪会在手里不停上下点头。枪械要接管这一步：`IClientItemExtensions#applyForgeHandTransform`
+    返回 `true` = 原版跳过它自己那些变换（物品照旧渲染，只是少一段 pose）。
+    自己补画的第一人称手臂是跟着骨骼走的，跟不到这段 pose 变换 ⇒ 不接管就会「枪在手心里自己晃」。
+    举弓类姿态（十字弩按住右键拉弦）仍要交回原版（`UseAnim.BOW` 那套位移本来就是给弓写的）。
 
 ---
 

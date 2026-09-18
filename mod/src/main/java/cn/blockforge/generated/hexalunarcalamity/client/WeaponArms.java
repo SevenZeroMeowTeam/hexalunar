@@ -42,6 +42,14 @@ public final class WeaponArms {
     public static final double ARM_Z = -0.72D;
 
     /**
+     * 原版手部基准 Y：拿非空物品时还会叠一段「抬起物品」的位移 {@code −0.6·equip}
+     * （刚切到手上那几帧物品是从下面升上来的），手臂用同一个值才不会脱手。
+     */
+    static float baseY() {
+        return (float) ARM_Y - 0.6F * WeaponHandGrip.equipNow;
+    }
+
+    /**
      * 肩点（相机空间，格）：固定不动，手离得远手臂就按比例拉长。
      *
      * <p>数值照抄原版第一人称手臂的落点（{@code ItemInHandRenderer#renderPlayerArm} 里那条链算出来

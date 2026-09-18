@@ -74,7 +74,7 @@ public final class GunFrame {
         float oy = (s1 * s2 * c3 + c1 * s3) * DX + (-s1 * s2 * s3 + c1 * c3) * DY + (-s1 * c2) * DZ;
         float oz = (-c1 * s2 * c3 + s1 * s3) * DX + (c1 * s2 * s3 + s1 * c3) * DY + (c1 * c2) * DZ;
         out[0] = (float) WeaponArms.ARM_X + (tx + scale * (pivotX + posX + ox)) / 16.0F;
-        out[1] = (float) WeaponArms.ARM_Y + (ty + scale * (pivotY + posY + oy)) / 16.0F;
+        out[1] = WeaponArms.baseY() + (ty + scale * (pivotY + posY + oy)) / 16.0F;
         out[2] = (float) WeaponArms.ARM_Z + (tz + scale * (pivotZ + posZ + oz)) / 16.0F;
         return out;
     }
