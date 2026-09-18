@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r72**
+- 当前版本：**1.0.0-r73**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r72.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r73.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -144,12 +144,23 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r72.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r73.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
+
+- **r73** — 十字弩：弦回到弓臂桁上 + 上弦后弦成 V + 图标分两态 + 离手自动退弦退箭：
+  - **弦的位置（根因）**：`crossbow_vox.py` 的 `scale_limbs()` 原来按弓臂包围盒**中心**做 Y 放大
+    （×1.25）⇒ 弓臂桁部被抬高，而弦还在参考高度 ⇒ 弦看着掉在桁下面、两头也够不到桁。
+    现改成**以弦面为锚点**放大（桁部不动、肚子变深）；实测 桁顶 y1.66｜弦面 y1.70｜导轨顶 y1.60
+  - **未上弦 = 未缩放的 U + 直线弦**；**上弦后 = 缩小的 U + V 字形弦**（`draw = cocked ? 1 : …`，
+    弦保持拉着，击发才弹回）
+  - **图标也分两态**（`staticPose()` 按 `cockedNow`）：已上弦 → 内敛弓臂 + V 弦 + 弩箭；
+    未上弦 → 张开弓臂 + 直线弦 + 无弩箭
+  - **离手自动退弦**：不在主手/副手时取消上弦 + `cocked=false` + **那支弩箭退回背包**
+    （`AmmoUtil.refund()`），并给一句提示
 
 - **r72** — 十字弩：击发后不再自动上弦：
   - `CrossbowWeaponItem.serverFire()` 末尾不再 `tryStartReload()`，只把 `cocked` 置回 false

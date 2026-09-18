@@ -78,6 +78,7 @@
   "message.hexalunar_calamity.pin_pulled": "保险销已拔出，压杆还被手压着 —— 引信没点，拿多久都不会响；左键投出，要插回销：潜行 + 右键",
   "message.hexalunar_calamity.pin_reinsert_hint": "要插回保险销：按住 Shift（潜行）再按右键 1 秒",
   "message.hexalunar_calamity.need_cock": "十字弩未上弦：右键（或 R 键）上弦装填",
+  "message.hexalunar_calamity.crossbow_uncocked": "弩已离手：自动退弦，弩箭退回背包",
   "message.hexalunar_calamity.pin_back": "保险销已插回",
   "message.hexalunar_calamity.pin_slipped": "拔到一半松手，保险销自己弹了回去",
   "message.hexalunar_calamity.need_pin": "先按住右键把保险销拔了才能丢出去",

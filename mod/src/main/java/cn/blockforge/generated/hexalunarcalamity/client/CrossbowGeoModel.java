@@ -151,17 +151,15 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         float p = progress < 0.0F ? 0.0F : Mth.clamp(progress, 0.0F, 1.0F);
 
         // 前 65% 拉弦，后 35% 把箭推上弦
-        // ★ 上弦完成（cocked）后弦**不再往后拉**，直接贴回两弓臂之间（draw = 0）：
-        //   拉回去的弦心离镜头近 0.17 格，透视下会像一根浮在弩上方的「∧」（用户要求看不到）。
-        //   拉弦动作本身照旧（装填期间 draw 从 0 拉到 1），一上弦就弹回弓臂前面。
-        //   ★ r69：但**弓臂本身保持内敛**（见下面的 flexAmt）—— 上完膛弓臂不回弹，
-        //   击发（cocked → false）之后才张开。
-        float draw = cocked ? 0.0F : Mth.clamp(p / 0.65F, 0.0F, 1.0F);
+        // ★ r73（用户要求）：上弦完成后**弦保持 V 字形**（拉着）—— 以前上膛后弦会贴回两弓臂之间
+        //   （draw = 0），看着就像“没上弦”。现在 cocked 时 draw 钉在 1：弦成 V、弦心/弩箭都在后位，
+        //   击发那一刻才弹回（并触发弦震动）。
+        float draw = cocked ? 1.0F : Mth.clamp(p / 0.65F, 0.0F, 1.0F);
         float load = cocked ? 1.0F : Mth.clamp((p - 0.55F) / 0.45F, 0.0F, 1.0F);
         // ★ r69：把「弓臂向内收多少」与「弦被拉多深」分成两个量：
         //   · 拉弦时弓臂内收 = 拉的进度（0→1）
         //   · **上完膛保持内敛**（cocked 时钉在 1，不弹回去），击发后才回到张开姿态
-        //   而弦本身在上膛完成后仍旧贴回两弓臂之间（draw = 0，否则弦心离镜头太近会像个「∧」）。
+        //   r73 起弦在上膛后也保持拉着（draw = 1）⇒ V 字形，只有击发才弹回。
         float flexAmt = cocked ? 1.0F : draw;
 
         // 击发那一瞬（已上弦 → 未上弦）触发弦震动：两段同相摆动，弦心跟着前后抖
@@ -379,8 +377,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     }
 
     /**
-     * GUI 图标 / 掉落物 / 展示框用的**静态姿态**：弦、凸轮盘、弓臂、弩箭全部归位，
-     * 弩箭按被渲染那把弩的 {@link #cockedNow} 决定看不看得到（换弹进度是本地玩家的，画图标不能看它）。
+     * GUI 图标 / 掉落物 / 展示框用的**静态姿态**：按 {@link #cockedNow} 摆成「未上弦」或「已上弦」：
+     *
+     * <p>· 未上弦：弓臂张开（未内收）、弦贴回两弓臂之间（一条直线平行于导轨顶面）、看不到弩箭
+     * <br>· 已上弦：弓臂内敛（缩小的 U）、**弦拉成 V 字形**、弩箭在箭槽里
      */
     private void staticPose() {
         CoreGeoBone move = getAnimationProcessor().getBone("move");
@@ -415,6 +415,22 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             bolt.setPosY(cockedNow ? 0.0F : BOLT_HIDE_Y);
             bolt.setPosZ(0.0F);
         }
+        // ★ r73：已上弦的图标要跟手持时一个样子 —— 弦成 V、弓臂内敛、弩箭（弦心）在后位
+        if (!cockedNow) return;
+        float flex = FLEX_DEG * Mth.DEG_TO_RAD;
+        flexLimb("prod_right", "cam_right", "string_right", 1, -flex, FLEX_BACK);
+        flexLimb("prod_left", "cam_left", "string_left", -1, flex, FLEX_BACK);
+        CoreGeoBone left = getAnimationProcessor().getBone("string_left");
+        CoreGeoBone right = getAnimationProcessor().getBone("string_right");
+        if (left != null) left.setRotY(-PHI_RAD);
+        if (right != null) right.setRotY(PHI_RAD);
+        float travel = nockTravel(1.0F, 1.0F);
+        CoreGeoBone nock = getAnimationProcessor().getBone("nock");
+        if (nock != null) {
+            nock.setPosZ(travel);
+            nock.setPosY(0.0F);
+        }
+        if (bolt != null) bolt.setPosZ(travel);
     }
 
     private static float[] copy(float[] src, float[] out) {

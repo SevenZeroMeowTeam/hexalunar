@@ -78,6 +78,7 @@
   "message.hexalunar_calamity.pin_pulled": "Pin out, spoon still held down - fuse is not lit, it will not go off in your hand; LMB to throw, to re-insert: Sneak + RMB",
   "message.hexalunar_calamity.pin_reinsert_hint": "To re-insert the pin: hold Shift (sneak) and press RMB for 1s",
   "message.hexalunar_calamity.need_cock": "Crossbow is not cocked: RMB (or R) to cock/load it",
+  "message.hexalunar_calamity.crossbow_uncocked": "Crossbow left your hand: string released, bolt returned to inventory",
   "message.hexalunar_calamity.pin_back": "Pin re-inserted",
   "message.hexalunar_calamity.pin_slipped": "You let go mid-pull, the pin slid back in",
   "message.hexalunar_calamity.need_pin": "Pull the pin first: hold RMB for a second",

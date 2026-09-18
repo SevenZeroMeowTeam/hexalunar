@@ -38,6 +38,19 @@ public final class AmmoUtil {
         return n;
     }
 
+    /**
+     * 退回 n 发弹药（弩退弦、AKM 取消换弹之类用）：塞回背包，塞不下就丢脚下。
+     *
+     * <p>创造模式与“有创造弹药盒 = 无限供弹”时不折腾（那种情况下弹药本来就不计数）。
+     */
+    public static void refund(Player player, AmmoType type, int n) {
+        if (n <= 0 || player.isCreative() || infinite(player)) return;
+        for (int i = 0; i < n; i++) {
+            ItemStack stack = new ItemStack(type.get());
+            if (!player.addItem(stack)) player.drop(stack, false);
+        }
+    }
+
     /** 消耗 n 发弹药，成功返回 true */
     public static boolean consume(Player player, AmmoType type, int n) {
         if (player.isCreative()) return true;

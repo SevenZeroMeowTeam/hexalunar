@@ -139,19 +139,46 @@ public class CrossbowWeaponItem extends Item implements WeaponAmmo, GeoItem {
         }
     }
 
-    /** 走时间完成上弦（服务端）：弦挂上、弩箭入槽 */
+    /**
+     * 走时间完成上弦（服务端）：弦挂上、弩箭入槽；另外负责「离手就退弦」。
+     */
     @Override
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slot, boolean selected) {
         super.inventoryTick(stack, level, entity, slot, selected);
         if (level.isClientSide) return;
         CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains(TAG_RELOAD_UNTIL)) return;
+        if (tag == null) return;
+
+        // ★ r73（用户要求）：**离手就自动退弦** —— 主手/副手都不再拿着它时，
+        //   把已经上好弦的那支弩箭退回背包、弦回到初始位置；正在上弦的也一并取消。
+        //   判据用「是不是拿在手上」，不是 selected（副手、丢地上、放进箱子都算离手）。
+        if (entity instanceof Player player && !isInHand(player, stack)) {
+            boolean chambered = tag.getBoolean(TAG_COCKED);
+            if (chambered || tag.contains(TAG_RELOAD_UNTIL)) {
+                tag.remove(TAG_RELOAD_UNTIL);
+                tag.putBoolean(TAG_COCKED, false);
+                if (chambered) {
+                    AmmoUtil.refund(player, AmmoType.BOLT, 1);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                            "message.hexalunar_calamity.crossbow_uncocked").withStyle(
+                            net.minecraft.ChatFormatting.GRAY), true);
+                }
+            }
+            return;
+        }
+
+        if (!tag.contains(TAG_RELOAD_UNTIL)) return;
         if (reloading(stack, level.getGameTime())) return;
         tag.remove(TAG_RELOAD_UNTIL);
         tag.putBoolean(TAG_COCKED, true);
         // 弦到位 / 箭入槽的机械声
         level.playSound(null, entity.getX(), entity.getY(), entity.getZ(),
                 ModSounds.AKM_BOLT.get(), SoundSource.PLAYERS, 0.55F, 1.45F);
+    }
+
+    /** 这把弩是不是正拿在手上（主手或副手） */
+    private static boolean isInHand(Player player, ItemStack stack) {
+        return player.getMainHandItem() == stack || player.getOffhandItem() == stack;
     }
 
     @Override

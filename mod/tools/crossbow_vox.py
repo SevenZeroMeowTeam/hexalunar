@@ -172,13 +172,11 @@ def scale_limbs(tris, meshes):
     """把弓臂（+ 线缆 / 弦）按 LIMB_SX / LIMB_SY 放大，并回写这些分件的包围盒。"""
     if LIMB_SX == 1.0 and LIMB_SY == 1.0:
         return tris, meshes
-    cy = 0.0
-    n = 0
-    for name in LIMB_THICK_MESHES:
-        (_, y0, _), (_, y1, _) = meshes[name]
-        cy += (y0 + y1) / 2.0
-        n += 1
-    cy = cy / n
+    # ★ r73：Y 方向放大**以弦面（弓臂桁）为锚点**，不能以弓臂包围盒中心为锚点 ——
+    #   以中心为锚点会把桁部抬高（×1.25），而弦还在参考高度 ⇒ 弦看着掉在桁下面、
+    #   两头也够不到桁（用户反馈「弦的位置不对」）。以弦面为锚点：桁部原地不动，只有肚子变深。
+    (_, sy0, _), (_, sy1, _) = meshes['string']
+    cy = (sy0 + sy1) / 2.0
     # ★ 锚点必须取**整个分件**的内端 x（按三角形算的话，梢部那几片会以自己的最小 x 为轴 ⇒ 几乎不动）
     anchors = {}
     for name in LIMB_X_MESHES:
@@ -326,8 +324,17 @@ def main(argv):
         })
 
     # ---- 弦 / 弦心 / 弩箭（方块画，UV 走右下角纯色带）----
+    # 弦的**半跨**与**高度**仍取参考网格里 string 网格的包围盒（放大 2.05 倍后）：
+    # 参考网格里弦就在弓臂桁上方 0.1 像素处，而桁部现在不会被 Y 放大抬高（见 scale_limbs）
+    # ⇒ 弦自然就挂在桁上、也跟导轨顶面齐平（弩箭尾正好落在弦心上）。
     smin, smax = meshes['string']
     tip_x = max(abs(smin[0]), abs(smax[0]))
+    limb_vox = [(lo[0] + ix * step, lo[1] + iy * step, lo[2] + iz * step)
+                for (ix, iy, iz), (_u, _v, mesh) in cells.items() if mesh in LIMB_X_MESHES]
+    print('弓臂桁（体素）最高 y %.2f｜弦面 y %.2f（导轨顶面 y %.2f）'
+          % (max(p[1] for p in limb_vox) + step,
+             (smin[1] + smax[1]) / 2 + delta[1],
+             (meshes['rail'][1][1] + delta[1])))
     nock_z = (smin[2] + smax[2]) / 2 + delta[2]
     str_y = (smin[1] + smax[1]) / 2 + delta[1]
     half = math.hypot(tip_x, DRAW_DZ)
