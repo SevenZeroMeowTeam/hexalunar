@@ -26,6 +26,12 @@ import software.bernie.geckolib.model.GeoModel;
  *   （生成器末尾会打印并自检「拉满时两段弦的内端正好落在弦心」）。
  * ★ 上弦完成（cocked）后弦**不往后拉**（贴回两弓臂之间）——拉回去的弦心离镜头更近，
  *   透视下会像一根浮在弩上方的「∧」。
+ *
+ * <p><b>弓臂内收（r63）</b>：拉弦时两弓臂绕「贴导轨的内端」向内转（拉满 9°），外端因此
+ * **向内 + 向后**走 —— 看上去就是「弓臂向内收缩」；松开 / 击发后回到参考网格（图片）那个张开姿态。
+ * 弦与凸轮盘的 pivot 就在弓臂梢上，所以它们跟着弓臂平移同样的位移，不会脱开。
+ * ★ FLEX_DEG / FLEX_PX / FLEX_PZ 必须与 {@code tools/_cb_flex.py} 的同名常数一致
+ *   （那个脚本会打印收进量、弦内端偏差，并能烘焙姿态出图）。
  */
 public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
 
@@ -62,6 +68,21 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final float KICK_BACK = 0.95F;
     /** 拉满时凸轮盘转过的角度（视觉：弦从凸轮上放开）；随 DRAW_DZ 等比放大 */
     private static final float CAM_SPIN = (float) Math.toRadians(60.0);
+
+    // ------------------------------------------------------------------ 弓臂内收（r63）
+    /** ★ 拉满时弓臂内收角（度）：绕「贴导轨的内端」转，外端向内 + 向后 ⇒「弓臂向内收缩」 */
+    private static final float FLEX_DEG = 9.0F;
+    /** 弓臂弯折支点（模型像素）＝贴导轨那一端（最前端）—— 必须与 tools/_cb_flex.py 的同名常数一致 */
+    private static final float FLEX_PX = 1.50F;
+    private static final float FLEX_PZ = -8.60F;
+    /** cam / 弦锚点所在平面的 z（= 这两个骨骼 pivot 的 z） */
+    private static final float CAM_Z = -5.20F;
+
+    /**
+     * 这一遍渲染的弩是不是「已上弦」（由 {@link CrossbowGeoRenderer} 从被渲染的 ItemStack 读）。
+     * 图标 / 展示框里要按这个决定看不看得到弩箭（换弹状态是**本地玩家**的，不能拿来画图标）。
+     */
+    static boolean cockedNow = false;
 
     /** 弦震动计时（客户端静态字段，跨帧保留） */
     private static long twangUntil = 0L;
@@ -108,6 +129,16 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             if (!(stack.getItem() instanceof CrossbowWeaponItem)) return;
         }
 
+        // ★ GUI 图标 / 掉落物 / 展示框：画一帧**静态姿态**就走。
+        //   那些语境里「开火中 / 换弹进度」同样是真的（都是本地玩家的全局状态），
+        //   不归位的话物品栏图标会在开火时往后拖、上弦时弦还会被拉走（用户反馈过）。
+        //   同时**不捕获 frame** —— 第一人称手臂在 RenderHandEvent 里比物品先画，
+        //   读的是上一帧的捕获值，被图标那一遍覆盖掉就会「弩动、手不动」。
+        if (!handPass) {
+            staticPose();
+            return;
+        }
+
         long now = mc.level.getGameTime();
         boolean cocked = CrossbowWeaponItem.cocked(stack);
         float progress = CrossbowWeaponItem.reloadProgress(stack, now);   // 0..1，-1 表示没在装
@@ -138,6 +169,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         if (left != null) left.setRotY(-draw * PHI_RAD + tw);
         if (right != null) right.setRotY(draw * PHI_RAD - tw);
 
+        // ★ 弓臂内收（r63）：拉弦时两弓臂绕「贴导轨的内端」向内转 —— 外端向内 + 向后走，
+        //   松开 / 击发后回到参考网格（图片）那个张开姿态。弦与凸轮盘挂在弓臂梢上，跟着走。
+        float flex = draw * FLEX_DEG * Mth.DEG_TO_RAD;
+        flexLimb("prod_right", "cam_right", "string_right", 1, -flex);
+        flexLimb("prod_left", "cam_left", "string_left", -1, flex);
+
         // 复合十字弩：拉弦时两个凸轮盘跟着转（弦从凸轮上放/收）
         CoreGeoBone camL = getAnimationProcessor().getBone("cam_left");
         CoreGeoBone camR = getAnimationProcessor().getBone("cam_right");
@@ -160,7 +197,6 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             bolt.setPosY(hasBolt ? 0.0F : BOLT_HIDE_Y);
             bolt.setPosZ(draw * DRAW_DZ);
         }
-
         // ★ 「只前后动，不上下动」+「GUI 图标不能跟着动」（同 AKM）：
         //   角度一律清零，X/Y 位移一律清零，Z（沿弩身）只在**击发**那一瞬留。
         CoreGeoBone move = getAnimationProcessor().getBone("move");
@@ -174,7 +210,7 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
                 move.setPosZ(0.0F);
             }
             // 后坐：只沿弩身后拖（走 move 骨骼，第一人称手臂读的就是它 ⇒ 手会跟着一起前后动）
-            float kick = handPass ? WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil : 0.0F;
+            float kick = WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil;
             if (kick > 0.001F) {
                 move.setPosZ(move.getPosZ() + KICK_BACK * kick);
             }
@@ -255,6 +291,85 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         out[1] = 1.41F;
         out[2] = -5.80F + lastDraw * DRAW_DZ;
         return out;
+    }
+
+    /**
+     * 弓臂内收：绕「贴导轨的内端」（{@link #FLEX_PX}/{@link #FLEX_PZ}）转 θ，
+     * 外端因此**向内 + 向后**走 —— 就是「拉弦时弓臂向内收缩」。
+     *
+     * <p>GeckoLib 的骨骼变换是 {@code pivot + pos + R(rot)·(p − pivot)}，绕任意点 A 转
+     * 等价于「原旋转 + pos 补偿 {@code (A − pivot) − R·(A − pivot)}」
+     * （同一份数学的离线验算在 {@code tools/_cb_flex.py}，带数值自检与出图）。
+     * 弦 / 凸轮盘的 pivot 就落在弓臂梢上，所以它们要跟着弓臂**平移**同样的位移，
+     * 否则弦会跟弓臂脱开。
+     */
+    private void flexLimb(String limbName, String camName, String stringName, int side, float theta) {
+        CoreGeoBone limb = getAnimationProcessor().getBone(limbName);
+        if (limb == null) return;
+        float fpx = side * FLEX_PX;
+        float dx = fpx - limb.getPivotX();
+        float dz = FLEX_PZ - limb.getPivotZ();
+        float c = Mth.cos(theta);
+        float s = Mth.sin(theta);
+        limb.setRotY(theta);
+        limb.setPosX(dx - (dx * c + dz * s));
+        limb.setPosZ(dz - (-dx * s + dz * c));
+
+        // 弦锚点随弓臂走：δ = R(θ)·(A − P) + P − A
+        float ax = side * TIP_X;
+        float adx = ax - fpx;
+        float adz = CAM_Z - FLEX_PZ;
+        float ox = (adx * c + adz * s + fpx) - ax;
+        float oz = (-adx * s + adz * c + FLEX_PZ) - CAM_Z;
+        shift(camName, ox, oz);
+        shift(stringName, ox, oz);
+    }
+
+    /** 整段平移骨骼（只挪 pos，不动旋转） */
+    private void shift(String boneName, float dx, float dz) {
+        CoreGeoBone bone = getAnimationProcessor().getBone(boneName);
+        if (bone == null) return;
+        bone.setPosX(bone.getPosX() + dx);
+        bone.setPosZ(bone.getPosZ() + dz);
+    }
+
+    /**
+     * GUI 图标 / 掉落物 / 展示框用的**静态姿态**：弦、凸轮盘、弓臂、弩箭全部归位，
+     * 弩箭按被渲染那把弩的 {@link #cockedNow} 决定看不看得到（换弹进度是本地玩家的，画图标不能看它）。
+     */
+    private void staticPose() {
+        CoreGeoBone move = getAnimationProcessor().getBone("move");
+        if (move != null) {
+            move.setRotX(0.0F);
+            move.setRotY(0.0F);
+            move.setRotZ(0.0F);
+            move.setPosX(0.0F);
+            move.setPosY(0.0F);
+            move.setPosZ(0.0F);
+        }
+        for (String name : new String[]{"cam_left", "cam_right", "string_left", "string_right",
+                "nock"}) {
+            CoreGeoBone bone = getAnimationProcessor().getBone(name);
+            if (bone == null) continue;
+            bone.setRotX(0.0F);
+            bone.setRotY(0.0F);
+            bone.setRotZ(0.0F);
+            bone.setPosX(0.0F);
+            bone.setPosY(0.0F);
+            bone.setPosZ(0.0F);
+        }
+        for (String name : new String[]{"prod_left", "prod_right"}) {
+            CoreGeoBone bone = getAnimationProcessor().getBone(name);
+            if (bone == null) continue;
+            bone.setRotY(0.0F);
+            bone.setPosX(0.0F);
+            bone.setPosZ(0.0F);
+        }
+        CoreGeoBone bolt = getAnimationProcessor().getBone("bolt");
+        if (bolt != null) {
+            bolt.setPosY(cockedNow ? 0.0F : BOLT_HIDE_Y);
+            bolt.setPosZ(0.0F);
+        }
     }
 
     private static float[] copy(float[] src, float[] out) {

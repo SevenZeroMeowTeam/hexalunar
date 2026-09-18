@@ -54,6 +54,12 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
      *
      * <p>GeckoLib 的 {@code setCustomAnimations} 对 **GUI 图标 / 掉落物 / 展示框**一样会跑，
      * 不加这个判断的话「举枪位移 + 开火后坐」会把物品栏里的图标也一起推走（用户反馈过）。
+     * 所以非手持语境直接走 {@link #staticPose()}（只画一帧静态姿态）。
+     *
+     * <p>另一个容易忽略的副作用：{@link #frame} 也**只在手持语境下更新**。
+     * 第一人称手臂（{@link WeaponArms}）是在 {@code RenderHandEvent} 里比物品**先**画的，
+     * 读的是上一帧的捕获值；如果图标那一遍（display=GUI）也去写 frame，
+     * 手臂拿到就是一套「无举枪、无后坐」的空值 ⇒ 枪在动、手不跟着（用户说的「上下错位」）。
      */
     static boolean handPass = false;
 
@@ -113,7 +119,17 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
         //    会把最后一帧留在骨骼上 → 镜头被永久歪掉/压低，所以「没有动作在跑」时每帧把它清零。
         // ------------------------------------------------------------------
         boolean held = handPass;
-        float aim = held ? Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F) : 0.0F;
+        // ★ GUI 图标 / 掉落物 / 展示框：只画一帧**静态姿态**。
+        //   这些语境里 firing() / 换弹进度同样是全局状态（都是本地玩家的），不归位的话：
+        //   · 开火时**物品栏图标会跟着往后拖**（用户反馈「7 格物品栏里 akm 发射时还是往后移动」）
+        //   · 换弹时图标里的弹匣会掉出来、枪机会自己后拉
+        //   同时**不捕获 frame**：第一人称手臂在 RenderHandEvent 里比物品先画、读的是上一帧的捕获，
+        //   被图标那一遍覆盖成一套空值后，就是用户说的「枪在动、手臂不跟着（上下错位）」。
+        if (!held) {
+            staticPose();
+            return;
+        }
+        float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F);
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
             // ------------------------------------------------------------------
@@ -141,8 +157,8 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             }
             // 后坐：只沿枪管向后拖（走 move 骨骼而不是 display/pose —— 第一人称手臂（WeaponArms）
             // 读的就是 move，所以「开火时双手跟着枪一起前后动」是自动的）。
-            // 举枪时收掉大半，别把「照门—准星」那条瞄准线顶跑；GUI 图标里完全不推。
-            float kick = held ? WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim) : 0.0F;
+            // 举枪时收掉大半，别把「照门—准星」那条瞄准线顶跑。
+            float kick = WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim);
             if (kick > 0.001F) {
                 move.setPosZ(move.getPosZ() + KICK_BACK * kick);
             }
@@ -157,10 +173,7 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
         }
 
         // 瞄具：只显示当前装的那个（没装就两个都藏）
-        CoreGeoBone dot = getAnimationProcessor().getBone("dot_sight");
-        CoreGeoBone scope = getAnimationProcessor().getBone("scope_4x");
-        if (dot != null) dot.setHidden(sightNow != cn.blockforge.generated.hexalunarcalamity.weapon.Sights.DOT);
-        if (scope != null) scope.setHidden(sightNow != cn.blockforge.generated.hexalunarcalamity.weapon.Sights.SCOPE);
+        applySights();
 
         captureFrame(move);
         float p = localReloadProgress();
@@ -207,6 +220,59 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             casing.setRotX(t * CASE_SPIN_X * Mth.DEG_TO_RAD);
             casing.setRotY(t * CASE_SPIN_Y * Mth.DEG_TO_RAD);
         }
+    }
+
+    /** 瞄具：只显示当前装的那个（没装就两个都藏；{@link #sightNow} 由渲染器按被渲染的 ItemStack 设入） */
+    private void applySights() {
+        CoreGeoBone dot = getAnimationProcessor().getBone("dot_sight");
+        CoreGeoBone scope = getAnimationProcessor().getBone("scope_4x");
+        if (dot != null) {
+            dot.setHidden(sightNow != cn.blockforge.generated.hexalunarcalamity.weapon.Sights.DOT);
+        }
+        if (scope != null) {
+            scope.setHidden(sightNow != cn.blockforge.generated.hexalunarcalamity.weapon.Sights.SCOPE);
+        }
+    }
+
+    /**
+     * GUI 图标 / 掉落物 / 展示框用的**静态姿态**：把一切「动作」归位 ——
+     * 举枪位移、开火后坐、换弹的弹匣/枪机、抛壳全部清零，瞄具按 {@link #sightNow} 显隐。
+     *
+     * <p>为什么必须归位：{@code setCustomAnimations} 对这些语境一样会跑，而 {@code firing()} /
+     * 换弹进度都是**本地玩家的全局状态** ⇒ 不归位就是「开火时物品栏图标往后拖」这类问题。
+     */
+    private void staticPose() {
+        CoreGeoBone move = getAnimationProcessor().getBone("move");
+        if (move != null) {
+            move.setRotX(0.0F);
+            move.setRotY(0.0F);
+            move.setRotZ(0.0F);
+            move.setPosX(0.0F);
+            move.setPosY(0.0F);
+            move.setPosZ(0.0F);
+        }
+        CoreGeoBone cam = getAnimationProcessor().getBone("camera");
+        if (cam != null) {
+            cam.setRotX(0.0F);
+            cam.setRotY(0.0F);
+            cam.setRotZ(0.0F);
+        }
+        CoreGeoBone mag = getAnimationProcessor().getBone("magazine");
+        if (mag != null) {
+            mag.setPosY(0.0F);
+            mag.setRotX(0.0F);
+        }
+        CoreGeoBone bolt = getAnimationProcessor().getBone("bolt");
+        if (bolt != null) {
+            bolt.setPosZ(0.0F);
+        }
+        for (int i = 0; i < AkmAnimState.CASE_SLOTS; i++) {
+            CoreGeoBone casing = getAnimationProcessor().getBone("casing_" + i);
+            if (casing != null) {
+                casing.setHidden(true);
+            }
+        }
+        applySights();
     }
 
     /** 把 move 骨骼当前状态存进 {@link #frame}（手臂要跟着枪一起动，含举枪位移） */

@@ -31,10 +31,13 @@ public class CrossbowGeoRenderer extends GeoItemRenderer<CrossbowWeaponItem> {
                             net.minecraft.client.renderer.MultiBufferSource bufferSource,
                             int packedLight, int packedOverlay) {
         CrossbowGeoModel.handPass = AkmGeoRenderer.isHand(transformType);
+        CrossbowGeoModel.cockedNow =
+                cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem.cocked(stack);
         try {
             super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
         } finally {
             CrossbowGeoModel.handPass = false;
+            CrossbowGeoModel.cockedNow = false;
         }
     }
 
