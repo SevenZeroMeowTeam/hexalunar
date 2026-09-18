@@ -314,6 +314,10 @@ tools/  开发辅助脚本（见第五节）
 | **红点 / 倍镜显示逻辑** | `client/AkmGeoModel.java`（`sightNow` 隐藏骨骼 + 举枪位移）+ `client/ClientEvents.java`（`scoping` / `drawRedDot` / `drawScopeOverlay`） |
 | **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞 |
 | **手持动作幅度 / 速度** | `client/WeaponAnim.java`（冲量大小与衰减）+ `client/WeaponPose.java`（折算成 display 增量的数值） |
+| **后坐幅度 / 镜头反馈强度** | 各 `client/*GeoModel.java` 的 `KICK_BACK` 与 `kick` 计算（AKM 1.35px / 弩 0.95px）；`camera` 骨骼只在 `firing()` 时叠加，换弹期间镜头必须为零 |
+| **谁的手持变换被接管** | `client/WeaponHandGrip.java`（`applyForgeHandTransform` 的返回与基准平移）+ 各 `client/*ItemClientExtensions.java` |
+| **骨骼该不该被推（渲染语境）** | `client/AkmGeoRenderer.java#isHand` + 各 `*GeoModel.handPass`：GUI 图标 / 掉落物 / 展示框一律不推 |
+| **双手持枪的手臂摆位** | `client/WeaponArms.java`（肩点 / 臂长 / 握把锚点）+ 各 `*GeoModel` 里的手部目标点；离线核对 `tools/_armstory.py` |
 | 手持动作是否生效 | `client/AnimatedWeaponModel.java` + `ModClient.onModifyBakingResult`；日志里会打“手持动作动画已启用：包装了 N 个武器模型” |
 | AKM 弹匣容量 / 换弹时长 / 射速 / 散布 | `weapon/AkmRifleItem.java`（`MAG_SIZE` / `RELOAD_TICKS` / `FIRE_INTERVAL` / `fire()`） |
 | 弩的倍镜倍率 | `weapon/CrossbowWeaponItem.java` 的 `SCOPE_ZOOM`（`4.0F` = 4 倍）；开镜 FOV 由 `ClientEvents` 用 `1/SCOPE_ZOOM` 计算 |
@@ -326,6 +330,51 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r62`
+
+- **后坐只前后动、不上下动**（用户要求「只前后动不是上下动」）：
+  - `move` 骨骼上的垂直位移有三处来源 —— **fire 动画自带的 `+0.15px Y`**、r59 我加的 `KICK_UP`、
+    以及 idle/run 的 Y —— 现在**全部清零**（`setPosX/Y(0)`、`setRotX/Y/Z(0)`），只留 Z；
+    后坐 = 沿枪管**纯后拖**（AKM 1.35px / 弩 0.95px），冲量衰减后自己滑回去 ⇒ 真实的后坐感来自往复
+  - 瞄具开镜只做**平移**（`PosX/PosY/PosZ`），不叠加任何角度 ⇒ 瞄准始终与枪管平行
+- **物品栏图标不再跟着后坐跑**：GeckoLib 的 `setCustomAnimations` 对 **GUI 图标 / 掉落物 / 展示框**一样会跑，
+  所以举枪位移与后坐会把**热栏里那把枪的图标**也往后推（用户反馈「物品栏物品也随之后移」）。
+  现在渲染器按 `ItemDisplayContext` 记 `handPass`（第一/第三人称 = true，`AkmGeoRenderer.isHand()`），
+  AKM / 十字弩 / 复合弓三个模型都按它决定推不推骨骼（详见第四节坑 17）
+- **换弹 / 拉栓全程镜头稳定**：`camera` 骨骼原来在 `!firing()` 条件下才清零（换弹、拉栓也算「有动作」），
+  所以换完弹那一下镜头会跟着 `bolt_pull` 的角度（0.6° / −1.1°）抖一下；
+  现在**只有开火时**才把 camera 叠到视角上 ⇒ 换弹稳定、开火仍保留镜头后坐感
+
+> 版本 `1.0.0-r61`
+
+- **十字弩换成参考网格里那把现代复合弩**（用户要求按 `模型/十字弩_v2.bbmodel` 替换外形）：
+  - 新增 `tools/crossbow_vox.py`：**表面体素化**（沿三角面密采样，采样点落在哪格就标记哪格）→
+    824 个方块 / 14 骨骼，逐格从原 512² 贴图采 UV（避开「平均密度」在长条面上不准的问题，取标称密度 `step × 贴图/分辨率`）
+  - 11 个 mesh 部件按名字分骨骼（弓片 → `prod_right/left`、机匣/导轨/线缆 → `body`、镜筒/握把/枪托各自成骨骼），
+    **握把原点保持 (0, −0.95, 0.66)** ⇒ `WeaponArms` 的锚点、display 缩放都不用改
+  - 弦面与拉弦行程重新推导：`TIP_X 6.0 → 2.62`、`DRAW_DZ 3.40 → 1.80`、`NOCK_Z0 −5.80 → −5.20`，
+    弦长 = `hypot(2.62, 1.80)`，生成器自检「拉满时两段弦内端是否正好落在弦心」；弦 / 弦心 / 弩箭照旧用方块画（要能绕弓臂梢转）
+  - 为什么不用 GeckoLib 的 `poly_mesh`：4.8.4 只解析不渲染（渲染侧 `GeoBone` 只有 `getCubes()`，见第四节坑 16）
+- 贴图按 v2 原画重排到 480²，右边缘留一条色带给弦 / 弦心 / 弩箭 / 尾羽采样；`install_models.py` 的弩改为装 `crossbow_geo.*`
+
+> 版本 `1.0.0-r60`
+
+- **后坐与瞄准都保持「平行」**：原来我加的俯仰（AKM −3.2°、弩 −2.4°）加上动画自己给的角度
+  （fire −2.8°、reload +7°、弩 +2.4°）会让枪和双手一起低头/抬头 —— 现在 `move` 的角度一律清零，
+  后坐只后拖（+0.10px 轻微上抬），**枪口不上跳也不低头**，右键瞄准时模型也是水平的
+- **十字弩上弦后弦不往后拉**（用户选择「贴在两弓臂之间」）：拉回去的弦心比弓臂梢**离镜头近 0.17 格**，
+  透视放大约 17%，看起来像一根「∧」浮在弩上方 ⇒ `draw = cocked ? 0 : clamp(p/0.65,0,1)`，
+  一上弦弦就弹回弓臂前面；拉弦动作本身照旧（装填期间 `draw` 0→1，能看到弦被拉回）
+
+> 版本 `1.0.0-r59`
+
+- **枪不再在手里晃**：原版对非空物品套的「攻击挥动」（`applyItemArmAttackTransform`，最多 `rotX −80°`）
+  会被按住左键反复重触发（`LivingEntity#swing` 在 swingTime 过半时重置）⇒ 全自动射击时枪在手里不停点头。
+  现在用 Forge 的 `IClientItemExtensions#applyForgeHandTransform` 接管（只保留手部基准平移，见 `client/WeaponHandGrip.java`）
+- **开火时双手跟着枪一起动**：后坐改走 `move` 骨骼 —— 第一人称手臂读的就是 `move`（`client/GunFrame.java`），
+  所以不需要在手臂那边重复任何武器逻辑；同时 idle / run / run_fast / 换弹 / 拉栓推的位移与俯仰一律收平
+- 手臂基准 Y 跟着原版的「抬起物品」位移（`baseY() = ARM_Y − 0.6·equipNow`），切枪那几帧手也不脱把
 
 > 版本 `1.0.0-r58`
 
