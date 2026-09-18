@@ -37,6 +37,11 @@ public final class ClientGunController {
                     || weapon.getItem() instanceof cn.blockforge.generated
                             .hexalunarcalamity.weapon.CompoundBowItem);
         while (ModKeys.RELOAD.consumeClick()) {
+            // ★ r78 紧急投掷：手里攚着一颗已拔销 / 引信在烧的手雷时，R 不再是换弹，而是立刻丢出去
+            if (player != null && mc.screen == null && !mc.isPaused() && !player.isDeadOrDying()
+                    && throwLiveGrenade(player)) {
+                continue;
+            }
             if (holding) {
                 if (weapon != null && weapon.getItem() instanceof cn.blockforge.generated
                         .hexalunarcalamity.weapon.CompoundBowItem) {
@@ -45,6 +50,25 @@ public final class ClientGunController {
                 ModNetwork.sendReload();
             }
         }
+    }
+
+    /**
+     * ★ r78：按 R 紧急投掷 —— 只要手上（主手或副手）有一颗已拔销 / 引信在烧的手雷就丢它。
+     *
+     * <p>专门解决「拔完销正好碰到敌对生物、主手还举着枪」的处境：不用先切回雷，按 R 就行。
+     */
+    private static boolean throwLiveGrenade(Player player) {
+        ItemStack stack = cn.blockforge.generated.hexalunarcalamity.item.GrenadeItem
+                .grenadeInEitherHand(player);
+        if (stack == null || !cn.blockforge.generated.hexalunarcalamity.item.GrenadeItem
+                .isPinOut(stack)) {
+            return false;
+        }
+        ModNetwork.CHANNEL.sendToServer(
+                new ModNetwork.GrenadeAction(ModNetwork.GrenadeAction.THROW));
+        GrenadeAnimState.onThrow();
+        WeaponAnim.onThrow();
+        return true;
     }
 
     private ClientGunController() {}

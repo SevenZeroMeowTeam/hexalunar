@@ -49,7 +49,11 @@ check(u"背包 / 护甲里的雷也照烧（tickStored ⇒ detonateInHand）",
       re.search(r"tickStored[\s\S]{0,500}detonateInHand", src) is not None)
 check(u"引信点燃后插不回销（ARMED ⇒ fuse_no_pin_back）",
       u'"message.hexalunar_calamity.fuse_no_pin_back"' in src)
-check(u"副手 + 主手枪械 = 被胳臂夹着（避免必死局面）", u"clampedUnderArm" in src)
+check(u"★ r78：切武器 / 收回背包 ⇒ 压杆脱手点火（gripped + grip_lost_fuse）",
+      u"private static boolean gripped(" in src
+      and u'"message.hexalunar_calamity.grip_lost_fuse"' in src)
+check(u"r77 的「副手被胳臂夹着 = 销弹回」已改成 gripped 判定",
+      u"clampedUnderArm" not in src)
 check(u"r75 的「自动插销」已删除",
       u"AUTO_BACK_TICKS" not in src and u"primedAt" not in src)
 
@@ -69,12 +73,20 @@ check(u"网络包有 HOLD_CANCEL", u"HOLD_CANCEL" in net)
 check(u"客户端区分：真松手 RMB_UP、被动中止 HOLD_CANCEL",
       u"RMB_UP" in cli and u"HOLD_CANCEL" in cli)
 check(u"服务端处理 HOLD_CANCEL", u"case HOLD_CANCEL -> GrenadeItem.serverCancelHold(player);" in net)
+check(u"★ r78 紧急投掷：grenadeInEitherHand（不看主手是不是枪）",
+      u"public static ItemStack grenadeInEitherHand(" in src)
+check(u"serverThrow 会回退到 grenadeInEitherHand",
+      re.search(r"heldGrenade\(player\);\s*\n\s*//[^\n]*\n\s*if \(stack == null\) stack = grenadeInEitherHand\(player\);",
+                src) is not None)
+gun = jfile(u"client", u"ClientGunController.java")
+check(u"R 键：手里有活雷就丢雷（而不是换弹）",
+      u"throwLiveGrenade(player)" in gun and u"GrenadeAction.THROW" in gun)
 
 print(u"== 3. 语言文件 ==")
 for name in ("zh_cn.json", "en_us.json"):
     with io.open(os.path.join(LANG, name), encoding="utf-8") as fh:
         text = fh.read()
-    for key in (u"pin_slipped", u"fuse_lit", u"fuse_no_pin_back", u"pin_back",
+    for key in (u"pin_slipped", u"fuse_lit", u"fuse_no_pin_back", u"grip_lost_fuse", u"pin_back",
                 u"pin_pulled", u"pin_reinsert_hint", u"need_pin"):
         full = u"message.hexalunar_calamity." + key
         check(u"%s 有 %s" % (name, key), u'"%s"' % full in text)
@@ -86,6 +98,7 @@ rows = [
     (u"SAFE", u"按住右键 1 秒", u"PRIMED", u"销拔出，压杆仍被手压着（引信未点）"),
     (u"SAFE", u"拔销中途松手（<1 秒）", u"SAFE", u"销自己弹回去（pin_slipped）"),
     (u"PRIMED", u"★ 一松手（没及时按住 / 手滑）", u"ARMED", u"撞针击发、引信点燃（满 5 秒）"),
+    (u"PRIMED", u"★ 切武器 / 收回背包（离开手）", u"ARMED", u"r78：压杆脱手 ⇒ 撞针击发、引信点燃"),
     (u"PRIMED", u"潜行 + 右键 1 秒", u"SAFE", u"手动插回保险销"),
     (u"PRIMED", u"左键", u"抛射体", u"压杆在出手瞬间脱落，引信从这一刻开始烧"),
     (u"REINSERTING", u"中途松手", u"PRIMED", u"销没进去，回到待投态"),
@@ -93,8 +106,8 @@ rows = [
     (u"ARMED", u"5 秒内没丢出去", u"掌心起爆", u"detonateInHand，自己吃满伤害"),
     (u"ARMED", u"收回背包 / 换到别的格子", u"继续烧", u"引信不会自己灭，到点爆在身上"),
     (u"ARMED", u"右键（想插销）", u"ARMED", u"来不及了 —— fuse_no_pin_back"),
-    (u"任意", u"开界面 / 切手持物（被动中止）", u"不变", u"手还抓着，不算松手，不点火"),
-    (u"任意", u"副手 + 主手是枪械", u"SAFE", u"被胳臂夹着，且丢不出去 ⇒ 不给必死局面"),
+    (u"ARMED", u"主手举着枪（丢不出去）", u"按 R 丢出", u"r78 紧急投掷：grenadeInEitherHand"),
+    (u"任意", u"开界面 / 切手持物（被动中止）", u"不变", u"手还抓着（按住状态未被误当成松手）"),
 ]
 print(u"  %-12s %-28s %-8s %s" % (u"起态", u"事件", u"到态", u"说明"))
 for a, b, c, d in rows:

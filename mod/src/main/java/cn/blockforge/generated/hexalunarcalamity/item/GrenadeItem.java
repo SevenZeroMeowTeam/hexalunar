@@ -176,7 +176,20 @@ public class GrenadeItem extends Item {
         ItemStack stack = heldGrenade(player);
         return stack != null && isPinOut(stack);
     }
-
+    /**
+     * ★ r78 紧急投掷用：手上（主手 → 副手）任意一颗手雷，**不管主手是不是枪械**。
+     *
+     * <p>主手举着枪、副手那颗雷引信还在烧时，默认按键轮不到它（右键给枪瞄准、左键给枪开火），
+     * 所以必须留一条「按 R 立刻丢出去」的道 
+     */
+    @Nullable
+    public static ItemStack grenadeInEitherHand(Player player) {
+        ItemStack main = player.getMainHandItem();
+        if (main.getItem() instanceof GrenadeItem) return main;
+        ItemStack off = player.getOffhandItem();
+        if (off.getItem() instanceof GrenadeItem) return off;
+        return null;
+    }
     // ------------------------------------------------------------------ 手持查找
 
     /**
@@ -269,6 +282,8 @@ public class GrenadeItem extends Item {
      */
     public static void serverThrow(Player player) {
         ItemStack stack = heldGrenade(player);
+        // ★ r78 紧急投掷：主手举着枪时 heldGrenade 会返回 null，但副手那颗雷还得能丢出去
+        if (stack == null) stack = grenadeInEitherHand(player);
         if (stack == null || !(stack.getItem() instanceof GrenadeItem g)) return;
         Level level = player.level();
         long now = level.getGameTime();
@@ -342,20 +357,26 @@ public class GrenadeItem extends Item {
     }
 
     /**
-     * 副手的雷 + 主手是枪械：等于被胳臂夹着，压杆没脱手、销自己弹回去。
+     * 这颗雷现在是不是「被手实实在在攚着」（压杆被手压着）。
      *
-     * <p>（也是为了避免「必死局面」：这种情况下 {@code heldGrenade} 不返回副手的手雷 ⇒
-     * 玩家根本左键丢不出去，引信要是还在烧就只能干等死。）
+     * <p>主手那颗永远是攚着的；副手那颗只有主手空着 / 拿着非武器、非手雷时才算 ——
+     * 主手一举枪，副手那颗就等于被胳臂夹着（按键也全轮给枪了），**算作松手**。
      */
-    private static boolean clampedUnderArm(Player player, InteractionHand hand) {
-        return hand == InteractionHand.OFF_HAND
-                && player.getMainHandItem().getItem()
-                instanceof cn.blockforge.generated.hexalunarcalamity.weapon.WeaponAmmo;
+    private static boolean gripped(Player player, InteractionHand hand) {
+        if (hand == InteractionHand.MAIN_HAND) return true;
+        ItemStack main = player.getMainHandItem();
+        return !(main.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.WeaponAmmo)
+                && !(main.getItem() instanceof GrenadeItem);
     }
 
     /**
-     * 背包 / 护甲里的雷：★ r77 起引信点了就不会自己灭 —— 收回背包、换到别的格子照样烧，
-     * 到点就在身上炸；其余（销拔出但压杆已松）一律回 SAFE。
+     * 背包 / 护甲里的雷：
+     * <ul>
+     *   <li>引信点着（ARMED）—— 继续烧，到点就在身上炸</li>
+     *   <li>★ 销拔出但压杆还压着（PRIMED）—— 现在**离开手了**（切槽位 / 收回背包 / 主手举枪）：
+     *       压杆弹开 ⇒ 撞针击发、引信点燃（r78，用户要求「切武器 = 松手」）</li>
+     *   <li>其余（拔销/插销没做完）—— 销自己弹回去，回 SAFE</li>
+     * </ul>
      *
      * @return true = 已经爆了，本 tick 别再继续扫
      */
@@ -372,6 +393,10 @@ public class GrenadeItem extends Item {
                 GrenadeBlasts.fuseSparks(player.level(),
                         player.getEyePosition().subtract(0.0D, 0.55D, 0.0D));
             }
+        } else if (s == STATE_PRIMED) {
+            lightFuse(stack, now);
+            fuseLightFx(player);
+            tell(player, "message.hexalunar_calamity.grip_lost_fuse", ChatFormatting.RED);
         } else if (s != STATE_SAFE) {
             setState(stack, STATE_SAFE);
         }
@@ -385,11 +410,15 @@ public class GrenadeItem extends Item {
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack stack = player.getItemInHand(hand);
             if (!(stack.getItem() instanceof GrenadeItem g)) continue;
-            if (clampedUnderArm(player, hand)) {
-                if (state(stack) != STATE_SAFE) setState(stack, STATE_SAFE);
-                continue;
-            }
             switch (state(stack)) {
+                // ★ r78：压杆本来是手压着的，玩家切走了武器（主手换成枪械）⇒ 手一松 ⇒ 点火
+                case STATE_PRIMED -> {
+                    if (!gripped(player, hand)) {
+                        lightFuse(stack, now);
+                        fuseLightFx(player);
+                        tell(player, "message.hexalunar_calamity.grip_lost_fuse", ChatFormatting.RED);
+                    }
+                }
                 case STATE_PULLING -> {
                     if (now - holdFrom(stack) >= PIN_TICKS) g.completePull(player, stack, now);
                 }
