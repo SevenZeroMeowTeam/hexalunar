@@ -11,8 +11,9 @@
   - 肩托：后方实心托 + 托底板 + 背带环
 
 ★ 硬约束（CrossbowGeoModel 的拉弦数学依赖，绝不能动）：
-  - 弦两段枢轴 = 弓片梢 = **精确 (±6.0, 0.0, -5.8)**；弦长 6.54；
-    拉满绕 Y 转 ∓atan2(2.60, 6.0)=∓23.43° 后两段内端落在 (0, -3.20)（= nock 后退 2.60）
+  - 弦两段枢轴 = 弓片梢 = **精确 (±6.0, 0.0, -5.8)**；弦长 = hypot(6.0, DRAW_DZ)；
+    拉满绕 Y 转 ∓atan2(3.40, 6.0)=∓29.54° 后两段内端落在 (0, -2.40)（= nock 后退 3.40）
+    （原来是 2.60 / 23.43° / (0,-3.20)；用户要求白弦再往玩家方向拉）
   - 所以凸轮盘也以 (±6, 0, -5.8) 为圆心（弦绕凸轮走）
   - 骨骼名 string_left / string_right / nock / bolt 必须保留（Java 按名字取）
 新增骨骼：cam_left / cam_right（凸轮盘，跟着弓片；Java 里随拉弦转动）
@@ -192,27 +193,42 @@ CUBES += [
 CUBES += B.vents('grip', 'grip_rib', (-0.44, 0.44, -1.60, -0.30, 0.24, 0.92), 3,
                  RAIL_D, along='y', fill=0.30)
 
-# ================================================================= 弦（长度/端点不可改！）
+# ================================================================= 弦（长度必须 = sqrt(TIP_X²+DRAW_DZ²)）
+# ★ 拉弦几何（CrossbowGeoModel 依赖）：弦两段枢轴 = 弓片梢 (±TIP_X, 0, NOCK_Z)，
+#   拉满绕 Y 转 ∓atan2(DRAW_DZ, TIP_X)，**两段内端必须在 x=0 相遇** ——
+#   所以弦长只能 = hypot(TIP_X, DRAW_DZ)，否则拉满时弦从中间断开。
+#   用户要求「白弦再往玩家方向拉」：DRAW_DZ 2.60 → 3.40（弦心 z 从 -3.20 到 -2.40）
+TIP_X = 6.0
+DRAW_DZ = 3.40
+NOCK_Z = -5.80
+STR_HALF = math.hypot(TIP_X, DRAW_DZ)          # 6.896（原来是 6.54）
+
 CUBES += [
-    # 枢轴 (-6,0,-5.8) → 末端 (0.54,0,-5.8)：长度 6.54
-    C('string_left', 'string_l', (-6.00, 0.54), (-0.045, 0.045), (-5.845, -5.755), STRING,
-      kind='flat'),
-    C('string_right', 'string_r', (-0.54, 6.00), (-0.045, 0.045), (-5.845, -5.755), STRING,
-      kind='flat'),
+    # 枢轴 (-6,0,-5.8) → 末端 (0.896,0,-5.8)：拉满后内端正好落在弦心
+    C('string_left', 'string_l', (-TIP_X, -TIP_X + STR_HALF), (-0.045, 0.045),
+      (NOCK_Z - 0.045, NOCK_Z + 0.045), STRING, kind='flat'),
+    C('string_right', 'string_r', (TIP_X - STR_HALF, TIP_X), (-0.045, 0.045),
+      (NOCK_Z - 0.045, NOCK_Z + 0.045), STRING, kind='flat'),
 ]
 # ================================================================= 弦心（nock）
-CUBES.append(C('nock', 'nock_serve', (-0.58, 0.58), (-0.26, 0.26), (-6.02, -5.58), RUBBER))
+CUBES.append(C('nock', 'nock_serve', (-0.58, 0.58), (-0.26, 0.26),
+               (NOCK_Z - 0.22, NOCK_Z + 0.22), RUBBER))
 
 # ================================================================= 弩箭（bolt）
+# ★ 箭尾总是坐在弦心上，所以拉弦行程加大后箭也跟着后移；这里把箭杆/箭头
+#   前伸 0.8，让拉满时箭尖仍然露出弓片前方同样多（否则箭会被吞进弩身里）。
+BOLT_EXT = DRAW_DZ - 2.60                       # 0.8
 CUBES += [
-    C('bolt', 'bolt_shaft', (-0.17, 0.17), (-0.06, 0.28), (-9.80, -5.52), BOLT_SH,
+    C('bolt', 'bolt_shaft', (-0.17, 0.17), (-0.06, 0.28), (-9.80 - BOLT_EXT, -5.52), BOLT_SH,
       kind='brushed'),
-    C('bolt', 'bolt_ferrule', (-0.20, 0.20), (-0.09, 0.31), (-10.10, -9.80), STEEL),
-    C('bolt', 'bolt_point', (-0.08, 0.08), (0.02, 0.20), (-10.56, -10.10), BOLT_HL),
+    C('bolt', 'bolt_ferrule', (-0.20, 0.20), (-0.09, 0.31), (-10.10 - BOLT_EXT, -9.80 - BOLT_EXT),
+      STEEL),
+    C('bolt', 'bolt_point', (-0.08, 0.08), (0.02, 0.20), (-10.56 - BOLT_EXT, -10.10 - BOLT_EXT),
+      BOLT_HL),
     C('bolt', 'bolt_nock', (-0.12, 0.12), (-0.01, 0.23), (-5.52, -5.24), RUBBER),
-    C('bolt', 'vane_up', (-0.04, 0.04), (0.26, 0.44), (-8.40, -7.90), VANE),
-    C('bolt', 'vane_dl', (-0.24, -0.16), (0.02, 0.20), (-8.40, -7.90), VANE),
-    C('bolt', 'vane_dr', (0.16, 0.24), (0.02, 0.20), (-8.40, -7.90), VANE),
+    C('bolt', 'vane_up', (-0.04, 0.04), (0.26, 0.44), (-8.40 - BOLT_EXT * 0.5, -7.90 - BOLT_EXT * 0.5), VANE),
+    C('bolt', 'vane_dl', (-0.24, -0.16), (0.02, 0.20), (-8.40 - BOLT_EXT * 0.5, -7.90 - BOLT_EXT * 0.5), VANE),
+    C('bolt', 'vane_dr', (0.16, 0.24), (0.02, 0.20), (-8.40 - BOLT_EXT * 0.5, -7.90 - BOLT_EXT * 0.5), VANE),
 ]
 
 
@@ -259,15 +275,15 @@ def main():
             os.path.join(root, 'build', 'crossbow_v3.png'), quiet=True)
     print('bones %d  cubes %d' % (len(BONES), len(CUBES)))
     print('wrote build/crossbow_v3.geo.json / .png')
-    # 自检：弦绕 Y 转 ∓23.43° 后内端必须落在 (0, -3.20)
-    tip_x, dz, nz = 6.0, 2.60, -5.80
-    phi = math.atan2(dz, tip_x)
+    # 自检：弦绕 Y 转 ∓atan2(DRAW_DZ,TIP_X) 后内端必须落在 (0, NOCK_Z+DRAW_DZ)
+    phi = math.atan2(DRAW_DZ, TIP_X)
     for label, sign in (('string_left ', -1.0), ('string_right', 1.0)):
-        dx = -sign * 6.54          # 立方体从枢轴朝内伸 6.54
+        dx = -sign * STR_HALF         # 立方体从枢轴朝内伸 STR_HALF
         th = sign * phi
-        ex = sign * tip_x + dx * math.cos(th)
-        ez = nz - dx * math.sin(th)
-        print('%s  end -> X %+.3f  Z %+.3f   (目标 X 0.000  Z %+.3f)' % (label, ex, ez, nz + dz))
+        ex = sign * TIP_X + dx * math.cos(th)
+        ez = NOCK_Z - dx * math.sin(th)
+        print('%s  end -> X %+.3f  Z %+.3f   (目标 X 0.000  Z %+.3f)'
+              % (label, ex, ez, NOCK_Z + DRAW_DZ))
 
 
 if __name__ == '__main__':

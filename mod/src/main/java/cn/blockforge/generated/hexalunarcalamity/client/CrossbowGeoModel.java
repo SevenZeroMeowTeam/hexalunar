@@ -19,8 +19,10 @@ import software.bernie.geckolib.model.GeoModel;
  *
  * <p><b>拉弦装弹</b>是连续动作（按住/R 键共 {@code RELOAD_TICKS}=30 tick），所以按
  * {@code CrossbowWeaponItem.reloadProgress} 程序化推骨骼：
- * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 DRAW_DZ，弩箭在后半段滑上弦。
- * 弦长取拉满所需（6.54），未拉时两段在中点重叠、被弦心缠绳盖住 —— 与复合弓同一套算法。
+ * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 DRAW_Z，弩箭在后半段滑上弦。
+ * 弦长取拉满所需（hypot(6.0, 3.40)=6.896），未拉时两段在中点重叠、被弦心缠绳盖住 ——
+ * 与复合弓同一套算法。DRAW_DZ 必须与 {@code tools/crossbow_v3.py} 的同名常数一致：
+ * 拉满时弦心落在 z = NOCK_Z0 + DRAW_DZ（生成器自检会打印该值）。
  */
 public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
 
@@ -34,7 +36,7 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     /** 弓臂梢到弦心的横向距离（生成器 TIP_X） */
     private static final float TIP_X = 6.0F;
     /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
-    private static final float DRAW_DZ = 2.60F;
+    private static final float DRAW_DZ = 3.40F;
     /** 弦段转角 φ = atan(DRAW_DZ / TIP_X) */
     private static final float PHI_RAD = (float) Math.atan2(DRAW_DZ, TIP_X);
     /** 弦心相对参考面的 z（生成器 TIP_Z，已含原点偏移） */
@@ -43,8 +45,8 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final float BOLT_HIDE_Y = -40.0F;
     /** 击发后弦震动持续 tick 数 */
     private static final int TWANG_TICKS = 9;
-    /** 拉满时凸轮盘转过的角度（视觉：弦从凸轮上放开） */
-    private static final float CAM_SPIN = (float) Math.toRadians(46.0);
+    /** 拉满时凸轮盘转过的角度（视觉：弦从凸轮上放开）；随 DRAW_DZ 等比放大 */
+    private static final float CAM_SPIN = (float) Math.toRadians(60.0);
 
     /** 弦震动计时（客户端静态字段，跨帧保留） */
     private static long twangUntil = 0L;

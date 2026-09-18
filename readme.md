@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r54`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r55`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r54.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r55.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -250,6 +250,17 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r55`
+
+- **十字弩：白弦往玩家方向再拉 0.8**。拉弦行程 `DRAW_DZ` 2.60 → **3.40**
+  （拉满时弦心从 z=−3.20 退到 **z=−2.40**），弩箭、弦心、凸轮盘一起跟着走：
+  - 弦长必须 = `hypot(6.0, DRAW_DZ)`（6.54 → 6.896）：**两段内端只能在这个长度下才在 x=0 相遇**，
+    否则拉满时弦会从中间断开（生成器 main() 里有自检会打印落点）
+  - 弩箭跟着后移会让箭尖被弩身吞掉，所以箭杆/箭头同时前伸 0.8（`BOLT_EXT`），
+    拉满时箭尖露出弓片前方仍然一样多
+  - 凸轮盘转角按行程等比从 46° → 60°
+- `readme.md` / `mod/README.md` 同步到 r55
 
 > 版本 `1.0.0-r54`
 

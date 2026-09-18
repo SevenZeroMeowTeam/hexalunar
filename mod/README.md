@@ -2,9 +2,9 @@
 
 一款 Minecraft **1.20.1 / Forge 47.x** 近战-枪械混合生存模组：六种月相轮流降灾、变异亡者成群来袭，同时给玩家一套从复合弓到 AKM 的火力升级路线。
 
-- 当前版本：**1.0.0-r54**
+- 当前版本：**1.0.0-r55**
 - Mod ID：`hexalunar_calamity`
-- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r54.jar`
+- 构建产物：`build/libs/hexalunar_calamity-1.0.0-r55.jar`
 - 依赖：Forge 47.4.0 + **GeckoLib 4.8.4**（武器骨骼模型的运行前置，必须装）
 
 ---
@@ -143,13 +143,14 @@
 ## 安装
 
 1. 安装 Minecraft 1.20.1 + Forge 47.x（推荐 47.4.0）；
-2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r54.jar` 一起放进 `.minecraft/mods/`；
+2. 把 **GeckoLib 4.8.4**（`geckolib-forge-1.20.1-4.8.4.jar`）和 `hexalunar_calamity-1.0.0-r55.jar` 一起放进 `.minecraft/mods/`；
 3. 启动游戏，选择 Forge 1.20.1 实例即可（**缺 GeckoLib 会直接加载失败**）。
 
 从旧版本升级时直接替换 jar 即可，无需删世界数据。
 
 ## 更新记录
 
+- **r55** — 十字弩拉弦行程加大：白弦（含弦心、弩箭）往玩家方向再拉 **0.8**（拉满时弦心 z −3.20 → **−2.40**）；弦长按 `hypot(6, 3.4)` 重算，弩箭同步前伸 0.8 保持箭尖外露，凸轮盘转角 46° → 60°
 - **r54** — 手感与供弹：
   - 子弹伤害提到 **10 点**（5 颗心），提成常量 `BulletEntity.BULLET_DAMAGE`
   - **创造弹药盒放在物品栏（快捷栏/背包/副手）里就生效**：三把武器无限供弹，不用手持、不用切弹种（删了原来的潜行右键轮换弹种）
