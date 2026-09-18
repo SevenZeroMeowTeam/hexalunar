@@ -11,6 +11,8 @@ import cn.blockforge.generated.hexalunarcalamity.weapon.AkmRifleItem;
 import cn.blockforge.generated.hexalunarcalamity.weapon.AmmoType;
 import cn.blockforge.generated.hexalunarcalamity.weapon.CompoundBowItem;
 import cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem;
+import cn.blockforge.generated.hexalunarcalamity.weapon.RedDotSightItem;
+import cn.blockforge.generated.hexalunarcalamity.weapon.Scope4xItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -61,6 +63,12 @@ public final class ModItems {
             ITEMS.register("frag_grenade", () -> new FragGrenadeItem(new Item.Properties()));
     public static final RegistryObject<Item> FLASHBANG =
             ITEMS.register("flashbang", () -> new FlashbangItem(new Item.Properties()));
+
+    // 瞄具（装到 AKM 顶部导轨上：潜行 + 右键）
+    public static final RegistryObject<Item> RED_DOT_SIGHT =
+            ITEMS.register("red_dot_sight", () -> new RedDotSightItem(new Item.Properties()));
+    public static final RegistryObject<Item> SCOPE_4X =
+            ITEMS.register("scope_4x", () -> new Scope4xItem(new Item.Properties()));
 
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
         ITEMS.register(bus);

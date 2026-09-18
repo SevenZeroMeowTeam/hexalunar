@@ -20,6 +20,8 @@ public final class ModTabs {
                         output.accept(new ItemStack(ModItems.CROSSBOW.get()));
                         output.accept(new ItemStack(ModItems.COMPOUND_BOW.get()));
                         output.accept(new ItemStack(ModItems.AKM.get()));
+                        output.accept(new ItemStack(ModItems.RED_DOT_SIGHT.get()));
+                        output.accept(new ItemStack(ModItems.SCOPE_4X.get()));
                         output.accept(new ItemStack(ModItems.CROSSBOW_BOLT.get()));
                         output.accept(new ItemStack(ModItems.COMPOUND_ARROW.get()));
                         output.accept(new ItemStack(ModItems.AMMO_762.get()));

@@ -4,6 +4,7 @@ import cn.blockforge.generated.hexalunarcalamity.HexaLunarCalamity;
 import cn.blockforge.generated.hexalunarcalamity.net.ModNetwork;
 import cn.blockforge.generated.hexalunarcalamity.weapon.AmmoUtil;
 import cn.blockforge.generated.hexalunarcalamity.weapon.AkmRifleItem;
+import cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -22,7 +23,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class ClientGunController {
 
 
-    /** R 键＝换弹（手持 AKM 时） */
+    /** R 键＝装填（手持 AKM / 十字弩 / 复合弓时；复合弓是“搭箭”动画） */
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
@@ -31,9 +32,16 @@ public final class ClientGunController {
         ItemStack weapon = player == null ? null : AmmoUtil.heldWeapon(player);
         boolean holding = player != null && weapon != null && mc.screen == null && !mc.isPaused()
                 && !player.isDeadOrDying()
-                && weapon.getItem() instanceof AkmRifleItem;
+                && (weapon.getItem() instanceof AkmRifleItem
+                    || weapon.getItem() instanceof CrossbowWeaponItem
+                    || weapon.getItem() instanceof cn.blockforge.generated
+                            .hexalunarcalamity.weapon.CompoundBowItem);
         while (ModKeys.RELOAD.consumeClick()) {
             if (holding) {
+                if (weapon != null && weapon.getItem() instanceof cn.blockforge.generated
+                        .hexalunarcalamity.weapon.CompoundBowItem) {
+                    BowAnimState.triggerReload();
+                }
                 ModNetwork.sendReload();
             }
         }

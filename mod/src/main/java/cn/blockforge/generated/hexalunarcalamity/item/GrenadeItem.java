@@ -25,12 +25,14 @@ import org.jetbrains.annotations.Nullable;
  * <pre>
  *   SAFE         保险销插着、压杆被手压住 —— 完全安全，可以一直拿着
  *   PULLING      按住右键拔销中（1 秒）。中途松手 —— 保险销自动插回 SAFE
- *   ARMED        拔销完成，引信点燃（5 秒）。此时压杆仍被手压着，所以：
- *                  · 左键投掷 —— 压杆自然脱落，剩余引信交给抛射体
- *                  · 再按住右键 1 秒 —— 压杆还被手压着，可以把保险销重新插回去
- *                  · 一直攥在手里不丢 —— 5 秒到点，在掌心自爆
+ *   PRIMED       销已拔出，但压杆**仍被手压住** ⇒ 撞针没释放、引信没点燃 —— 想拿多久拿多久，
+ *                绝不会在手里响：
+ *                  · 左键投掷 —— 压杆在出手瞬间脱落，引信这才点燃，飞行中读秒
+ *                  · 再按住右键 1 秒 —— 压杆还被手压着，随时可以把保险销插回去
  *                  · 换槽位 / 收进背包 —— 压杆一松，保险销自己弹回去
- *   REINSERTING  正在插回保险销（1 秒）。中途松手则回到 ARMED，引信继续烧
+ *   REINSERTING  正在插回保险销（1 秒）。中途松手则回到 PRIMED（销还没进去）
+ *   ARMED        引信已点燃。手里攥着时**永远不会**进入这个状态（serverTick 会折回 PRIMED），
+ *                只有出手之后的抛射体（GrenadeEntity）在飞行中读秒
  * </pre>
  *
  * <p>右键按下/松开由 {@code ClientWeaponInput} 轮询后打包成
@@ -47,6 +49,8 @@ public class GrenadeItem extends Item {
     public static final int STATE_PULLING = 1;
     public static final int STATE_ARMED = 2;
     public static final int STATE_REINSERTING = 3;
+    /** 销已拔出、压杆仍被手压住、引信未点燃 —— 安全待投，随时可把销插回 */
+    public static final int STATE_PRIMED = 4;
 
     private static final String TAG_STATE = "hlc_g_state";
     private static final String TAG_HOLD_FROM = "hlc_g_hold_from";
@@ -103,12 +107,13 @@ public class GrenadeItem extends Item {
         tag.putLong(TAG_HOLD_FROM, gameTime);
     }
 
-    /** 点燃引信：记下点燃时刻与引信总长 */
-    private static void lightFuse(ItemStack stack, long gameTime) {
+    /** 拔销完成：销出、压杆仍被手压住、引信未点燃（安全待投）。不清掉引信标记，怕旧存档留有脏数据 */
+    private static void setPrimed(ItemStack stack) {
         CompoundTag tag = stack.getOrCreateTag();
-        tag.putInt(TAG_STATE, STATE_ARMED);
-        tag.putLong(TAG_LIT_AT, gameTime);
-        tag.putInt(TAG_FUSE, FUSE_TICKS);
+        tag.putInt(TAG_STATE, STATE_PRIMED);
+        tag.remove(TAG_HOLD_FROM);
+        tag.remove(TAG_LIT_AT);
+        tag.remove(TAG_FUSE);
     }
 
     private static void setState(ItemStack stack, int state) {
@@ -135,14 +140,21 @@ public class GrenadeItem extends Item {
         return (int) Math.max(0L, fuse - (gameTime - tag.getLong(TAG_LIT_AT)));
     }
 
+    /** 引信已点燃（手里攥着时不可能出现，只可能是旧存档或飞行中的抛射体） */
     public static boolean isArmed(ItemStack stack) {
         return state(stack) == STATE_ARMED;
     }
 
+    /** 销已拔出（压杆可能仍被手压着）：这时才允许左键投掷，也允许把销插回去 */
+    public static boolean isPinOut(ItemStack stack) {
+        int s = state(stack);
+        return s == STATE_PRIMED || s == STATE_ARMED;
+    }
+
     /** 玩家手上是否攥着一颗已拔销的手雷（左键可以丢出去） */
-    public static boolean isHeldArmed(net.minecraft.world.entity.player.Player player) {
+    public static boolean isHeldPinOut(net.minecraft.world.entity.player.Player player) {
         ItemStack stack = heldGrenade(player);
-        return stack != null && isArmed(stack);
+        return stack != null && isPinOut(stack);
     }
 
     // ------------------------------------------------------------------ 手持查找
@@ -165,7 +177,7 @@ public class GrenadeItem extends Item {
 
     // ------------------------------------------------------------------ 服务端动作
 
-    /** 服务端：右键按下 —— 插着销就拔，已拔销（压杆还被手压着）就把销插回去 */
+    /** 服务端：右键按下 —— 插着销就拔，销已拔出（压杆还被手压着）就把销插回去 */
     public static void serverBeginHold(Player player) {
         ItemStack stack = heldGrenade(player);
         if (stack == null) return;
@@ -175,7 +187,7 @@ public class GrenadeItem extends Item {
             beginHold(stack, STATE_PULLING, now);
             player.swing(player.getMainHandItem() == stack
                     ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
-        } else if (state == STATE_ARMED) {
+        } else if (state == STATE_PRIMED || state == STATE_ARMED) {
             beginHold(stack, STATE_REINSERTING, now);
         }
     }
@@ -189,31 +201,38 @@ public class GrenadeItem extends Item {
             setState(stack, STATE_SAFE);
             tell(player, "message.hexalunar_calamity.pin_slipped", ChatFormatting.GRAY);
         } else if (state == STATE_REINSERTING) {
-            // 插到一半松手：保险销还没进去，引信继续烧
-            setState(stack, STATE_ARMED);
+            // 插到一半松手：销还没进去，仍旧是「已拔销、压杆被手压着」的安全待投态
+            setPrimed(stack);
         }
     }
 
-    /** 服务端：左键 —— 只有已拔销的手雷能丢出去，丢出去时压杆自然脱落 */
+    /**
+     * 服务端：左键 —— 只有销已拔出的手雷能丢出去。
+     *
+     * <p>压杆在出手瞬间脱落 ⇒ 撞针释放 ⇒ **引信这才点燃**（满引信，飞多久烧多久）。
+     */
     public static void serverThrow(Player player) {
         ItemStack stack = heldGrenade(player);
         if (stack == null || !(stack.getItem() instanceof GrenadeItem g)) return;
         Level level = player.level();
         long now = level.getGameTime();
         if (player.getCooldowns().isOnCooldown(g)) return;
-        if (state(stack) != STATE_ARMED) {
+        int st = state(stack);
+        if (!isPinOut(stack)) {
             tell(player, "message.hexalunar_calamity.need_pin", ChatFormatting.YELLOW);
             player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.3F, 1.8F);
             return;
         }
-        int remaining = Math.max(1, fuseLeft(stack, now));
+        // PRIMED（压杆还压着）= 引信从这一瞬开始烧，满引信；
+        // ARMED（旧存档里烧了一半）= 接着剩下的时间烧，但至少留 1 秒免得一出手就炸
+        int remaining = st == STATE_PRIMED ? FUSE_TICKS : Math.max(20, fuseLeft(stack, now));
 
         GrenadeEntity grenade = new GrenadeEntity(level, player, g.kind, remaining);
         grenade.setPos(player.getEyePosition().add(player.getLookAngle().scale(0.55D)));
         grenade.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, g.throwPower, 0.02F);
         level.addFreshEntity(grenade);
 
-        // 压杆崩飞：火星四散 + 金属脆响，随后引信嘶嘶声
+        // 压杆崩飞：火星四散 + 金属脆响，随后引信嘶嘶声（引信就是这一刻点着的）
         var at = player.getEyePosition().add(player.getLookAngle().scale(0.6D));
         GrenadeBlasts.spoonFlyOff(level, at);
         level.playSound(null, at.x, at.y, at.z, SoundEvents.TRIDENT_THROW, SoundSource.PLAYERS, 0.7F, 1.35F);
@@ -247,12 +266,9 @@ public class GrenadeItem extends Item {
                     }
                 }
                 case STATE_ARMED -> {
-                    if (g.fuseLeft(stack, now) <= 0) {
-                        // 攥在手里不放超过引信时长：在掌心自爆
-                        setState(stack, STATE_SAFE);
-                        stack.shrink(1);
-                        GrenadeBlasts.detonateInHand(level, player, g.kind);
-                    }
+                    // 压杆还被手压住 ⇒ 撞针没释放 ⇒ 引信烧不起来。
+                    // 手里攥着绝不会自爆（飞行中那颗由 GrenadeEntity 自己读秒），一律折回安全待投
+                    setPrimed(stack);
                 }
                 default -> {
                 }
@@ -277,14 +293,17 @@ public class GrenadeItem extends Item {
         }
     }
 
-    /** 拔销完成：压杆仍被手压住，但引信已经点燃 */
+    /**
+     * 拔销完成：**引信不点燃** —— 压杆还被手压着（撞针没释放），这颗雷可以一直安全地拿在手里、
+     * 随时按住右键把销插回去。只有左键投掷、压杆脱手的那一刻才开始读秒。
+     */
     private void completePull(Player player, ItemStack stack, long gameTime) {
-        lightFuse(stack, gameTime);
+        setPrimed(stack);
         var at = player.getEyePosition().add(player.getLookAngle().scale(0.5D));
-        GrenadeBlasts.fuseSparks(player.level(), at);
-        player.playSound(SoundEvents.TNT_PRIMED, 0.6F, 1.6F);
-        player.playSound(ModSounds.FUSE.get(), 0.7F, 1.0F);
-        tell(player, "message.hexalunar_calamity.pin_pulled", ChatFormatting.RED);
+        player.level().playSound(null, at.x, at.y, at.z, SoundEvents.ARMOR_EQUIP_CHAIN,
+                SoundSource.PLAYERS, 0.5F, 1.85F);
+        player.playSound(SoundEvents.LEVER_CLICK, 0.45F, 1.5F);
+        tell(player, "message.hexalunar_calamity.pin_pulled", ChatFormatting.GOLD);
     }
 
     private static void tell(Player player, String key, ChatFormatting color) {
@@ -295,8 +314,15 @@ public class GrenadeItem extends Item {
     @Override
     public Component getName(ItemStack stack) {
         Component base = super.getName(stack);
+        int s = state(stack);
+        // 已拔销、压杆还被手压着（安全待投）：袋里一眼认出这颗是活的
+        if (s == STATE_PRIMED) {
+            return base.copy().append(Component.translatable(
+                            "item.hexalunar_calamity.grenade_primed_suffix")
+                    .withStyle(ChatFormatting.GOLD));
+        }
         // 服务端没有客户端世界时间，算出的秒数没有意义，只在客户端加后缀
-        if (state(stack) != STATE_ARMED || clientGameTime <= 0L) return base;
+        if (s != STATE_ARMED || clientGameTime <= 0L) return base;
         int left = fuseLeft(stack, clientGameTime);
         return base.copy().append(Component.translatable(
                         "item.hexalunar_calamity.grenade_armed_suffix",
@@ -321,6 +347,7 @@ public class GrenadeItem extends Item {
         int state = state(stack);
         if (state == STATE_PULLING) return 0x4FC3FF;
         if (state == STATE_REINSERTING) return 0x5FE08A;
+        if (state == STATE_PRIMED) return 0xE0A63C;
         float p = progress(stack);
         if (p > 0.5F) return 0xFFC24D;
         if (p > 0.2F) return 0xFF8A26;
@@ -335,6 +362,9 @@ public class GrenadeItem extends Item {
         }
         if (state == STATE_REINSERTING) {
             return Math.max(0.0F, clientReinsertProgress);
+        }
+        if (state == STATE_PRIMED) {
+            return 1.0F;   // 满格：销已拔出，随时可以投出去
         }
         if (state == STATE_ARMED) {
             CompoundTag tag = stack.getTag();
@@ -354,6 +384,9 @@ public class GrenadeItem extends Item {
                         : "tooltip.hexalunar_calamity.grenade_flash")
                 .withStyle(ChatFormatting.GRAY));
         switch (state(stack)) {
+            case STATE_PRIMED -> tips.add(Component.translatable(
+                            "tooltip.hexalunar_calamity.grenade_primed")
+                    .withStyle(ChatFormatting.GOLD));
             case STATE_ARMED -> {
                 int left = fuseLeft(stack, clientGameTime);
                 tips.add(Component.translatable("tooltip.hexalunar_calamity.grenade_armed",

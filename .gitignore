@@ -17,6 +17,7 @@ backup_*/
 *.unit16bak
 *.rotbak
 *.orig
+*.dispbak
 
 # ── 模型临时导出（与 resources 里的贴图重复） ───────────────
 mod/模型/*.png

@@ -1,41 +1,39 @@
 {
- "loader": "forge:obj",
- "model": "hexalunar_calamity:models/item/akm.obj",
- "flip_v": true,
+ "parent": "builtin/entity",
  "gui_light": "front",
  "display": {
   "gui": {
    "rotation": [
-    25,
-    215,
-    0
+    0,
+    -90,
+    -14
    ],
    "translation": [
     0,
-    1,
+    0,
     0
    ],
    "scale": [
-    0.72,
-    0.72,
-    0.72
+    0.86,
+    0.86,
+    0.86
    ]
   },
   "ground": {
    "rotation": [
     0,
-    -90,
+    0,
     0
    ],
    "translation": [
     0,
-    4,
+    2.0,
     0
    ],
    "scale": [
-    0.3,
-    0.3,
-    0.3
+    0.5,
+    0.5,
+    0.5
    ]
   },
   "head": {
@@ -58,7 +56,7 @@
   "fixed": {
    "rotation": [
     0,
-    -90,
+    0,
     0
    ],
    "translation": [
@@ -67,9 +65,9 @@
     0
    ],
    "scale": [
-    0.5,
-    0.5,
-    0.5
+    0.8,
+    0.8,
+    0.8
    ]
   },
   "thirdperson_righthand": {
@@ -79,14 +77,14 @@
     0
    ],
    "translation": [
-    -4.8,
-    -0.2,
-    -3.7
+    -0.75,
+    -0.75,
+    0
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.7,
+    0.7,
+    0.7
    ]
   },
   "thirdperson_lefthand": {
@@ -96,48 +94,48 @@
     0
    ],
    "translation": [
-    -4.8,
-    -0.2,
-    -3.7
+    0.75,
+    -0.75,
+    0
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.7,
+    0.7,
+    0.7
    ]
   },
   "firstperson_righthand": {
    "rotation": [
-    -90,
+    0,
     0,
     0
    ],
    "translation": [
-    -5,
-    -3,
-    4.5
+    -2.6,
+    1.4,
+    1.8
    ],
    "scale": [
-    0.68,
-    0.68,
-    0.68
+    1.0,
+    1.0,
+    1.0
    ]
   },
   "firstperson_lefthand": {
    "rotation": [
-    -90,
+    0,
     0,
     0
    ],
    "translation": [
-    -5,
-    -3,
-    4.5
+    2.6,
+    1.4,
+    1.8
    ],
    "scale": [
-    0.68,
-    0.68,
-    0.68
+    1.0,
+    1.0,
+    1.0
    ]
   }
  }

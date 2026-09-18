@@ -51,9 +51,10 @@ public final class ClientWeaponInput {
                 if (mc.gameMode != null) mc.gameMode.stopDestroyBlock();
                 event.setCanceled(true);
             }
-            if (grenade && GrenadeItem.isHeldArmed(mc.player)) {
+            if (grenade && GrenadeItem.isHeldPinOut(mc.player)) {
                 ModNetwork.CHANNEL.sendToServer(
                         new ModNetwork.GrenadeAction(ModNetwork.GrenadeAction.THROW));
+                GrenadeAnimState.onThrow();
                 WeaponAnim.onThrow();
             }
             return;
@@ -132,11 +133,12 @@ public final class ClientWeaponInput {
         int state = GrenadeItem.state(stack);
 
         if (rmb && !lastRmb) {
-            // 一次全新的按下：插着销就是拔销，已拔销就是把销插回去
+            // 一次全新的按下：插着销就是拔销，销已拔出（压杆还被手压着）就把销插回去
             holdTicks = 0;
             holdReported = true;
             GrenadeItem.clientPullProgress = state == GrenadeItem.STATE_SAFE ? 0.0F : -1.0F;
-            GrenadeItem.clientReinsertProgress = state == GrenadeItem.STATE_ARMED ? 0.0F : -1.0F;
+            GrenadeItem.clientReinsertProgress = state == GrenadeItem.STATE_PRIMED
+                    || state == GrenadeItem.STATE_ARMED ? 0.0F : -1.0F;
             ModNetwork.CHANNEL.sendToServer(
                     new ModNetwork.GrenadeAction(ModNetwork.GrenadeAction.RMB_DOWN));
         } else if (!rmb && lastRmb) {
@@ -151,6 +153,10 @@ public final class ClientWeaponInput {
             float p = Math.min(1.0F, holdTicks / (float) GrenadeItem.PIN_TICKS);
             if (GrenadeItem.clientPullProgress >= 0.0F) GrenadeItem.clientPullProgress = p;
             if (GrenadeItem.clientReinsertProgress >= 0.0F) GrenadeItem.clientReinsertProgress = p;
+        }
+        // 销已拔出、压杆还被手压着：销一直保持拉出样子，别让模型把它插回去
+        if (state == GrenadeItem.STATE_PRIMED && GrenadeItem.clientReinsertProgress < 0.0F) {
+            GrenadeItem.clientPullProgress = 1.0F;
         }
         lastRmb = rmb;
     }

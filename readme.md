@@ -5,7 +5,8 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r22`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r53`
+- 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
 ---
@@ -15,9 +16,11 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 项目 | 说明 |
 |---|---|
 | 需要 | JDK **17**、**Gradle 8.14.5** |
+| 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r22.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r53.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
+| ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
 `.vscode/tasks.json` 里已配好两个任务（含 Java 报错问题匹配器）：
 
@@ -51,14 +54,26 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | 右键按住 | 瞄准（各武器行为不同） |
 | 左键 | 开火 / 投掷（按住连发由武器决定） |
 | `R` | 换弹（AKM，默认键位，可在设置里改） |
+| 潜行 + 右键 | **装/拆 AKM 顶部导轨上的瞄具**：副手拿着瞄具 = 装上（消耗一个），空着 = 拆下还给你 |
 
 ### 武器
 
 | 武器 | 弹药 | 特性 |
 |---|---|---|
-| **AKM 突击步枪** | 7.62×39mm | 30 发弹匣 · 全自动（2 tick/发）· 后坐力累积影响散布 · 瞄准收紧散布 · 抛壳动画 · **有效射程 60 格**（射程内平直，超出后下坠） |
-| **战术十字弩** | 弩箭 | 弹匣供弹 · 按住连发 · **4 倍镜**：右键开镜时视野 ×1/4、圆形镜筒遵罩 + 十字分划，并自动隐藏手部模型 · **有效射程 40 格** |
+| **AKM 突击步枪** | 7.62×39mm | 30 发弹匣 · 全自动（2 tick/发）· 后坐力累积影响散布 · 瞄准收紧散布 · 抛壳 + 枪口焰 · **顶部导轨**（可装红点/4 倍镜）· 退弹匣→上匣→拉栓的换弹动画 · **有效射程 60 格**（射程内平直，超出后下坠） |
+| **战术十字弩** | 弩箭 | 弹匣供弹 · 按住连发 · **4 倍镜**：右键开镜时视野 ×1/4、圆形镜筒遮罩 + 十字分划，并自动隐藏手部模型 · 拉弦/装填箭矢为骨骼动画 · **有效射程 40 格** |
 | **复合弓** | 复合弓箭 / 尸毒箭 | 右键蓄力（20 tick 满蓄），**三段拉弦动画**（0.65 / 0.9 蓄力切换模型）· 蓄力越高穿透与伤害越强 · 没普通箭时自动改用尸毒箭 · **有效射程 34 格** |
+
+### 光学瞄具（AKM 顶部导轨）
+
+| 物品 | 开镜表现 |
+|---|---|
+| **红点瞄准镜** `red_dot_sight` | 只把屏幕正中画一个红点（与原版准星同心），**枪身照旧可见**，视野略微拉近（×0.88） |
+| **4 倍瞄准镜** `scope_4x` | 与十字弩同款**整屏开镜**：视野 ×1/4 + 圆形镜筒近黑遮罩 + 对称十字分划，开镜时隐藏手与武器 |
+
+- 两种瞄具的**光轴参照点**（模型 Y=3.79 / 4.00）写在 `weapon/WeaponMount.java` 里，
+  举枪时会被顶到屏幕正中 —— 也就是说“瞄具装在哪，准镜就对哪”，**改模型高度必须同步改这里**
+- 目前只能在创造模式「六相月灾」页签取用（还没加合成配方）
 
 > **获取途径**：三把武器本体可在原版探险箱里按概率开出（附赠一份对应弹药）—— 常见箱 6%（地牢 / 矿井 / 神庙 / 前哨 / 村庄武器商…）、稀有箱 16%（古城 / 林宅 / 末地城 / 宝藏 / 堡垒…），权重 复合弓 > 十字弩 > AKM；也可在创造模式「六相月灾」页签直接取用。
 
@@ -102,17 +117,19 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 ```
 mod/
 ├── src/main/java/cn/blockforge/generated/hexalunarcalamity/
-│   ├── weapon/     枪械、弩、弓、弹药工具（AmmoType / AmmoUtil / WeaponAmmo）
+│   ├── weapon/     枪械、弩、弓、**瞄具**、射击数学（AkmRifleItem / WeaponMount / Sights / Ballistics / WeaponFx）
 │   ├── item/       弹药盒、创造弹药箱、解毒剂、手雷（GrenadeItem）
 │   ├── entity/     弹丸与投掷物（子弹、弩箭、箭矢、手雷 GrenadeEntity）+ 特殊感染者
-│   ├── client/     输入、FOV/瞄准、HUD、渲染器、物品属性注册
+│   ├── client/     输入、FOV/瞄准、HUD、**GeckoLib 模型与渲染器**（*GeoModel / *GeoRenderer）、物品属性注册
 │   ├── net/        网络包（月相同步 / 命中反馈 / 开火 / 装填）
 │   ├── registry/   物品、实体、音效、效果、创造页签
-│   └── moon/       月相管理
+│   └── moon/       月相管理 + 僵尸进化（ZombieEvolution）
 └── src/main/resources/
-    ├── assets/hexalunar_calamity/     模型（OBJ+MTL）、贴图、语言、音效
-    ├── assets/minecraft/atlases/      ★ 方块图集扩展（见下）
-    └── data/hexalunar_calamity/       配方
+    ├── assets/hexalunar_calamity/geo/         ★ GeckoLib 骨骼模型（.geo.json）
+    ├── assets/hexalunar_calamity/animations/  ★ GeckoLib 动画（.animation.json）
+    ├── assets/hexalunar_calamity/             OBJ/MTL 旧模型、贴图（含 *_glowmask.png）、语言、音效
+    ├── assets/minecraft/atlases/              ★ 方块图集扩展（见下）
+    └── data/hexalunar_calamity/               配方
 
 tools/  开发辅助脚本（见第五节）
 ```
@@ -151,12 +168,43 @@ tools/  开发辅助脚本（见第五节）
 
 8. `MobEffect.addAttributeModifier` 必须传 **UUID**，传资源名字符串会触发 FATAL 注册回滚。
 
+9. **GeckoLib 物品的 `display` 包装不生效**
+   GeckoLib 的 GeoItem 自己控制变换，套 `BakedModelWrapper` 去改 `display` 没有用。
+   举枪/瞄准一律改**骨骼位移**（`CoreGeoBone#setPosX/Y/Z`）；骨骼位移在 display 的 scale **之内**，
+   所以“想让骨骼等价于 display 平移 t”要给 `d = t / S`（复合弓 `S=0.75` 必须 ×4/3，AKM `S=1` 两者相等）。
+
+10. **`handleAnimations` 会把没动画的骨骼拉回初始快照**
+    `tickAnimation` 先写骨骼，再按 `getBoneResetTime()` 把非动画骨骼归位 —— 所以要在 `setCustomAnimations`
+    里做“读-改-写”，别指望跨帧累加（也因此每帧都会重算，不需要自己存状态）。
+
+11. **`UseAnim.BOW` 会给物品额外叠一段“拉弓”位移**
+    原版 `ItemInHandRenderer` 对 `UseAnim.BOW` 的额外变换：平移 ±0.28 格 + rotX −13.9° +
+    rotY 35.3°/−45° + rotZ −9.8° + z 轴拉伸 20%。枪一旦被套上就会歪着斜、枪托被拉长。
+    枪械请用 `UseAnim.NONE`；弓/弩要拉弦效果才用 `BOW`。
+
+12. **物品 NBT 要主动喂给 GeoModel**
+    GeoItem 的 animatable 是**物品单例**（不是这一个 ItemStack），所以“装了哪个瞄具”这类 NBT
+    要在 `GeoItemRenderer#renderByItem(stack, …)` 里存到静态字段，再给 model 的 `setCustomAnimations` 读。
+
+13. **模型共面会 z-fighting 闪烁**
+    两个方块的面完全重合时（例：后移的瞄具底座与机匣盖同为 `±0.42`），渲染会闪；把里面那层缩 0.02 就好。
+
 ---
 
 ## 五、开发辅助工具（`tools/`）
 
 | 脚本 | 用途 |
 |---|---|
+| `akm_v3.py` / `crossbow_v3.py` / `bow_v3.py` / `grenade_v3.py` / `flashbang_v3.py` | **武器/投掷物模型生成器**（几何 + 逐面 UV 贴图 + 自检），产物写到 `build/*.geo.json` / `*.png`；自检会打印骨骼名、瞄准线水平/居中、弦端点、导轨高度余量 |
+| `boxlib.py` | 上面各生成器共用的几何/上色库（倒角、圆角、椭圆、螺栓、通风口、布纹…） |
+| `install_models.py` | 把 `build/*.geo.json` + `*.png` 装进 `assets/.../geo` 与 `textures/models`（先备份旧文件） |
+| `gen_glowmask.py` | 按亮度阈值自动生成自发光遮罩 `*_glowmask.png`（**改完贴图必跑**） |
+| `geo2bbmodel.py` | 把 `.geo.json` 反导成 `.bbmodel`，方便在 Blockbench 里看/改 |
+| `bbmcp.py` | Blockbench MCP 的 JSON-RPC 直连客户端（`list` / `call` / `batch` / `schema`） |
+| `bbpush.py` | 把 geo + 贴图推进正在运行的 Blockbench 工程（现在的模型迭代主力） |
+| `_ads_check.py` | 离线验算举枪对心：按 `WeaponMount` 的变换链算出锚点落在屏幕哪里（要 0.00% / 0.00%） |
+| `_scopemock.py` | 离线复刻倍镜遮罩绘制数学出 PNG（调分划参数不用反复进游戏） |
+| `gen_sight_icons.py` | 生成红点 / 4 倍镜的物品图标 PNG |
 | `fp_preview.py` | 第一人称 / GUI / 第三人称离线预览：读模型 JSON 的 `display` + OBJ，按游戏同样的矩阵光栅化出 PNG，并打印屏幕像素包围盒。<br>调手持姿态用它：`python fp_preview.py --json akm.json --obj akm.obj --ctx firstperson_righthand --rot 0,0,0 --trans=-5,-3,4.5 --scale=0.5 --out t.png` |
 | `obj_normalize.py` | OBJ 顶点 ÷16（单位修复），自动留 `.unit16bak` 备份 |
 | `bbmodel_to_obj.py` | Blockbench `.bbmodel`（网格模型）→ OBJ + MTL，自动 ÷16、居中、UV 归一化 |
@@ -175,6 +223,10 @@ tools/  开发辅助脚本（见第五节）
 
 | 想改什么 | 位置 |
 |---|---|
+| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_v3.py`、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`）→ 再跑 `install_models.py` + `gen_glowmask.py` |
+| **瞄具挂点高度 / 举枪对心** | `weapon/WeaponMount.java`（`SIGHT_Y` / `AKM_DOT_Y` / `AKM_SCOPE_Y` / `akmAimDy`）—— **必须**与生成器里 `build_dot_sight` / `build_scope_4x` 的注释值一致 |
+| **红点 / 倍镜显示逻辑** | `client/AkmGeoModel.java`（`sightNow` 隐藏骨骼 + 举枪位移）+ `client/ClientEvents.java`（`scoping` / `drawRedDot` / `drawScopeOverlay`） |
+| **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞 |
 | **手持动作幅度 / 速度** | `client/WeaponAnim.java`（冲量大小与衰减）+ `client/WeaponPose.java`（折算成 display 增量的数值） |
 | 手持动作是否生效 | `client/AnimatedWeaponModel.java` + `ModClient.onModifyBakingResult`；日志里会打“手持动作动画已启用：包装了 N 个武器模型” |
 | AKM 弹匣容量 / 换弹时长 / 射速 / 散布 | `weapon/AkmRifleItem.java`（`MAG_SIZE` / `RELOAD_TICKS` / `FIRE_INTERVAL` / `fire()`） |
@@ -188,6 +240,32 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r53`
+
+- **武器模型全面重做**：四把武器 + 两种投掷物从「OBJ 网格 + display 变换」迁到
+  **GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`）：
+  - AKM `bones 16 / cubes 128`、十字弩 `bones 14 / cubes 96`，另有复合弓、手雷 `mud`、震爆弹 `mtx`
+  - 每个模型都有生成器（`tools/*_v3.py`）并带**自检**：骨骼名、瞄准线水平/居中、弦端点、导轨高度余量…
+  - 512² 贴图由脚本逐面绘制，`tools/gen_glowmask.py` 自动出 `*_glowmask.png`
+- **瞄准（ADS）数学收拢成一份单一真源** `weapon/WeaponMount.java`：
+  模型像素 → 世界的完整变换链 `Trans(±0.56,-0.52,-0.72)·Trans(display/16)·R·S·(px/16)`，
+  举枪时把「照门顶—准星顶」那条线顶到屏幕正中（`Tx=-8.96`、`Ty=8.32-S·anchorY`）：
+  - **按瞄具改参照高度**：机械瞄具 3.44 / 红点 3.79 / 4 倍镜 4.00
+  - 子弹从**枪口模型点**出发、朝准星落点飞（收敛距离夹 8..96 格），不再从屏幕中间斜着飞出来
+  - 离线验算：`tools/_ads_check.py akm|akm_aim|bow|bow_draw`（0.00% / 0.00% 为过）
+- **AKM 顶部导轨 + 两种光学瞄具**（新物品）：
+  - **红点瞄准镜** `red_dot_sight`：开镜时枪身照旧可见，屏幕正中画红点
+  - **4 倍瞄准镜** `scope_4x`：与十字弩同款整屏开镜（视野 ×1/4 + 圆形镜筒 + 十字分划）
+  - 装/拆：**潜行 + 右键**（副手拿瞄具 = 装上，空手 = 拆下），状态存在物品 NBT（`weapon/Sights.java`）
+- **枪械不再用 `UseAnim.BOW`**：原版对 `BOW` 的额外位移会把枪拉歪/拉长 → 改 `UseAnim.NONE`，
+  举枪全部由 `move` 骨骼接管
+- **开镜遮罩全程序化**：删掉整屏炫光贴图（曾把画面糊成白雾，两次反馈看不见生物），
+  改为圆筒近黑遮罩 + 镜缘暗角 + 对称分划，镜内不叠任何白光
+- **手部动作全部由武器本体表现**（不再有实体手方块）：
+  AKM 退弹匣 → 空窗 → 新匣上行 → 拉栓；十字弩拉弦 / 装填箭矢由弦、弦卡与弩箭骨骼程序化驱动
+- **月相/夜晚**：左上角天数 HUD（随月相上色）+ **僵尸进化**（`moon/ZombieEvolution.java`：
+  生成即进化 3% 起每天 +1.4%、存活进化 1.2% 起每 8 秒掷一次，按天数解锁 弓箭手→爆破手→油桶兵→巨人）
 
 > 版本 `1.0.0-r22`
 

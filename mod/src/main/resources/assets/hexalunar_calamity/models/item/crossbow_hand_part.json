@@ -1,0 +1,5 @@
+{
+ "loader": "forge:obj",
+ "model": "hexalunar_calamity:models/item/crossbow_hand_part.obj",
+ "flip_v": true
+}

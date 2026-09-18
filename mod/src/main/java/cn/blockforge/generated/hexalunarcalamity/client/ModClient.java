@@ -20,7 +20,6 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /** 实体渲染器注册：投射物与六只特殊感染者 */
@@ -49,19 +48,35 @@ public final class ModClient {
             models.put(id, new AnimatedWeaponModel(baked, kind));
             wrapped++;
         }
+        // 十字弩的弩箭 / 左手分件（上弦动画，见 CrossbowPartAnim）
+        CrossbowPartModels.capture(models);
         LOGGER.info("手持动作动画已启用：包装了 {} 个武器模型", wrapped);
     }
 
-    /** 模型路径 → 动作种类；返回 null 表示该模型不需要动（弹药、图标等） */
+    /** 登记不会被任何物品引用的分件模型，否则烘焙阶段不会加载它们 */
+    @SubscribeEvent
+    public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
+        CrossbowPartModels.registerAdditional(event);
+    }
+
+    /** 模型路径 → 动作种类；返回 null 表示该模型不需要动（弹药、分件、图标等） */
     private static WeaponAnim.Kind kindOfModel(String path) {
+        // 分件由 AnimatedWeaponModel 在渲染时合成，不能自己再包一层，否则会被重复施加变换
+        if (path.contains("akm_mag") || path.contains("akm_bolt")) return null;
         if (path.contains("crossbow_bolt")) return null;
-        if (path.startsWith("akm")) return WeaponAnim.Kind.AKM;
-        if (path.startsWith("crossbow") || path.contains("crossbow_pulling")) {
-            return WeaponAnim.Kind.CROSSBOW;
-        }
-        if (path.contains("compound_bow")) return WeaponAnim.Kind.BOW;
-        if (path.startsWith("mud") || path.contains("frag_grenade")) return WeaponAnim.Kind.GRENADE;
-        if (path.startsWith("mtx") || path.contains("flashbang")) return WeaponAnim.Kind.FLASH;
+        // AKM 用 GeckoLib 骨骼渲染（AkmGeoRenderer），不再需要 OBJ 分件包装
+        if (path.startsWith("akm")) return null;
+        // 十字弩也改 GeckoLib 骨骼渲染（CrossbowGeoRenderer + geo/crossbow_geo.geo.json），
+        // 拉弦装弹由 CrossbowGeoModel 程序化驱动，不再走 OBJ 分件/display 包装
+        if (path.startsWith("crossbow") || path.contains("crossbow_pulling")) return null;
+        // 复合弓也用 GeckoLib 骨骼渲染（BowGeoRenderer + geo/compound_bow.geo.json），
+        // 拉弦/换弹由骨骼动画驱动，不再需要 OBJ 分件包装
+        if (path.contains("compound_bow")) return null;
+        // 碎片手雷用手 GeckoLib 骨骼渲染（GrenadeGeoRenderer + geo/mud.geo.json），
+        // 拔销/压把由 GrenadeGeoModel 程序化驱动，不再需要 OBJ display 包装
+        if (path.startsWith("mud") || path.contains("frag_grenade")) return null;
+        // 震爆弹同样改 GeckoLib 骨骼渲染（FlashbangGeoRenderer + geo/flashbang.geo.json）
+        if (path.startsWith("mtx") || path.contains("flashbang")) return null;
         return null;
     }
 
@@ -77,14 +92,32 @@ public final class ModClient {
                 ItemProperties.register(weapon,
                         ResourceLocation.fromNamespaceAndPath(HexaLunarCalamity.MOD_ID, "pull"),
                         (stack, level, entity, seed) -> {
+                            // 上弦（装填）时用上弦进度驱动弦形：手一拉就往后收
+                            if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem
+                                    && level != null) {
+                                float p = cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem
+                                        .reloadProgress(stack, level.getGameTime());
+                                if (p >= 0.0F) {
+                                    // 弦在拉弦阶段（前 62%）收完，剩下时间留给推箭入槽
+                                    return Math.min(1.0F, p / 0.62F);
+                                }
+                            }
                             if (entity == null || entity.getUseItem() != stack) return 0.0F;
                             // 与原版弓一致：已蓄力 tick / 20（20 tick = 满蓄）
                             return (float) (stack.getUseDuration() - entity.getUseItemRemainingTicks()) / 20.0F;
                         });
                 ItemProperties.register(weapon,
                         ResourceLocation.fromNamespaceAndPath(HexaLunarCalamity.MOD_ID, "pulling"),
-                        (stack, level, entity, seed) ->
-                                entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);
+                        (stack, level, entity, seed) -> {
+                            if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem
+                                    && level != null
+                                    && cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem
+                                            .reloading(stack, level.getGameTime())) {
+                                return 1.0F;
+                            }
+                            return entity != null && entity.isUsingItem() && entity.getUseItem() == stack
+                                    ? 1.0F : 0.0F;
+                        });
             }
         });
     }

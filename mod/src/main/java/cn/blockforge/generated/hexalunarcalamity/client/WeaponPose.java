@@ -1,6 +1,7 @@
 package cn.blockforge.generated.hexalunarcalamity.client;
 
 import cn.blockforge.generated.hexalunarcalamity.item.GrenadeItem;
+import cn.blockforge.generated.hexalunarcalamity.weapon.WeaponMount;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.model.ItemTransform;
 import net.minecraft.client.renderer.block.model.ItemTransforms;
@@ -25,6 +26,21 @@ import org.joml.Vector3f;
  * </ul>
  */
 public final class WeaponPose {
+
+    /**
+     * ADS 对准的几何常量（单位都是模型像素，1 格 = 16）。
+     *
+     * <p>MC 第一人称物品的实际变换链：
+     * <pre>world = Trans(0.56, -0.52, -0.72) · Trans(display.translation/16) · R · S · x</pre>
+     * 相机在原点、朝 -Z 看，所以屏幕中心 ⇔ x_cam = y_cam = 0：
+     * <pre>
+     * 0.56 + Tx/16 = 0                     → Tx = -8.96
+     * -0.52 + Ty/16 + S*瞄准点Y/16 = 0     → Ty = 8.32 - S*瞄准点Y
+     * </pre>
+     * （display 的 translation 用模型像素，模型几何也是 16 = 1 格）
+     *
+     * <p>★ 各武器的基准 display 平移与举枪增量都放在 {@link WeaponMount}（骨骼与子弹共用同一组数）。
+     */
 
     public static ItemTransforms animate(WeaponAnim.Kind kind, ItemTransforms base) {
         WeaponAnim.State st = WeaponAnim.of(kind);
@@ -72,7 +88,7 @@ public final class WeaponPose {
             default -> {
             }
         }
-        applyWalkAndBreath(d);
+        applyWalkAndBreath(d, st.aim);
     }
 
     // ------------------------------------------------------------------ 各武器
@@ -88,11 +104,17 @@ public final class WeaponPose {
         d[2] += 4.5F * st.recoilYaw * fp;
         d[1] += 1.5F * st.recoilYaw * fp;
 
-        // 举枪：往画面中心（-X）收，略上抬并拉近一点（fp_preview 实测屏幕包围盒）
-        d[3] -= 2.4F * st.aim;
-        d[4] += 1.1F * st.aim;
-        d[5] += 1.4F * st.aim;
-        d[2] += -2.0F * st.aim;
+        // 举枪（ADS）：把「照门顶 + 准星顶」那条瞄准线顶到屏幕中心 ⇒ 看到枪身上方
+        // 一条与枪管平行的直线。基准平移是 (-2.6, 1.4, 1.8)，所以增量要减掉它。
+        // 不加任何 rotation：一旦旋转，瞄准线就会离开屏幕中心（原来的 -2° 侧倾正是
+        // 「看上去不是水平一条线」的原因之一）。
+        //
+        // ★ AKM 现在走 GeckoLib 骨骼渲染，举枪位移实际是 AkmGeoModel 推 move 骨骼做的
+        //   （display 包装器对 GeckoLib 物品不生效），两边用的是 WeaponMount 里同一组数，
+        //   这里保留只是给「还用 display 那套」的旧武器兜底，不要两处同时生效。
+        d[3] += WeaponMount.AKM_AIM_DX * st.aim;
+        d[4] += WeaponMount.AKM_AIM_DY * st.aim;
+        d[5] += WeaponMount.AKM_AIM_DZ * st.aim;
 
         // 换弹：整把枪下沉、向内侧翻，末段拉一下枪机
         if (st.reload >= 0.0F) {
@@ -108,7 +130,7 @@ public final class WeaponPose {
         }
     }
 
-    /** 十字弩：开镜时往画面中心收、拍一次明显的后坐 */
+    /** 十字弩：开镜时往画面中心收、拍一次明显的后坐；上弦时左手把弦拉回（整把弩跟着后拖下沉） */
     private static void crossbow(WeaponAnim.State st, float[] d) {
         d[5] += 1.6F * st.recoil;
         d[4] += 1.2F * st.recoil;
@@ -117,14 +139,30 @@ public final class WeaponPose {
         d[3] -= 1.2F * st.aim;
         d[4] += 0.6F * st.aim;
         d[5] += 0.9F * st.aim;
+
+        // 上弦：拉弦阶段往后拖、略下沉并外翻；弓弦挂上、弩箭入槽各顿一下
+        if (st.reload >= 0.0F) {
+            float pull = Mth.clamp(st.reload / 0.62F, 0.0F, 1.0F);      // 拉弦阶段
+            float ease = Mth.sin(pull * (float) Math.PI * 0.5F);        // 先快后慢，像真的在拉力
+            d[5] += 2.6F * ease;                                       // 往身前（+Z）拖
+            d[4] -= 1.4F * ease;                                       // 下沉
+            d[3] -= 0.8F * ease;                                       // 往画面中心收
+            d[2] += 7.0F * ease;                                        // 外翻
+            d[0] += 3.0F * ease;
+            // 挂弦 + 推箭入槽的两次顿挫
+            float bump = bump(st.reload, 0.60F, 0.10F) + bump(st.reload, 0.92F, 0.08F);
+            d[5] += 1.0F * bump;
+            d[4] -= 0.5F * bump;
+        }
     }
 
-    /** 复合弓：拉弦时把弓往身前拉、上抬一点；放箭时向前回弹（幅度要小，否则会顶到镜头） */
+    /** 复合弓：瞄准参照 = 箭上方的瞄准圈，把圈心顶到屏幕中心（旋转会推偏圈心，故不给旋转） */
     private static void bow(WeaponAnim.State st, float[] d) {
-        d[5] -= 2.6F * st.draw;
-        d[4] += 1.4F * st.draw;
-        d[0] += 1.6F * st.draw;
-        d[1] += 2.2F * st.draw;
+        // ★ 同 AKM：弓也走 GeckoLib 骨骼渲染，display 包装器不生效，实际对心在 BowGeoModel 里推 move 骨骼；
+        //   这里保留给 display 那套旧路径兜底，数都在 WeaponMount 里。
+        d[5] += WeaponMount.BOW_AIM_DZ * st.draw;
+        d[3] += WeaponMount.BOW_AIM_DX * st.draw;
+        d[4] += WeaponMount.BOW_AIM_DY * st.draw;
 
         d[5] += 1.5F * st.release;
         d[4] -= 0.6F * st.release;
@@ -168,20 +206,26 @@ public final class WeaponPose {
 
     // ------------------------------------------------------------------ 通用
 
-    /** 走路摆动 + 呼吸微漂（幅度很小，只在第一人称给） */
-    private static void applyWalkAndBreath(float[] d) {
+    /**
+     * 走路摆动 + 呼吸微漂（幅度很小，只在第一人称给）。
+     *
+     * <p>举枪瞄准时按 aim 几乎全部收掉：ADS 是靠平移把「照门—准星」那条线压到屏幕
+     * 中心的，任何额外的旋转/上下漂移都会把这条线推离准星 —— 看起来就是“枪口斜着朝下”。
+     */
+    private static void applyWalkAndBreath(float[] d, float aim) {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
+        float damp = 1.0F - 0.9F * Mth.clamp(aim, 0.0F, 1.0F);
         float speed = Mth.clamp((float) player.getDeltaMovement().horizontalDistance() * 3.6F, 0.0F, 1.0F);
         float phase = (float) player.walkDist;
         if (speed > 0.01F) {
-            d[0] += Mth.sin(phase * 4.4F) * 0.9F * speed;
-            d[3] += Mth.sin(phase * 2.2F) * 1.1F * speed;
-            d[4] -= Math.abs(Mth.cos(phase * 4.4F)) * 0.7F * speed;
+            d[0] += Mth.sin(phase * 4.4F) * 0.9F * speed * damp;
+            d[3] += Mth.sin(phase * 2.2F) * 1.1F * speed * damp;
+            d[4] -= Math.abs(Mth.cos(phase * 4.4F)) * 0.7F * speed * damp;
         }
         float breath = Mth.sin((player.tickCount + 0.0F) * 0.06F);
-        d[4] += breath * 0.35F;
-        d[3] += Mth.sin(player.tickCount * 0.043F) * 0.25F;
+        d[4] += breath * 0.35F * damp;
+        d[3] += Mth.sin(player.tickCount * 0.043F) * 0.25F * damp;
     }
 
     /** 钟形冲击：p 落在 center 附近 width 内时给出 0..1 */

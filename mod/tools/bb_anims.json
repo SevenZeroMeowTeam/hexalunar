@@ -1,0 +1,193 @@
+[
+  {
+    "tool": "create_animation",
+    "args": {
+      "name": "idle",
+      "loop": true,
+      "animation_length": 1.6,
+      "bones": {
+        "body": [
+          { "time": 0, "rotation": [0.5, 0, 0], "position": [0, 0, 0] },
+          { "time": 0.8, "rotation": [0, 0, 0], "position": [0, 0.14, 0] },
+          { "time": 1.6, "rotation": [0.5, 0, 0], "position": [0, 0, 0] }
+        ],
+        "scope": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.8, "rotation": [0.6, 0, 0] },
+          { "time": 1.6, "rotation": [0, 0, 0] }
+        ],
+        "grip": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.8, "rotation": [-0.5, 0, 0] },
+          { "time": 1.6, "rotation": [0, 0, 0] }
+        ]
+      }
+    }
+  },
+  {
+    "tool": "create_animation",
+    "args": {
+      "name": "span",
+      "loop": false,
+      "animation_length": 0.9,
+      "bones": {
+        "body": [
+          { "time": 0, "rotation": [0, 0, 0], "position": [0, 0, 0] },
+          { "time": 0.12, "rotation": [1.6, 0, 0], "position": [0, -0.1, 0] },
+          { "time": 0.55, "rotation": [-1.2, 0, 0], "position": [0, 0.16, 0] },
+          { "time": 0.72, "rotation": [0.4, 0, 0], "position": [0, 0, 0] },
+          { "time": 0.9, "rotation": [0, 0, 0], "position": [0, 0, 0] }
+        ],
+        "limb_l": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.12, "rotation": [0, 3.5, 0] },
+          { "time": 0.55, "rotation": [0, -26, 0] },
+          { "time": 0.65, "rotation": [0, -28.5, 0] },
+          { "time": 0.78, "rotation": [0, -26, 0] },
+          { "time": 0.9, "rotation": [0, -26, 0] }
+        ],
+        "limb_r": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.12, "rotation": [0, -3.5, 0] },
+          { "time": 0.55, "rotation": [0, 26, 0] },
+          { "time": 0.65, "rotation": [0, 28.5, 0] },
+          { "time": 0.78, "rotation": [0, 26, 0] },
+          { "time": 0.9, "rotation": [0, 26, 0] }
+        ],
+        "string_l": [
+          { "time": 0, "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          { "time": 0.12, "rotation": [0, -3.5, 0], "scale": [1, 1, 1] },
+          { "time": 0.55, "rotation": [0, 19.03, 0], "scale": [0.881, 1, 1] },
+          { "time": 0.65, "rotation": [0, 20.6, 0], "scale": [0.872, 1, 1] },
+          { "time": 0.78, "rotation": [0, 19.03, 0], "scale": [0.881, 1, 1] },
+          { "time": 0.9, "rotation": [0, 19.03, 0], "scale": [0.881, 1, 1] }
+        ],
+        "string_r": [
+          { "time": 0, "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+          { "time": 0.12, "rotation": [0, 3.5, 0], "scale": [1, 1, 1] },
+          { "time": 0.55, "rotation": [0, -19.03, 0], "scale": [0.881, 1, 1] },
+          { "time": 0.65, "rotation": [0, -20.6, 0], "scale": [0.872, 1, 1] },
+          { "time": 0.78, "rotation": [0, -19.03, 0], "scale": [0.881, 1, 1] },
+          { "time": 0.9, "rotation": [0, -19.03, 0], "scale": [0.881, 1, 1] }
+        ],
+        "bolt": [
+          { "time": 0, "scale": [0.001, 0.001, 0.001] },
+          { "time": 0.78, "scale": [0.001, 0.001, 0.001] },
+          { "time": 0.84, "scale": [1, 1, 1] },
+          { "time": 0.9, "scale": [1, 1, 1] }
+        ],
+        "trigger": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.9, "rotation": [0, 0, 0] }
+        ]
+      }
+    }
+  },
+  {
+    "tool": "create_animation",
+    "args": {
+      "name": "fire",
+      "loop": false,
+      "animation_length": 0.4,
+      "bones": {
+        "body": [
+          { "time": 0, "rotation": [0, 0, 0], "position": [0, 0, 0] },
+          { "time": 0.05, "rotation": [-4.5, 0, 0], "position": [0, 0.05, -0.45] },
+          { "time": 0.18, "rotation": [1.4, 0, 0], "position": [0, 0, 0.1] },
+          { "time": 0.4, "rotation": [0, 0, 0], "position": [0, 0, 0] }
+        ],
+        "limb_l": [
+          { "time": 0, "rotation": [0, -26, 0] },
+          { "time": 0.07, "rotation": [0, 5, 0] },
+          { "time": 0.16, "rotation": [0, -3, 0] },
+          { "time": 0.26, "rotation": [0, 1.2, 0] },
+          { "time": 0.4, "rotation": [0, 0, 0] }
+        ],
+        "limb_r": [
+          { "time": 0, "rotation": [0, 26, 0] },
+          { "time": 0.07, "rotation": [0, -5, 0] },
+          { "time": 0.16, "rotation": [0, 3, 0] },
+          { "time": 0.26, "rotation": [0, -1.2, 0] },
+          { "time": 0.4, "rotation": [0, 0, 0] }
+        ],
+        "string_l": [
+          { "time": 0, "rotation": [0, 19.03, 0], "scale": [0.881, 1, 1] },
+          { "time": 0.06, "rotation": [0, 2, 0], "scale": [0.97, 1, 1] },
+          { "time": 0.05, "rotation": [0, -5, 0], "scale": [1, 1, 1] },
+          { "time": 0.14, "rotation": [0, 3, 0], "scale": [1, 1, 1] },
+          { "time": 0.24, "rotation": [0, -1.5, 0], "scale": [1, 1, 1] },
+          { "time": 0.4, "rotation": [0, 0, 0], "scale": [1, 1, 1] }
+        ],
+        "string_r": [
+          { "time": 0, "rotation": [0, -19.03, 0], "scale": [0.881, 1, 1] },
+          { "time": 0.05, "rotation": [0, 5, 0], "scale": [1, 1, 1] },
+          { "time": 0.14, "rotation": [0, -3, 0], "scale": [1, 1, 1] },
+          { "time": 0.24, "rotation": [0, 1.5, 0], "scale": [1, 1, 1] },
+          { "time": 0.4, "rotation": [0, 0, 0], "scale": [1, 1, 1] }
+        ],
+        "bolt": [
+          { "time": 0, "scale": [1, 1, 1] },
+          { "time": 0.05, "scale": [1, 1, 1] },
+          { "time": 0.06, "scale": [0.001, 0.001, 0.001] },
+          { "time": 0.4, "scale": [0.001, 0.001, 0.001] }
+        ],
+        "trigger": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.06, "rotation": [9, 0, 0] },
+          { "time": 0.22, "rotation": [0, 0, 0] },
+          { "time": 0.4, "rotation": [0, 0, 0] }
+        ],
+        "scope": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.08, "rotation": [1.2, 0, 0] },
+          { "time": 0.2, "rotation": [-0.5, 0, 0] },
+          { "time": 0.4, "rotation": [0, 0, 0] }
+        ]
+      }
+    }
+  },
+  {
+    "tool": "create_animation",
+    "args": {
+      "name": "reload",
+      "loop": false,
+      "animation_length": 1.7,
+      "bones": {
+        "mag": [
+          { "time": 0, "rotation": [0, 0, 0], "position": [0, 0, 0] },
+          { "time": 0.18, "rotation": [0, 0, 0], "position": [0, -0.6, 0] },
+          { "time": 0.45, "rotation": [14, 0, 0], "position": [0, -3.2, 0.8] },
+          { "time": 0.70, "rotation": [24, 0, 0], "position": [0, -11, 2.2] },
+          { "time": 1.00, "rotation": [24, 0, 0], "position": [0, -11, 2.2] },
+          { "time": 1.25, "rotation": [10, 0, 0], "position": [0, -3.0, 0.6] },
+          { "time": 1.42, "rotation": [-1.5, 0, 0], "position": [0, -0.3, 0] },
+          { "time": 1.52, "rotation": [0, 0, 0], "position": [0, 0, 0] },
+          { "time": 1.7, "rotation": [0, 0, 0], "position": [0, 0, 0] }
+        ],
+        "body": [
+          { "time": 0, "rotation": [0, 0, 0], "position": [0, 0, 0] },
+          { "time": 0.3, "rotation": [1.4, 0, 0], "position": [0, -0.12, 0] },
+          { "time": 0.9, "rotation": [-1.6, 0, 0], "position": [0, -0.2, 0] },
+          { "time": 1.42, "rotation": [1.2, 0, 0], "position": [0, 0.14, 0] },
+          { "time": 1.7, "rotation": [0, 0, 0], "position": [0, 0, 0] }
+        ],
+        "grip": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.9, "rotation": [0, 0, 1.8] },
+          { "time": 1.5, "rotation": [0, 0, 0] },
+          { "time": 1.7, "rotation": [0, 0, 0] }
+        ],
+        "stock": [
+          { "time": 0, "rotation": [0, 0, 0] },
+          { "time": 0.9, "rotation": [0, 0, -1.6] },
+          { "time": 1.5, "rotation": [0, 0, 0] },
+          { "time": 1.7, "rotation": [0, 0, 0] }
+        ],
+        "bolt": [
+          { "time": 0, "scale": [0.001, 0.001, 0.001] },
+          { "time": 1.7, "scale": [0.001, 0.001, 0.001] }
+        ]
+      }
+    }
+  }
+]

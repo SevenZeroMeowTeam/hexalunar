@@ -1,0 +1,4 @@
+[
+  { "tool": "set_camera_angle", "args": { "position": [28, 22, 30], "target": [0, 2, 0], "projection": "perspective" } },
+  { "tool": "capture_screenshot", "args": {} }
+]

@@ -1,0 +1,3 @@
+[
+  { "tool": "export_model", "args": { "codec_id": "bedrock", "path": "D:/做一个_Minecraft_1_20_1_的_F/mod/build/_mine.geo.json" } }
+]

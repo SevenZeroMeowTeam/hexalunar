@@ -1,0 +1,21 @@
+(function () {
+var out = {};
+out.before = { all: Group.all.length, root: Outliner.root.length };
+var g = new Group({ name: 'probeA', origin: [0, 0, 0] });
+out.after_new = { all: Group.all.length, root: Outliner.root.length, wm: g.work_mode, parent: g.parent ? 'obj' : null };
+g.addTo('root');
+out.after_addto = { all: Group.all.length, root: Outliner.root.length };
+var g2 = new Group({ name: 'probeB', origin: [1, 1, 1] });
+g2.init();
+out.after_init = { all: Group.all.length, root: Outliner.root.length, root_names: Outliner.root.map(function (n) { return n.name; }) };
+var cube = new Cube({ name: 'probeC', from: [0, 0, 0], to: [1, 1, 1], box_uv: false, autouv: 0 });
+out.cube_after_new = Cube.all.length;
+cube.addTo(g2);
+out.cube_after_addto = { all: Cube.all.length, children: g2.children.length };
+cube.init && cube.init();
+out.cube_after_init = { all: Cube.all.length, children: g2.children.length };
+out.methods = { outliner_add: typeof g.addTo, group_init: typeof g.init, cube_init: typeof cube.init };
+g.remove(); g2.remove();
+out.cleaned = { all: Group.all.length, cubes: Cube.all.length, root: Outliner.root.length };
+return JSON.stringify(out, null, 1);
+})();

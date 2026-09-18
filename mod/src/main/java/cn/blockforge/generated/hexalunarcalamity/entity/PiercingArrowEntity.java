@@ -36,6 +36,11 @@ public class PiercingArrowEntity extends AbstractArrow {
         if (launchOrigin == null) launchOrigin = position();
         super.tick();
         if (isRemoved() || inGround || isNoPhysics()) return;
+        // 箭矢拖尾：轻量一颗光点（毒箭再补一点绿沫）
+        if (level() instanceof net.minecraft.server.level.ServerLevel server) {
+            cn.blockforge.generated.hexalunarcalamity.weapon.WeaponFx
+                    .arrowTrail(server, position(), toxic);
+        }
         double flown = Ballistics.flown(launchOrigin, position());
         double gravity = getOwner() instanceof Player
                 ? Ballistics.BOW_IN_RANGE_GRAVITY : Ballistics.VANILLA_ARROW_GRAVITY;

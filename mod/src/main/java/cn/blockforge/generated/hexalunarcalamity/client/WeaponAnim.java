@@ -55,8 +55,10 @@ public final class WeaponAnim {
         public float pin;
         /** 投掷甩手 0..1 */
         public float throwKick;
-        /** 换弹进度 0..1，< 0 表示没在换弹 */
+        /** 换弹 / 上弦进度 0..1，< 0 表示没在进行 */
         public float reload = -1.0F;
+        /** 弩是否已挂弦（箭在槽里）；给渲染层拼弩箭用 */
+        public boolean loaded;
         /** 上一 tick 是否在使用（用来检测「放箭」那一刻） */
         public boolean wasUsing;
         /** 松手时的蓄力，决定放箭回弹多猛 */
@@ -156,6 +158,7 @@ public final class WeaponAnim {
                 st.draw = approach(st.draw, 0.0F, 0.35F);
                 st.pin = 0.0F;
                 st.reload = -1.0F;
+                st.loaded = false;
                 st.wasUsing = false;
                 st.lastCharge = 0.0F;
                 continue;
@@ -172,6 +175,9 @@ public final class WeaponAnim {
                 }
                 case CROSSBOW -> {
                     st.aim = approach(st.aim, using ? 1.0F : 0.0F, 0.35F);
+                    // 上弦（装填）：进度喂给模型覆盖属性与分件动画
+                    st.reload = CrossbowWeaponItem.reloadProgress(held, gameTime);
+                    st.loaded = CrossbowWeaponItem.cocked(held);
                     st.wasUsing = using;
                 }
                 case BOW -> {

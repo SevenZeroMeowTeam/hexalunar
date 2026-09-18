@@ -19,3 +19,9 @@ mandatory=true
 versionRange="[${minecraft_version}]"
 ordering="NONE"
 side="BOTH"
+[[dependencies.${mod_id}]]
+modId="geckolib"
+mandatory=true
+versionRange="[${geckolib_version},)"
+ordering="AFTER"
+side="BOTH"

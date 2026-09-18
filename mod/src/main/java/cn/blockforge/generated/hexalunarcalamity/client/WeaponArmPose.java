@@ -40,9 +40,15 @@ public final class WeaponArmPose implements IClientItemExtensions {
         boolean using = entity.isUsingItem() && entity.getUseItem() == stack;
         return switch (kind) {
             case AKM -> using ? HumanoidModel.ArmPose.CROSSBOW_CHARGE : HumanoidModel.ArmPose.CROSSBOW_HOLD;
-            case CROSSBOW -> using
-                    ? HumanoidModel.ArmPose.CROSSBOW_CHARGE : HumanoidModel.ArmPose.CROSSBOW_HOLD;
-            case BOW -> null;   // 原版按 UseAnim.BOW 自己处理
+            case CROSSBOW -> {
+                // 上弦时也用「弩蓄力」姿势：原版那套会把左手放在弦上往回拉，正好是上弦动作
+                long now = entity.level() == null ? 0L : entity.level().getGameTime();
+                yield using || CrossbowWeaponItem.reloading(stack, now)
+                        ? HumanoidModel.ArmPose.CROSSBOW_CHARGE : HumanoidModel.ArmPose.CROSSBOW_HOLD;
+            }
+            case BOW -> using
+                    ? HumanoidModel.ArmPose.BOW_AND_ARROW      // 拉弓（原版按 UseAnim.BOW 给的那个姿）
+                    : HumanoidModel.ArmPose.ITEM;
             case GRENADE, FLASH -> {
                 int state = GrenadeItem.state(stack);
                 yield state == GrenadeItem.STATE_ARMED || state == GrenadeItem.STATE_PULLING

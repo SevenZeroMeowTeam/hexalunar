@@ -1,0 +1,9 @@
+[
+  {
+    "tool": "create_project",
+    "args": {
+      "name": "crossbow",
+      "format": "geckolib_model"
+    }
+  }
+]

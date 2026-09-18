@@ -43,6 +43,10 @@ public class BoltEntity extends AbstractArrow {
         if (launchOrigin == null) launchOrigin = position();
         super.tick();
         if (isRemoved() || inGround || isNoPhysics()) return;
+        if (level() instanceof ServerLevel server) {
+            cn.blockforge.generated.hexalunarcalamity.weapon.WeaponFx
+                    .arrowTrail(server, position(), false);
+        }
         double flown = Ballistics.flown(launchOrigin, position());
         double gravity = getOwner() instanceof Player
                 ? Ballistics.BOLT_IN_RANGE_GRAVITY : Ballistics.VANILLA_ARROW_GRAVITY;
@@ -60,9 +64,8 @@ public class BoltEntity extends AbstractArrow {
     protected void onHitEntity(EntityHitResult result) {
         super.onHitEntity(result);
         if (result.getEntity() instanceof LivingEntity && level() instanceof ServerLevel server) {
-            server.sendParticles(ParticleTypes.SMALL_FLAME,
-                    result.getLocation().x, result.getLocation().y, result.getLocation().z,
-                    6, 0.1, 0.1, 0.1, 0.05D);
+            cn.blockforge.generated.hexalunarcalamity.weapon.WeaponFx
+                    .impactEntity(server, result.getLocation());
         }
     }
 }

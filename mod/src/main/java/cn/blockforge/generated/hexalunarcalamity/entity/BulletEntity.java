@@ -4,6 +4,7 @@ import cn.blockforge.generated.hexalunarcalamity.registry.ModEntities;
 import cn.blockforge.generated.hexalunarcalamity.registry.ModItems;
 import cn.blockforge.generated.hexalunarcalamity.registry.ModSounds;
 import cn.blockforge.generated.hexalunarcalamity.weapon.Ballistics;
+import cn.blockforge.generated.hexalunarcalamity.weapon.WeaponFx;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -53,8 +54,12 @@ public class BulletEntity extends ThrowableItemProjectile {
         if (launchOrigin == null) launchOrigin = position();
         super.tick();
         if (level() instanceof ServerLevel server && !isRemoved()) {
-            server.sendParticles(ParticleTypes.SMALL_FLAME,
-                    getX(), getY(), getZ(), 1, 0.01, 0.01, 0.01, 0.0);
+            // 曳光：光点每 tick + 热痕隔 tick，拼出连续弹道光带（轻量）
+            Vec3 at = position();
+            WeaponFx.tracer(server, at);
+            if (tickCount % 2 == 0) {
+                WeaponFx.tracerHot(server, at);
+            }
         }
     }
 
@@ -82,9 +87,7 @@ public class BulletEntity extends ThrowableItemProjectile {
             hit.hurt(level().damageSources().generic(), damage);
         }
         if (level() instanceof ServerLevel server) {
-            server.sendParticles(ParticleTypes.CRIT,
-                    result.getLocation().x, result.getLocation().y + 0.5D, result.getLocation().z,
-                    8, 0.12, 0.25, 0.12, 0.4D);
+            WeaponFx.impactEntity(server, result.getLocation().add(0.0D, 0.5D, 0.0D));
         }
         level().playSound(null, getX(), getY(), getZ(), ModSounds.HIT.get(), SoundSource.PLAYERS, 0.7F, 0.7F);
     }
@@ -93,9 +96,9 @@ public class BulletEntity extends ThrowableItemProjectile {
     protected void onHitBlock(BlockHitResult result) {
         super.onHitBlock(result);
         if (level() instanceof ServerLevel server) {
-            server.sendParticles(ParticleTypes.CRIT,
-                    result.getLocation().x, result.getLocation().y, result.getLocation().z,
-                    6, 0.1, 0.1, 0.1, 0.3D);
+            // 火花 + 烟尘 + 命中方块的碎屑（碎屑就是「弹痕」的观感）
+            WeaponFx.impactBlock(server, result.getLocation(),
+                    level().getBlockState(result.getBlockPos()));
         }
     }
 }

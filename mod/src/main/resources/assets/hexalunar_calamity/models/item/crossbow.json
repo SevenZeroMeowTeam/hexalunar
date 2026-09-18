@@ -1,30 +1,6 @@
 {
- "loader": "forge:obj",
- "model": "hexalunar_calamity:models/item/crossbow.obj",
- "flip_v": true,
+ "parent": "builtin/entity",
  "gui_light": "front",
- "overrides": [
-  {
-   "predicate": {
-    "hexalunar_calamity:pulling": 1
-   },
-   "model": "hexalunar_calamity:item/crossbow_pulling_0"
-  },
-  {
-   "predicate": {
-    "hexalunar_calamity:pull": 0.65,
-    "hexalunar_calamity:pulling": 1
-   },
-   "model": "hexalunar_calamity:item/crossbow_pulling_1"
-  },
-  {
-   "predicate": {
-    "hexalunar_calamity:pull": 0.9,
-    "hexalunar_calamity:pulling": 1
-   },
-   "model": "hexalunar_calamity:item/crossbow_pulling_2"
-  }
- ],
  "display": {
   "gui": {
    "rotation": [
@@ -38,26 +14,26 @@
     0
    ],
    "scale": [
-    0.72,
-    0.72,
-    0.72
+    0.936,
+    0.936,
+    0.936
    ]
   },
   "ground": {
    "rotation": [
     0,
-    -90,
+    0,
     0
    ],
    "translation": [
     0,
-    4,
+    3,
     0
    ],
    "scale": [
-    0.3,
-    0.3,
-    0.3
+    0.48,
+    0.48,
+    0.48
    ]
   },
   "head": {
@@ -72,15 +48,15 @@
     0
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.78,
+    0.78,
+    0.78
    ]
   },
   "fixed": {
    "rotation": [
     0,
-    -90,
+    0,
     0
    ],
    "translation": [
@@ -89,77 +65,77 @@
     0
    ],
    "scale": [
-    0.5,
-    0.5,
-    0.5
+    0.72,
+    0.72,
+    0.72
    ]
   },
   "thirdperson_righthand": {
    "rotation": [
     0,
-    180,
+    0,
     0
    ],
    "translation": [
-    4.8,
-    -0.2,
-    3.5
+    0,
+    0,
+    0
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.8,
+    0.8,
+    0.8
    ]
   },
   "thirdperson_lefthand": {
    "rotation": [
     0,
-    180,
+    0,
     0
    ],
    "translation": [
-    4.8,
-    -0.2,
-    3.5
+    0,
+    0,
+    0
    ],
    "scale": [
-    0.6,
-    0.6,
-    0.6
+    0.8,
+    0.8,
+    0.8
    ]
   },
   "firstperson_righthand": {
    "rotation": [
     0,
-    210,
+    0,
     0
    ],
    "translation": [
-    -0.8,
-    2.4,
-    6.1
+    0,
+    0,
+    0
    ],
    "scale": [
-    0.62,
-    0.62,
-    0.62
+    0.8,
+    0.8,
+    0.8
    ]
   },
   "firstperson_lefthand": {
    "rotation": [
     0,
-    210,
+    0,
     0
    ],
    "translation": [
-    -0.8,
-    2.4,
-    6.1
+    0,
+    0,
+    0
    ],
    "scale": [
-    0.62,
-    0.62,
-    0.62
+    0.8,
+    0.8,
+    0.8
    ]
   }
  }

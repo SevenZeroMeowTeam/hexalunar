@@ -26,6 +26,12 @@ public final class MoonSpawnEvents {
     public static void onFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
         if (!(event.getEntity() instanceof Zombie zombie)) return;
         if (!(event.getLevel() instanceof ServerLevel server)) return;
+
+        // 僵尸进化：与月相无关，只看「过了多少天」——时间越久，进化概率越高
+        if (event.getSpawnType() == MobSpawnType.NATURAL) {
+            ZombieEvolution.markIfEvolving(server, zombie, server.getRandom());
+        }
+
         MoonPhase phase = MoonManager.current(server);
         if (phase == null) return;
 

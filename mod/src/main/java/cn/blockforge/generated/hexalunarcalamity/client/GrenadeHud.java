@@ -31,6 +31,8 @@ public final class GrenadeHud {
                     "tooltip.hexalunar_calamity.grenade_pulling");
             case GrenadeItem.STATE_REINSERTING -> with(ChatFormatting.GREEN,
                     "tooltip.hexalunar_calamity.grenade_reinserting");
+            case GrenadeItem.STATE_PRIMED -> with(ChatFormatting.GOLD,
+                    "hud.hexalunar_calamity.grenade_primed");
             case GrenadeItem.STATE_ARMED -> Component.translatable(
                             "hud.hexalunar_calamity.grenade_armed",
                             String.format(java.util.Locale.ROOT, "%.1f",

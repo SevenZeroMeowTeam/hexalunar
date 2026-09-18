@@ -1,14 +1,52 @@
 plugins { id 'java'; id 'net.minecraftforge.gradle' version '[6.0,6.2)' }
-version = '1.0.0-r22'
+version = '1.0.0-r53'
 group = 'cn.blockforge.generated.hexalunarcalamity'
 base { archivesName = 'hexalunar_calamity' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-minecraft { mappings channel: 'official', version: '1.20.1' }
-dependencies { minecraft 'net.minecraftforge:forge:1.20.1-47.4.0' }
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+
+    // FG6 不会自动生成运行任务，要显式声明；这样 gradlew runClient 才能起开发客户端
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                hexalunar_calamity {
+                    source sourceSets.main
+                }
+            }
+        }
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                hexalunar_calamity {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    // GeckoLib 鐎规ɑ鏌?maven閿涘牓顎囨鐓庡З閻㈣绨遍敍?
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+    // 4.8.x 閺?1.20.1 Forge 閻ㄥ嫭娓堕崥搴濈閺夛紕鍤庨敍瀹焑o/animation 閺嶇厧绱℃稉?Blockbench GeckoLib 閹绘帊娆㈣ぐ鎾冲閻楀牊婀版稉鈧懛?
+    implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4')
+}
+
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 processResources {
-    def props = [mod_id: 'hexalunar_calamity', mod_name: '六相月灾', mod_version: project.version,
-                 minecraft_version: '1.20.1', forge_version: '47.4.0']
+    def props = [mod_id: 'hexalunar_calamity', mod_name: '閸忣厾娴夐張鍫绩', mod_version: project.version,
+                 minecraft_version: '1.20.1', forge_version: '47.4.0', geckolib_version: '4.8.4']
     inputs.properties props
     filteringCharset = 'UTF-8'
     filesMatching('META-INF/mods.toml') { expand props }
