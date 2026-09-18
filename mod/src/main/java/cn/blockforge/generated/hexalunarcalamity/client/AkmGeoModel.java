@@ -129,53 +129,18 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             staticPose();
             return;
         }
-        float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F);
+        // move 骨骼：只由「举枪位移 + 开火后坐」决定（动画推的一律不要，见 computeMovePose）
+        computeMovePose(MOVE_POSE, sightNow);
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
-            // ------------------------------------------------------------------
-            // ★ 「只前后动，不上下动」：
-            //   · 角度一律清零（火/换弹/拉栓/走路推的角度会让枪斜/点头）；
-            //   · X / Y 位移一律清零 —— fire 动画还会给 move 推 +0.15 的 Y（上下）、
-            //     idle/run 推 ±0.11~0.9 的 Y，这些就是「开火上下晃」的来源；
-            //   · Z（沿枪管）只在**开火**那一瞬留：那是后坐后拖，松冲量后自己弹回去。
-            // ------------------------------------------------------------------
-            move.setRotX(0.0F);
-            move.setRotY(0.0F);
-            move.setRotZ(0.0F);
-            move.setPosX(0.0F);
-            move.setPosY(0.0F);
-            if (!AkmAnimState.firing()) {
-                move.setPosZ(0.0F);
-            }
-            if (aim > 0.001F) {
-                Player local = Minecraft.getInstance().player;
-                float aimDx = local == null ? WeaponMount.AKM_AIM_DX : WeaponMount.akmAimDx(local);
-                move.setPosX(aimDx * aim);
-                // ★ 举枪参照点随瞄具变：机械瞄具 3.44 / 红点 3.79 / 4 倍镜 4.00
-                move.setPosY(WeaponMount.akmAimDy(sightNow) * aim);
-                move.setPosZ(WeaponMount.AKM_AIM_DZ * aim);
-            }
-            // 后坐：只沿枪管向后拖（走 move 骨骼而不是 display/pose —— 第一人称手臂（WeaponArms）
-            // 读的就是 move，所以「开火时双手跟着枪一起前后动」是自动的）。
-            // 举枪时收掉大半，别把「照门—准星」那条瞄准线顶跑。
-            float kick = WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim);
-            if (kick > 0.001F) {
-                move.setPosZ(move.getPosZ() + KICK_BACK * kick);
-            }
+            move.updatePosition(MOVE_POSE[0], MOVE_POSE[1], MOVE_POSE[2]);
+            move.updateRotation(MOVE_POSE[3], MOVE_POSE[4], MOVE_POSE[5]);
         }
-        CoreGeoBone cam = getAnimationProcessor().getBone("camera");
-        if (cam != null && !AkmAnimState.firing()) {
-            // ★ 镜头的后坐反馈**只留给开火**：换弹 / 拉栓（含换完弹那一下）时镜头必须稳，
-            //   否则就是用户说的「换完弹再上下动一下」。
-            cam.setRotX(0.0F);
-            cam.setRotY(0.0F);
-            cam.setRotZ(0.0F);
-        }
+        // 镜头骨骼一律清零（它会被叠到视角上 —— 动画给的是阶跃值，每发都让整个视角点一下头）
+        zeroCamera();
 
         // 瞄具：只显示当前装的那个（没装就两个都藏）
         applySights();
-
-        captureFrame(move);
         float p = localReloadProgress();
         driveMagazine(p);
         driveBolt(p);
@@ -222,6 +187,78 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
         }
     }
 
+    /**
+     * move 骨骼当前帧的目标姿态：{posX, posY, posZ, rotX, rotY, rotZ}（模型像素 / 弧度）。
+     *
+     * <p><b>骨骼与手臂共用同一份</b>：{@link #captureNow()} 用它给手臂算「当前帧」，
+     * 所以枪和手不会差一帧（用户反馈的「手臂多一帧上下晃」）。
+     *
+     * <p>★ 动画推在 {@code move} 上的东西**一律不要**：角度全零、X/Y 全零、**Z 也不放行**。
+     * 动画的位置是「首帧跳到位、末帧跳回去」的阶跃，每发都会让枪（和跟着它的双手）顿一下；
+     * 后坐只用 {@link WeaponAnim} 的冲量（开火那一 tick 加上去、之后每 tick ×0.55 衰减）驱动，天生平滑。
+     *
+     * <p>举枪（ADS）只做平移：一旦叠加角度，「照门—准星」那条线就会离开屏幕中心。
+     */
+    private static void computeMovePose(float[] out, int sight) {
+        float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F);
+        float px = 0.0F;
+        float py = 0.0F;
+        float pz = 0.0F;
+        if (aim > 0.001F) {
+            Player local = Minecraft.getInstance().player;
+            float aimDx = local == null ? WeaponMount.AKM_AIM_DX : WeaponMount.akmAimDx(local);
+            px = aimDx * aim;
+            // ★ 举枪参照点随瞄具变：机械瞄具 3.44 / 红点 3.79 / 4 倍镜 4.00
+            py = WeaponMount.akmAimDy(sight) * aim;
+            pz = WeaponMount.AKM_AIM_DZ * aim;
+        }
+        // 后坐：只沿枪管向后拖（举枪时收掉大半，别把瞄准线顶跑）
+        pz += KICK_BACK * WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim);
+        out[0] = px;
+        out[1] = py;
+        out[2] = pz;
+        out[3] = 0.0F;
+        out[4] = 0.0F;
+        out[5] = 0.0F;
+    }
+
+    /** move 姿态的临时缓冲（骨骼与手臂共用；客户端渲染是单线程，不会并发） */
+    private static final float[] MOVE_POSE = new float[6];
+
+    /**
+     * 手臂（第一人称补画的双臂）用：把**当前帧**的 move 姿态直接算进 {@link #frame}。
+     *
+     * <p>为什么不能等渲染时捕获：手臂在 {@code RenderHandEvent} 里画，**比物品渲染早**，
+     * 等物品渲染再捕获就只能拿到「上一帧」的值 —— 开火那一瞬间枪和手差一帧，
+     * 看上去就是「多一帧上下晃动」。现在 {@link #frame} 只有这一个写入点。
+     */
+    static void captureNow() {
+        Player local = Minecraft.getInstance().player;
+        int sight = local == null
+                ? cn.blockforge.generated.hexalunarcalamity.weapon.Sights.IRON
+                : cn.blockforge.generated.hexalunarcalamity.weapon.Sights.sight(local.getMainHandItem());
+        computeMovePose(MOVE_POSE, sight);
+        frame.capture(WeaponMount.AKM_TX, WeaponMount.AKM_TY, WeaponMount.AKM_TZ, 1.0F,
+                MOVE_PX, MOVE_PY, MOVE_PZ,
+                MOVE_POSE[0], MOVE_POSE[1], MOVE_POSE[2],
+                MOVE_POSE[3], MOVE_POSE[4], MOVE_POSE[5]);
+    }
+
+    /**
+     * ★ 把 {@code camera} 空骨骼清零 —— 它会被 {@code ClientEvents.applyAkmCamera} 叠到视角上，
+     * 而动画给它的角度是**阶跃**的：每开一发都会让**整个视角（连枪和双臂）上下点一下头**，
+     * 即用户反馈的「akm 发射和手臂都多一帧上下晃动一下」。所以一律清零，后坐只保留沿枪管的平移。
+     *
+     * <p>（camera → 视角的管道还是通的，以后要「阻尼过的」轻后坐上跳，把这里的清零换成对骨骼值插值即可。）
+     */
+    private void zeroCamera() {
+        CoreGeoBone cam = getAnimationProcessor().getBone("camera");
+        if (cam == null) return;
+        cam.setRotX(0.0F);
+        cam.setRotY(0.0F);
+        cam.setRotZ(0.0F);
+    }
+
     /** 瞄具：只显示当前装的那个（没装就两个都藏；{@link #sightNow} 由渲染器按被渲染的 ItemStack 设入） */
     private void applySights() {
         CoreGeoBone dot = getAnimationProcessor().getBone("dot_sight");
@@ -257,8 +294,7 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             cam.setRotY(0.0F);
             cam.setRotZ(0.0F);
         }
-        CoreGeoBone mag = getAnimationProcessor().getBone("magazine");
-        if (mag != null) {
+        CoreGeoBone mag = getAnimationProcessor().getBone("magazine");        if (mag != null) {
             mag.setPosY(0.0F);
             mag.setRotX(0.0F);
         }
@@ -273,21 +309,6 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             }
         }
         applySights();
-    }
-
-    /** 把 move 骨骼当前状态存进 {@link #frame}（手臂要跟着枪一起动，含举枪位移） */
-    private void captureFrame(CoreGeoBone move) {
-        float ox = 0.0F, oy = 0.0F, oz = 0.0F, rx = 0.0F, ry = 0.0F, rz = 0.0F;
-        if (move != null) {
-            ox = move.getPosX();
-            oy = move.getPosY();
-            oz = move.getPosZ();
-            rx = move.getRotX();
-            ry = move.getRotY();
-            rz = move.getRotZ();
-        }
-        frame.capture(WeaponMount.AKM_TX, WeaponMount.AKM_TY, WeaponMount.AKM_TZ, 1.0F,
-                MOVE_PX, MOVE_PY, MOVE_PZ, ox, oy, oz, rx, ry, rz);
     }
 
     // ------------------------------------------------------------------ 换弹：退匣 → 新匣 → 卡紧

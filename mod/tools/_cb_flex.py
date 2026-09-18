@@ -30,7 +30,8 @@ TIP_X = 2.62           # 弦心到弓臂锚点的横向距离（生成器 TIP_X�
 DRAW_DZ = 1.80         # 拉满时弦心后退距离（生成器 DRAW_DZ）
 NOCK_Z0 = -5.20        # 弦面中心的 z（生成器 NOCK_Z0）
 STRING_LEN = 3.18      # 弦段方块长度（生成器按 hypot(2.62,1.80)=3.179 生成）
-FLEX_DEG = 9.0         # ★ 拉满时弓臂内收角（度）
+FLEX_DEG = 8.0         # ★ 拉满时弓臂内收角（度）
+FLEX_BACK = 0.35       # ★ 拉满时两弓臂整体往射手方向滑的量（模型像素；只靠转的话外端主要只往内走）
 FLEX_PX = 1.50         # 弓臂弯折支点 x = 贴导轨内端的中心
 FLEX_PZ = -8.60        # 弓臂弯折支点 z = 最前端
 CAM_Z = -5.20          # cam / 弦锚点的 z（= 这两个骨骼 pivot 的 z）
@@ -66,6 +67,17 @@ def disp_about(pivot, p, deg):
     return (n[0] - p[0], n[1] - p[1])
 
 
+def flex_disp(pivot, p, side, draw):
+    """弓臂上一个点（相对支点）在 draw 下的总位移 = 绕支点转 + 整体后滑"""
+    d = disp_about(pivot, p, sign_theta(draw, side))
+    return (d[0], d[1] + draw * FLEX_BACK)
+
+
+def nock_z(draw):
+    """弦心 z：行程 = DRAW_DZ + 弓臂后滑量（弦与弓臂一起往后挪）"""
+    return NOCK_Z0 + draw * (DRAW_DZ + FLEX_BACK)
+
+
 def limb_extents(name, side):
     b = bone_map(load())[name]
 
@@ -92,8 +104,8 @@ def sign_theta(draw, side):
 
 
 def check():
-    print('常数 FLEX_DEG=%.1f  TIP_X=%.2f  DRAW_DZ=%.2f  NOCK_Z0=%.2f  L=%.3f'
-          % (FLEX_DEG, TIP_X, DRAW_DZ, NOCK_Z0, STRING_LEN))
+    print('常数 FLEX_DEG=%.1f  FLEX_BACK=%.2f  TIP_X=%.2f  DRAW_DZ=%.2f  NOCK_Z0=%.2f  L=%.3f'
+          % (FLEX_DEG, FLEX_BACK, TIP_X, DRAW_DZ, NOCK_Z0, STRING_LEN))
     for name, side, piv in (('prod_right', 1, (FLEX_PX, FLEX_PZ)),
                             ('prod_left', -1, (-FLEX_PX, FLEX_PZ))):
         inn, out, z0, z1, outer = limb_extents(name, side)
@@ -101,22 +113,23 @@ def check():
               % (name, piv[0], piv[1], inn, out, z0, z1, outer[0], outer[1]))
         for draw in (0.5, 1.0):
             th = sign_theta(draw, side)
-            do = disp_about(piv, outer, th)
-            print('   draw=%.1f θ=%+5.2f°  外端 (%+.2f,%+.2f) → (%+.2f,%+.2f)  Δ=(%+.2f,%+.2f) %s'
+            do = flex_disp(piv, outer, side, draw)
+            print('   draw=%.1f θ=%+5.2f°  外端 (%+.2f,%+.2f) → (%+.2f,%+.2f)  Δ=(%+.2f,%+.2f) 向内%s 向后%s'
                   % (draw, th, outer[0], outer[1], outer[0] + do[0], outer[1] + do[1],
-                     do[0], do[1], '向内 OK' if do[0] * side < 0 else '向外 BAD'))
-    print('== 弦锚点 / 弦内端（弦心 = (0, NOCK_Z0 + draw·DRAW_DZ)）')
+                     do[0], do[1],
+                     'OK' if do[0] * side < 0 else 'BAD', 'OK' if do[1] > 0 else 'BAD'))
+    print('== 弦锚点 / 弦内端（弦心 = (0, NOCK_Z0 + draw·(DRAW_DZ+FLEX_BACK))）')
     print('   draw |  θ(右)  | 锚点Δ=(dx,dz)   | 弦内端         | 弦心        | 偏差')
     for draw in (0.0, 0.5, 1.0):
         th = sign_theta(draw, 1)
         a = (TIP_X, CAM_Z)
-        d = disp_about((FLEX_PX, FLEX_PZ), a, th)
+        d = flex_disp((FLEX_PX, FLEX_PZ), a, 1, draw)
         phi = draw * math.degrees(math.atan2(DRAW_DZ, TIP_X))
         # 游戏里的弦内端 = (锚点 pivot + 平移 δ) + R(φ)·(−L, 0)
         r = roty(phi)
         off = r(-STRING_LEN, 0.0)
         e = (a[0] + d[0] + off[0], a[1] + d[1] + off[1])
-        nz = NOCK_Z0 + draw * DRAW_DZ
+        nz = nock_z(draw)
         flag = '  OK' if abs(e[0]) <= 0.75 and abs(e[1] - nz) <= NOCK_HALF_Z else '  BAD'
         print('   %.1f  | %+5.2f° | (%+.2f,%+.2f) | (%+.2f,%+.2f) | (0.00,%+.2f) | (%.2f,%.2f)%s'
               % (draw, th, d[0], d[1], e[0], e[1], nz, e[0], e[1] - nz, flag))
@@ -166,14 +179,18 @@ def bake(draw, out=None):
                                     (-1, 'prod_left', 'cam_left', 'string_left')):
         piv = (FLEX_PX * side, FLEX_PZ)
         th = sign_theta(draw, side)
-        pivots[limb] = (piv[0], bs[limb]['pivot'][1], piv[1], th)
+        back = draw * FLEX_BACK
+        # 弓臂：绕支点转 + 整体后滑 back ⇒ 预览器上等价于「pivot 与方块一起后挪 back + 绕新 pivot 转」
+        pivots[limb] = (piv[0], bs[limb]['pivot'][1], piv[1] + back, th)
+        shifts[limb] = (0.0, 0.0, back)
         a = (TIP_X * side, CAM_Z)
-        d = disp_about(piv, a, th)
+        d = flex_disp(piv, a, side, draw)
         shifts[cam] = (d[0], 0.0, d[1])
         shifts[string] = (d[0], 0.0, d[1])
         rots[string] = (0.0, -side * phi, 0.0)
-    shifts['nock'] = (0.0, 0.0, draw * DRAW_DZ)
-    shifts['bolt'] = (0.0, 0.0, draw * DRAW_DZ)
+    travel = draw * (DRAW_DZ + FLEX_BACK)
+    shifts['nock'] = (0.0, 0.0, travel)
+    shifts['bolt'] = (0.0, 0.0, travel)
 
     for b in geo['minecraft:geometry'][0]['bones']:
         name = b['name']
@@ -181,7 +198,6 @@ def bake(draw, out=None):
             px, py, pz, th = pivots[name]
             b['pivot'] = [round(px, 4), round(py, 4), round(pz, 4)]
             b['rotation'] = [0.0, round(th, 4), 0.0]
-            continue
         d = shifts.get(name)
         if d is not None:
             b['pivot'] = [round(b['pivot'][0] + d[0], 4), round(b['pivot'][1] + d[1], 4),

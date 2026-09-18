@@ -71,7 +71,9 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
 
     // ------------------------------------------------------------------ 弓臂内收（r63）
     /** ★ 拉满时弓臂内收角（度）：绕「贴导轨的内端」转，外端向内 + 向后 ⇒「弓臂向内收缩」 */
-    private static final float FLEX_DEG = 9.0F;
+    private static final float FLEX_DEG = 8.0F;
+    /** ★ 拉满时两弓臂整体**向后（射手方向）**滑的量（模型像素）—— 只靠转的话外端主要只往内走 */
+    private static final float FLEX_BACK = 0.35F;
     /** 弓臂弯折支点（模型像素）＝贴导轨那一端（最前端）—— 必须与 tools/_cb_flex.py 的同名常数一致 */
     private static final float FLEX_PX = 1.50F;
     private static final float FLEX_PZ = -8.60F;
@@ -169,11 +171,13 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         if (left != null) left.setRotY(-draw * PHI_RAD + tw);
         if (right != null) right.setRotY(draw * PHI_RAD - tw);
 
-        // ★ 弓臂内收（r63）：拉弦时两弓臂绕「贴导轨的内端」向内转 —— 外端向内 + 向后走，
-        //   松开 / 击发后回到参考网格（图片）那个张开姿态。弦与凸轮盘挂在弓臂梢上，跟着走。
+        // ★ 弓臂内收（r63/r64）：拉弦时两弓臂绕「贴导轨的内端」向内转 + 整体往射手方向滑 ——
+        //   外端**向内约 0.5 + 向后约 0.35**（用户选的「又向内又向后」），松开/击发后回到
+        //   参考网格（图片）那个张开姿态。弦与凸轮盘挂在弓臂梢上，跟着走。
         float flex = draw * FLEX_DEG * Mth.DEG_TO_RAD;
-        flexLimb("prod_right", "cam_right", "string_right", 1, -flex);
-        flexLimb("prod_left", "cam_left", "string_left", -1, flex);
+        float back = draw * FLEX_BACK;
+        flexLimb("prod_right", "cam_right", "string_right", 1, -flex, back);
+        flexLimb("prod_left", "cam_left", "string_left", -1, flex, back);
 
         // 复合十字弩：拉弦时两个凸轮盘跟着转（弦从凸轮上放/收）
         CoreGeoBone camL = getAnimationProcessor().getBone("cam_left");
@@ -181,10 +185,11 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         if (camL != null) camL.setRotY(-draw * CAM_SPIN);
         if (camR != null) camR.setRotY(draw * CAM_SPIN);
 
-        // 弦心（缠绳）随拉弦后退；震动时跟着弦心一起前后抖（弦在 X 上的半投影 = TIP_X）
+        // 弦心（缠绳）随拉弦后退（行程 = DRAW_DZ + 弓臂后弯量，弦与弓臂一起往后挪）；
+        // 震动时跟着弦心一起前后抖（弦在 X 上的半投影 = TIP_X）
         CoreGeoBone nock = getAnimationProcessor().getBone("nock");
         if (nock != null) {
-            nock.setPosZ(draw * DRAW_DZ - TIP_X * tw);
+            nock.setPosZ(draw * (DRAW_DZ + FLEX_BACK) - TIP_X * tw);
             nock.setPosY(0.0F);
         }
 
@@ -195,10 +200,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             //   否则箭会先凭空出现在导轨上、手再慢吞吞地过去「假装」放箭。
             boolean hasBolt = cocked || p > 0.84F;
             bolt.setPosY(hasBolt ? 0.0F : BOLT_HIDE_Y);
-            bolt.setPosZ(draw * DRAW_DZ);
+            bolt.setPosZ(draw * (DRAW_DZ + FLEX_BACK));
         }
-        // ★ 「只前后动，不上下动」+「GUI 图标不能跟着动」（同 AKM）：
-        //   角度一律清零，X/Y 位移一律清零，Z（沿弩身）只在**击发**那一瞬留。
+        // ★ 「只前后动，不上下动」（同 AKM）：角度一律清零，X/Y 一律清零，Z 只由后坐冲量驱动。
+        //   以前在开火时给动画的 Z 放行 —— 那是阶跃值，每发都让弩顿一下（「多一帧」）。
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
             move.setRotX(0.0F);
@@ -206,40 +211,30 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             move.setRotZ(0.0F);
             move.setPosX(0.0F);
             move.setPosY(0.0F);
-            if (!CrossbowAnimState.firing()) {
-                move.setPosZ(0.0F);
-            }
             // 后坐：只沿弩身后拖（走 move 骨骼，第一人称手臂读的就是它 ⇒ 手会跟着一起前后动）
-            float kick = WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil;
-            if (kick > 0.001F) {
-                move.setPosZ(move.getPosZ() + KICK_BACK * kick);
-            }
+            move.setPosZ(KICK_BACK * WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil);
         }
 
         // 左手动作要用（手臂在 RenderHandEvent 里先画，所以读上一帧的值就够）
         lastProgress = progress;
         lastDraw = draw;
-        captureFrame();
 
         // ★ 拉弦/装填全靠上面这些**弩自身的动作**表现（弦两段往后转、弦心后退、凸轮盘转、
         //   弩箭滑上弦），再加上 animation.json 里 move 的摆动（低头/后拖/顿挫），
         //   以及第一人称的手臂（左手拉弦 / 递箭）；不做实体手方块。
     }
 
-    /** 把 move 骨骼当前状态存进 {@link #frame}（手臂要跟着弩一起动） */
-    private void captureFrame() {
-        CoreGeoBone move = getAnimationProcessor().getBone("move");
-        float ox = 0.0F, oy = 0.0F, oz = 0.0F, rx = 0.0F, ry = 0.0F, rz = 0.0F;
-        if (move != null) {
-            ox = move.getPosX();
-            oy = move.getPosY();
-            oz = move.getPosZ();
-            rx = move.getRotX();
-            ry = move.getRotY();
-            rz = move.getRotZ();
-        }
-        frame.capture(0.0F, 0.0F, 0.0F, CB_SCALE,
-                MOVE_PX, MOVE_PY, MOVE_PZ, ox, oy, oz, rx, ry, rz);
+    /**
+     * 手臂（第一人称补画的双臂）用：把**当前帧**的 move 状态直接算进 {@link #frame}。
+     *
+     * <p>为什么不能等渲染时捕获：手臂在 {@code RenderHandEvent} 里画，**比物品渲染早**，
+     * 等物品渲染再捕获就只能拿到上一帧的值 —— 开枪那一瞬间弩和弩手差一帧（「多一帧上下晃」）。
+     * 现在 {@link #frame} 只有这一个写入点。
+     */
+    static void captureNow() {
+        frame.capture(0.0F, 0.0F, 0.0F, CB_SCALE, MOVE_PX, MOVE_PY, MOVE_PZ,
+                0.0F, 0.0F, KICK_BACK * WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil,
+                0.0F, 0.0F, 0.0F);
     }
 
     // ------------------------------------------------------------------ 左手动作（模型像素）
@@ -277,19 +272,19 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         return lerp(TMP_B, ARM_SUPPORT, ease((p - 0.97F) / 0.03F), out);
     }
 
-    /** 弦心上的握点（弦心 z = NOCK_Z0 + draw·DRAW_DZ，手抓在它后面一点、弦面下方） */
+    /** 弦心上的握点（弦心 z = NOCK_Z0 + draw·(DRAW_DZ+FLEX_BACK)，手抓在它后面一点、弦面下方） */
     private static float[] stringPoint(float draw, float[] out) {
         out[0] = 0.26F;
         out[1] = 1.30F;
-        out[2] = NOCK_Z0 + draw * DRAW_DZ + 0.30F;
+        out[2] = NOCK_Z0 + draw * (DRAW_DZ + FLEX_BACK) + 0.30F;
         return out;
     }
 
-    /** 弩箭上的握点（箭尾在弦心上，所以跟着 draw·DRAW_DZ 走） */
+    /** 弩箭上的握点（箭尾在弦心上，所以跟着 draw·(DRAW_DZ+FLEX_BACK) 走） */
     private static float[] boltPoint(float[] out) {
         out[0] = 0.20F;
         out[1] = 1.41F;
-        out[2] = -5.80F + lastDraw * DRAW_DZ;
+        out[2] = -5.80F + lastDraw * (DRAW_DZ + FLEX_BACK);
         return out;
     }
 
@@ -299,11 +294,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
      *
      * <p>GeckoLib 的骨骼变换是 {@code pivot + pos + R(rot)·(p − pivot)}，绕任意点 A 转
      * 等价于「原旋转 + pos 补偿 {@code (A − pivot) − R·(A − pivot)}」
-     * （同一份数学的离线验算在 {@code tools/_cb_flex.py}，带数值自检与出图）。
+     * 再加一个整体后滑 {@code back}（同一份数学的离线验算在 {@code tools/_cb_flex.py}，带数值自检与出图）。
      * 弦 / 凸轮盘的 pivot 就落在弓臂梢上，所以它们要跟着弓臂**平移**同样的位移，
      * 否则弦会跟弓臂脱开。
      */
-    private void flexLimb(String limbName, String camName, String stringName, int side, float theta) {
+    private void flexLimb(String limbName, String camName, String stringName, int side,
+                          float theta, float back) {
         CoreGeoBone limb = getAnimationProcessor().getBone(limbName);
         if (limb == null) return;
         float fpx = side * FLEX_PX;
@@ -313,14 +309,14 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         float s = Mth.sin(theta);
         limb.setRotY(theta);
         limb.setPosX(dx - (dx * c + dz * s));
-        limb.setPosZ(dz - (-dx * s + dz * c));
+        limb.setPosZ(dz - (-dx * s + dz * c) + back);
 
-        // 弦锚点随弓臂走：δ = R(θ)·(A − P) + P − A
+        // 弦锚点随弓臂走：δ = R(θ)·(A − P) + P − A，再加弓臂整体后滑的 back
         float ax = side * TIP_X;
         float adx = ax - fpx;
         float adz = CAM_Z - FLEX_PZ;
         float ox = (adx * c + adz * s + fpx) - ax;
-        float oz = (-adx * s + adz * c + FLEX_PZ) - CAM_Z;
+        float oz = (-adx * s + adz * c + FLEX_PZ) - CAM_Z + back;
         shift(camName, ox, oz);
         shift(stringName, ox, oz);
     }

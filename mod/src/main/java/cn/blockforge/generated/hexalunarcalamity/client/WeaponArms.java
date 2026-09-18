@@ -73,12 +73,16 @@ public final class WeaponArms {
     private static final float[] CB_RIGHT = {0.0F, -0.90F, 0.60F};
 
     public static void renderAkm(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        // ★ 先把「当前帧」的枪姿态算出来：手臂在 RenderHandEvent 里画，比物品渲染早，
+        //   靠「渲染时捕获」的话只能拿到上一帧的值 —— 开火那一瞬枪和手会差一帧（用户反馈的「多一帧」）。
+        AkmGeoModel.captureNow();
         float p = AkmGeoModel.localReloadProgress();
         render(mc, pose, buffer, light, AkmGeoModel.frame,
                 AKM_RIGHT, AkmGeoModel.leftHandPx(p, new float[3]));
     }
 
     public static void renderCrossbow(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        CrossbowGeoModel.captureNow();
         render(mc, pose, buffer, light, CrossbowGeoModel.frame,
                 CB_RIGHT, CrossbowGeoModel.leftHandPx(new float[3]));
     }
