@@ -268,6 +268,10 @@ public final class ClientEvents {
                 .CrossbowWeaponItem) {
             WeaponArms.renderCrossbow(mc, event.getPoseStack(), event.getMultiBufferSource(),
                     event.getPackedLight());
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.item.GrenadeItem) {
+            // 手雷 / 震爆弹：右手握雷；左手只在拔销 / 插销时伸进来抓拉环
+            WeaponArms.renderGrenade(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
         }
     }
 

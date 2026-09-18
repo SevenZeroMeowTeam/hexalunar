@@ -30,7 +30,9 @@ public class FragGrenadeItem extends GrenadeItem implements GeoItem {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     public FragGrenadeItem(Properties properties) {
-        super(properties, Kind.FRAG, 1.15F);
+        // ★ r69：初速 1.15 → 1.30（格/tick，≈26 m/s）+ 出手上抬 6°（GrenadeItem.THROW_LIFT_DEG）
+        //   ⇒ 5 秒引信能真的扔出 ~20 格，弹道是一条看得见的抛物线
+        super(properties, Kind.FRAG, 1.30F);
     }
 
     // ------------------------------------------------------------ GeckoLib

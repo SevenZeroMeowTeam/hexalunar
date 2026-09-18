@@ -1,14 +1,11 @@
 package cn.blockforge.generated.hexalunarcalamity.client;
 
-import cn.blockforge.generated.hexalunarcalamity.weapon.AkmRifleItem;
-import cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -92,16 +89,43 @@ public final class WeaponArms {
                 CB_RIGHT, CrossbowGeoModel.leftHandPx(new float[3]));
     }
 
+    /**
+     * 手雷 / 震爆弹：**右手**握在弹体上；**左手**只在拔销 / 插销的时候出现（抓保险销拉环），
+     * 投掷时绝不把左手也甩出去（用户要求「不是双手投掷动作」）。
+     */
+    public static void renderGrenade(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        WeaponAnim.Kind kind = GrenadePose.heldKind();
+        if (kind == null) return;
+        GrenadePose.captureNow(kind);
+        render(mc, pose, buffer, light, GrenadePose.FRAME,
+                GrenadePose.rightHandPx(kind, new float[3]),
+                GrenadePose.leftHandPx(kind, new float[3]),
+                GrenadePose.SHOULDER_R, GrenadePose.SHOULDER_L, GrenadePose.leftHandActive());
+    }
+
     private static void render(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light,
                                GunFrame frame, float[] rightPx, float[] leftPx) {
+        render(mc, pose, buffer, light, frame, rightPx, leftPx, SHOULDER_R, SHOULDER_L, true);
+    }
+
+    /**
+     * 把手画到枪 / 雷上的两个目标点。
+     *
+     * @param leftVisible 左手要不要画（投掷动作只动右手，左手直接不画）
+     */
+    private static void render(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light,
+                               GunFrame frame, float[] rightPx, float[] leftPx,
+                               float[] shoulderR, float[] shoulderL, boolean leftVisible) {
         AbstractClientPlayer player = mc.player;
         if (player == null) return;
         if (!(mc.getEntityRenderDispatcher().getRenderer(player) instanceof PlayerRenderer pr)) return;
         float[] handR = frame.toCamera(rightPx[0], rightPx[1], rightPx[2], new float[3]);
+        if (handR == null) return;                       // 还没捕获到武器变换：这一帧不画
+        drawArm(pose, buffer, light, pr, player, true, handR, shoulderR, ROLL_R);
+        if (!leftVisible) return;
         float[] handL = frame.toCamera(leftPx[0], leftPx[1], leftPx[2], new float[3]);
-        if (handR == null || handL == null) return;      // 还没捕获到枪的变换：这一帧不画
-        drawArm(pose, buffer, light, pr, player, true, handR, SHOULDER_R, ROLL_R);
-        drawArm(pose, buffer, light, pr, player, false, handL, SHOULDER_L, ROLL_L);
+        if (handL == null) return;
+        drawArm(pose, buffer, light, pr, player, false, handL, shoulderL, ROLL_L);
     }
 
     /** 把手放到 hand（相机空间，格），手臂从 shoulder 方向伸出来 */

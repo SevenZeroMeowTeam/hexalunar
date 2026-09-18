@@ -27,7 +27,8 @@ public class FlashbangItem extends GrenadeItem implements GeoItem {
     private final AnimatableInstanceCache geoCache = GeckoLibUtil.createInstanceCache(this);
 
     public FlashbangItem(Properties properties) {
-        super(properties, Kind.FLASH, 1.25F);
+        // ★ r69：初速 1.25 → 1.38（震爆弹比手雷轻，扔得更远一点）
+        super(properties, Kind.FLASH, 1.38F);
     }
 
     // ------------------------------------------------------------ GeckoLib

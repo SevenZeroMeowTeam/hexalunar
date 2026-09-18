@@ -50,6 +50,11 @@ public final class WeaponArmPose implements IClientItemExtensions {
                     ? HumanoidModel.ArmPose.BOW_AND_ARROW      // 拉弓（原版按 UseAnim.BOW 给的那个姿）
                     : HumanoidModel.ArmPose.ITEM;
             case GRENADE, FLASH -> {
+                // ★ 只有**拿着雷的那只手**才抬起来做投掷预姿；另一只保持垂放。
+                //   原版 THROW_SPEAR 对左右手都会摆，两只手一起动 —— 就是用户说的「双手投掷」。
+                boolean holding = hand == InteractionHand.MAIN_HAND
+                        ? entity.getMainHandItem() == stack : entity.getOffhandItem() == stack;
+                if (!holding) yield HumanoidModel.ArmPose.ITEM;
                 int state = GrenadeItem.state(stack);
                 yield state == GrenadeItem.STATE_ARMED || state == GrenadeItem.STATE_PULLING
                         || state == GrenadeItem.STATE_REINSERTING

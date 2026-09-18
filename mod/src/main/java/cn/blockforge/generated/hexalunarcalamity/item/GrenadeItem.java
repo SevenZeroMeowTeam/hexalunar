@@ -28,7 +28,8 @@ import org.jetbrains.annotations.Nullable;
  *   PRIMED       销已拔出，但压杆**仍被手压住** ⇒ 撞针没释放、引信没点燃 —— 想拿多久拿多久，
  *                绝不会在手里响：
  *                  · 左键投掷 —— 压杆在出手瞬间脱落，引信这才点燃，飞行中读秒
- *                  · 再按住右键 1 秒 —— 压杆还被手压着，随时可以把保险销插回去
+ *                  · **潜行 + 右键 1 秒** —— 压杆还被手压着，可以把保险销插回去
+ *                    （r69 起必须潜行：以前随手右键就开始插销，丢出去前手一抖就把销插回去了）
  *                  · 换槽位 / 收进背包 —— 压杆一松，保险销自己弹回去
  *   REINSERTING  正在插回保险销（1 秒）。中途松手则回到 PRIMED（销还没进去）
  *   ARMED        引信已点燃。手里攥着时**永远不会**进入这个状态（serverTick 会折回 PRIMED），
@@ -44,6 +45,13 @@ public class GrenadeItem extends Item {
     public static final int PIN_TICKS = 20;
     /** 引信总时长：5 秒 */
     public static final int FUSE_TICKS = 100;
+    /**
+     * ★ r69：出手时的**上抬角**（度）。手掷是抛物线，不是平推：玩家照准星瞄、出去带一点弧度，
+     * 看着才像真扔出去（以前完全沿视线直飞，超过 10 格就是一条直线）。
+     */
+    public static final float THROW_LIFT_DEG = 6.0F;
+    /** 手掷的随机偏差（0.02 太“枪械”了；原版雪球是 1.0） */
+    public static final float THROW_INACCURACY = 0.4F;
 
     public static final int STATE_SAFE = 0;
     public static final int STATE_PULLING = 1;
@@ -177,7 +185,11 @@ public class GrenadeItem extends Item {
 
     // ------------------------------------------------------------------ 服务端动作
 
-    /** 服务端：右键按下 —— 插着销就拔，销已拔出（压杆还被手压着）就把销插回去 */
+    /**
+     * 服务端：右键按下 —— 插着销就拔；销已拔出（压杆还被手压着）则**潜行 + 右键**把销插回去。
+     *
+     * <p>★ r69：插回销改成必须潜行 —— 以前随手右键就会开始插销，丢出去前手一抖就把销插回去了。
+     */
     public static void serverBeginHold(Player player) {
         ItemStack stack = heldGrenade(player);
         if (stack == null) return;
@@ -188,6 +200,10 @@ public class GrenadeItem extends Item {
             player.swing(player.getMainHandItem() == stack
                     ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
         } else if (state == STATE_PRIMED || state == STATE_ARMED) {
+            if (!player.isShiftKeyDown()) {
+                tell(player, "message.hexalunar_calamity.pin_reinsert_hint", ChatFormatting.GRAY);
+                return;
+            }
             beginHold(stack, STATE_REINSERTING, now);
         }
     }
@@ -229,7 +245,9 @@ public class GrenadeItem extends Item {
 
         GrenadeEntity grenade = new GrenadeEntity(level, player, g.kind, remaining);
         grenade.setPos(player.getEyePosition().add(player.getLookAngle().scale(0.55D)));
-        grenade.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, g.throwPower, 0.02F);
+        // ★ r69：上抬 THROW_LIFT_DEG —— 出手带弧度；初速由各物品的 throwPower 给（已上调）
+        grenade.shootFromRotation(player, player.getXRot() - THROW_LIFT_DEG, player.getYRot(), 0.0F,
+                g.throwPower, THROW_INACCURACY);
         level.addFreshEntity(grenade);
 
         // 压杆崩飞：火星四散 + 金属脆响，随后引信嘶嘶声（引信就是这一刻点着的）

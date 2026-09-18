@@ -23,7 +23,7 @@ import org.lwjgl.glfw.GLFW;
  * 并把点击、按住转换成开火请求包发给服务端。
  *
  * <p>手雷：右键被整个接管（不给原版 use 机会），只上报「按下 / 松开」；
- * 这一次按住是拔保险销、还是趁压杆还被手压着把销插回去，以及左键能不能丢出去，
+ * 这一次按住是拔保险销、还是「潜行 + 右键」趁压杆还被手压着把销插回去，以及左键能不能丢出去，
  * 全部由服务端按手雷状态裁决。客户端本地只累计按住时长，用来画物品图标上的进度条。
  */
 @Mod.EventBusSubscriber(modid = HexaLunarCalamity.MOD_ID, value = net.minecraftforge.api.distmarker.Dist.CLIENT)
@@ -133,12 +133,13 @@ public final class ClientWeaponInput {
         int state = GrenadeItem.state(stack);
 
         if (rmb && !lastRmb) {
-            // 一次全新的按下：插着销就是拔销，销已拔出（压杆还被手压着）就把销插回去
+            // 一次全新的按下：插着销就是拔销；销已拔出时**潜行 + 右键**才是把销插回去
             holdTicks = 0;
             holdReported = true;
             GrenadeItem.clientPullProgress = state == GrenadeItem.STATE_SAFE ? 0.0F : -1.0F;
-            GrenadeItem.clientReinsertProgress = state == GrenadeItem.STATE_PRIMED
-                    || state == GrenadeItem.STATE_ARMED ? 0.0F : -1.0F;
+            boolean pinOut = state == GrenadeItem.STATE_PRIMED || state == GrenadeItem.STATE_ARMED;
+            GrenadeItem.clientReinsertProgress =
+                    pinOut && mc.player.isShiftKeyDown() ? 0.0F : -1.0F;
             ModNetwork.CHANNEL.sendToServer(
                     new ModNetwork.GrenadeAction(ModNetwork.GrenadeAction.RMB_DOWN));
         } else if (!rmb && lastRmb) {

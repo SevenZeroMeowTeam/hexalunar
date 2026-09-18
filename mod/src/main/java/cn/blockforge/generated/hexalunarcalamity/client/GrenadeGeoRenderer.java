@@ -25,6 +25,24 @@ public class GrenadeGeoRenderer extends GeoItemRenderer<FragGrenadeItem> {
                 WeaponAnim.Kind.GRENADE);
     }
 
+    /**
+     * 只有「拿在手上」那一遍才推骨骼（拔销 / 投掷 / 走路摆动）；
+     * GUI 图标 / 掉落物 / 展示框保持静态，否则物品栏里的图标会跟着动。
+     */
+    @Override
+    public void renderByItem(net.minecraft.world.item.ItemStack stack,
+                            net.minecraft.world.item.ItemDisplayContext transformType,
+                            com.mojang.blaze3d.vertex.PoseStack poseStack,
+                            net.minecraft.client.renderer.MultiBufferSource bufferSource,
+                            int packedLight, int packedOverlay) {
+        GrenadeGeoModel.handPass = AkmGeoRenderer.isHand(transformType);
+        try {
+            super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
+        } finally {
+            GrenadeGeoModel.handPass = false;
+        }
+    }
+
     @Override
     public List<GeoRenderLayer<FragGrenadeItem>> getRenderLayers() {
         return List.of(glint);

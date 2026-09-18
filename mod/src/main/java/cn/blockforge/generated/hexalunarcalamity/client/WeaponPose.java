@@ -46,17 +46,22 @@ public final class WeaponPose {
         WeaponAnim.State st = WeaponAnim.of(kind);
         if (WeaponAnim.isIdle(st)) return base;
 
+        // ★ 手雷 / 震爆弹：只有**右手**（拿雷那只）做动作 —— 拔销时左手去拉环、投掷时左手完全不动。
+        //   以前左右手都加同一套增量（镜像后），看上去就是「双手一起拔销 / 双手一起扔」。
+        boolean rightOnly = kind == WeaponAnim.Kind.GRENADE || kind == WeaponAnim.Kind.FLASH;
+
         return new ItemTransforms(
-                hands(kind, base.thirdPersonLeftHand, st, true, false),
-                hands(kind, base.thirdPersonRightHand, st, false, false),
-                hands(kind, base.firstPersonLeftHand, st, true, true),
-                hands(kind, base.firstPersonRightHand, st, false, true),
+                hands(kind, base.thirdPersonLeftHand, st, true, false, rightOnly),
+                hands(kind, base.thirdPersonRightHand, st, false, false, rightOnly),
+                hands(kind, base.firstPersonLeftHand, st, true, true, rightOnly),
+                hands(kind, base.firstPersonRightHand, st, false, true, rightOnly),
                 base.head, base.gui, base.ground, base.fixed);
     }
 
     /** 手部上下文的变换（leftHand 时按原版习惯做镜像） */
     private static ItemTransform hands(WeaponAnim.Kind kind, ItemTransform base, WeaponAnim.State st,
-                                       boolean leftHand, boolean firstPerson) {
+                                       boolean leftHand, boolean firstPerson, boolean rightOnly) {
+        if (leftHand && rightOnly) return base;      // 左手不动
         float[] d = new float[8];
         deltas(kind, st, firstPerson, d);
         if (leftHand) {

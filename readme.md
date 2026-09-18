@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r68`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r69`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r68.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r69.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -381,7 +381,8 @@ tools/  开发辅助脚本（见第五节）
 | 手持动作是否生效 | `client/AnimatedWeaponModel.java` + `ModClient.onModifyBakingResult`；日志里会打“手持动作动画已启用：包装了 N 个武器模型” |
 | AKM 弹匣容量 / 换弹时长 / 射速 / 散布 | `weapon/AkmRifleItem.java`（`MAG_SIZE` / `RELOAD_TICKS` / `FIRE_INTERVAL` / `fire()`） |
 | 弩的倍镜倍率 | `weapon/CrossbowWeaponItem.java` 的 `SCOPE_ZOOM`（`4.0F` = 4 倍）；开镜 FOV 由 `ClientEvents` 用 `1/SCOPE_ZOOM` 计算 |
-| 手雷拔销时长 / 捏雷时限 | `item/GrenadeItem.java`（`PIN_TICKS` / `COOK_TICKS`） |
+| 手雷拔销时长 / 引信时长 / 投掷力道 | `item/GrenadeItem.java`（`PIN_TICKS` 20 / `FUSE_TICKS` 100 / `THROW_LIFT_DEG` 上抬角 / `THROW_INACCURACY`）；**各弹种初速**在 `FragGrenadeItem`（1.30）与 `FlashbangItem`（1.38）的构造参数 |
+| **手雷动作与手（拔销/投掷/左手拉环）** | `client/GrenadePose.java`（move 骨骼姿态 / 左右手模型点 / 手雷专用肩点）+ `client/WeaponArms.renderGrenade`；离线故事板 `tools/_gren_story.py mud\|flashbang` |
 | 手雷引信、伤害、效果半径 | `entity/GrenadeEntity.java` |
 | 三武器的有效射程与超距下坠 | `weapon/Ballistics.java`（`AKM_RANGE` / `BOLT_RANGE` / `BOW_RANGE` 与各 `*_IN_RANGE_GRAVITY`） |
 | 武器手持姿态 / 物品栏图标大小 | 各 `models/item/*.json` 的 `display`，或跑 `tools/scale_weapons.py` |
@@ -393,6 +394,32 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r69`
+
+- **手雷 / 震爆弹：手上真的有动作了（拔销拽销、单手投掷、抛物线）**
+  - **新增 `client/GrenadePose.java`**（碎片手雷与震爆弹共用一份）：把 `move` 骨骼姿态、左右手模型点、
+    保险销 / 压把推法、手臂用的肩点全部收在这里。以前只有保险销与压把在动，
+    手上完全没有动作 —— `WeaponPose` 那套 display 增量对 GeckoLib 物品**不生效**。
+    · 拔销：手腕外翻 16° + 抬腕 8° + 抬手 1.6 / 前移 0.8（模型像素）；插销反向
+    · 投掷：向前上方甩（rotX −34°、+Y 2.6、−Z 3.6）；拔了销以后手微微抖；另有走路摆动 + 呼吸
+    · 压把：碎片手雷在背面绕 X 弹开 38°，震爆弹在 −X 侧绕 Z 弹开 42°（两个型号轴不同）
+  - **第一人称双手**（`WeaponArms.renderGrenade`）：**右手**握在弹体上（模型点 1.55,−0.50,1.05；
+    震爆弹 1.60,−2.20,1.15），**左手只在拔销 / 插销时伸进来抓拉环**（0,2.68,−1.65；0,2.28,−2.86），
+    并跟着销一起往前移（1.05 / 1.15 像素）——**投掷时左手完全不出现**（要的就是「不是双手投掷」）。
+    · 手雷专用肩点 ±(0.88, −1.18, −1.02)：雷就攥在离相机 0.7 格的地方，
+      沿用持枪那套肩点会让手臂横在画面中间把雷挡住（离线故事板里一眼可见）
+  - **第三人称也只有一只手**：`WeaponArmPose` 里非持雷那只手保持 `ITEM`；`WeaponPose` 的 display 增量
+    也只加给右手（以前左右手都加，镜像后就是「双手一起拔销 / 一起扔」）
+  - **图标不再跟着动**：两个渲染器加了 `handPass` 门控（GUI / 掉落物 / 展示框走静态姿态），
+    销与压把只在「拿在手上」那遍推 —— 同 AKM 在 r64 的教训
+  - **投掷力道与弧度**：初速 1.15→**1.30**（碎片手雷）/ 1.25→**1.38**（震爆弹，更轻扔更远），
+    出手再加 **6° 上抬**（`GrenadeItem.THROW_LIFT_DEG`）；随机偏差 0.02→0.4（原版雪球是 1.0）
+    ⇒ 平视扔出约 11 格、抬 10° 约 20 格，弹道是一条看得见的抛物线
+  - **插回保险销改成「潜行 + 右键」**（`GrenadeItem.serverBeginHold` 要求 `isShiftKeyDown`）：
+    以前随手右键就开始插销，丢出去前手一抖就把销插回去了；没按潜行会提示怎么插（中英文案同步）
+  - 离线验算：`python tools/_gren_story.py mud|flashbang [--sh a|b|c]` → `build/_gren_mud.png`
+    （上一排远景 0.45 格 / 下一排游戏视角；手心带一个小标记块，用来确认手搭在弹体 / 拉环上）
 
 > 版本 `1.0.0-r68`
 

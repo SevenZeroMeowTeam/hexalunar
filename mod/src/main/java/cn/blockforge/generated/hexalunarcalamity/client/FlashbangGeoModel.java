@@ -3,8 +3,6 @@ package cn.blockforge.generated.hexalunarcalamity.client;
 import cn.blockforge.generated.hexalunarcalamity.HexaLunarCalamity;
 import cn.blockforge.generated.hexalunarcalamity.item.FlashbangItem;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
 import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 
@@ -28,10 +26,8 @@ public class FlashbangGeoModel extends GeoModel<FlashbangItem> {
     private static final ResourceLocation ANIMATION =
             new ResourceLocation(HexaLunarCalamity.MOD_ID, "animations/flashbang.animation.json");
 
-    private static final float SPOON_OPEN_DEG = 42.0F;
-    private static final float PIN_PULL_DIST = 1.15F;
-
-    private static float spoonOpen;
+    /** 这一遍渲染是不是「拿在手上」（由 {@link FlashbangGeoRenderer} 设入） */
+    static boolean handPass;
 
     @Override
     public ResourceLocation getModelResource(FlashbangItem animatable) {
@@ -52,33 +48,8 @@ public class FlashbangGeoModel extends GeoModel<FlashbangItem> {
     public void setCustomAnimations(FlashbangItem animatable, long instanceId,
                                     AnimationState<FlashbangItem> animationState) {
         if (!net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()) return;
-
-        float pull = GrenadeAnimState.pullProgress();
-        float reinsert = GrenadeAnimState.reinsertProgress();
-        boolean armed = GrenadeAnimState.armed() || GrenadeAnimState.throwing();
-
-        // 拔销：保险销 + 拉环沿 -Z（北）滑出去
-        CoreGeoBone pin = getAnimationProcessor().getBone("pin");
-        if (pin != null) {
-            float out = Math.max(0.0F, pull) * PIN_PULL_DIST;
-            if (reinsert >= 0.0F) {
-                out = (1.0F - Mth.clamp(reinsert, 0.0F, 1.0F)) * PIN_PULL_DIST;
-            } else if (armed) {
-                out = PIN_PULL_DIST;
-            }
-            pin.setPosZ(-out);
-        }
-
-        // 压把：销拔出、引信开始跑之后弹开；插回销时压回去
-        CoreGeoBone spoon = getAnimationProcessor().getBone("spoon");
-        if (spoon != null) {
-            float target = armed ? 1.0F : 0.0F;
-            if (reinsert >= 0.0F) {
-                target = 1.0F - Mth.clamp(reinsert, 0.0F, 1.0F);
-            }
-            spoonOpen += (target - spoonOpen) * 0.25F;
-            // 压把在 -X 侧竖直，绕 Z 轴向外弹开（手雷那种在 +Z 背面、绕 X）
-            spoon.setRotZ(-spoonOpen * SPOON_OPEN_DEG * Mth.DEG_TO_RAD);
-        }
+        // GUI 图标 / 掉落物 / 展示框：静态（动作与推骨骼都在 GrenadePose 里）
+        if (!handPass) return;
+        GrenadePose.drive(this, WeaponAnim.Kind.FLASH);
     }
 }

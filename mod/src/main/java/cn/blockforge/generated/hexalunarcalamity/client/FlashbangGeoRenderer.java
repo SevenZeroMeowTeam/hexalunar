@@ -27,6 +27,21 @@ public class FlashbangGeoRenderer extends GeoItemRenderer<FlashbangItem> {
         return List.of(glint);
     }
 
+    /** 只有「拿在手上」那一遍才推骨骼（拔销 / 投掷 / 走路摆动），图标与展示框保持静态 */
+    @Override
+    public void renderByItem(net.minecraft.world.item.ItemStack stack,
+                            net.minecraft.world.item.ItemDisplayContext transformType,
+                            com.mojang.blaze3d.vertex.PoseStack poseStack,
+                            net.minecraft.client.renderer.MultiBufferSource bufferSource,
+                            int packedLight, int packedOverlay) {
+        FlashbangGeoModel.handPass = AkmGeoRenderer.isHand(transformType);
+        try {
+            super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
+        } finally {
+            FlashbangGeoModel.handPass = false;
+        }
+    }
+
     public static FlashbangGeoRenderer get() {
         if (instance == null) {
             instance = new FlashbangGeoRenderer();
