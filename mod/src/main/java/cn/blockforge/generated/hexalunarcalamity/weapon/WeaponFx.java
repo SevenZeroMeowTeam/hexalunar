@@ -41,13 +41,13 @@ public final class WeaponFx {
                 0.08D, 0.08D, 0.08D, 0.006D);
     }
 
-    /** 抛壳：抛壳口往右上方甩出黄铜壳 + 一缕硝烟（port = 模型上实际的抛壳口位置） */
+    /** 抛壳：从抛壳口往**射手左侧**上方甩出黄铜壳 + 一缕硝烟（port = 模型上实际的抛壳口位置） */
     public static void ejectCasing(ServerLevel server, Vec3 port, Vec3 dir) {
         Vec3 right = dir.cross(new Vec3(0.0D, 1.0D, 0.0D));
         if (right.lengthSqr() < 1.0E-6D) {
             right = new Vec3(1.0D, 0.0D, 0.0D);
         }
-        right = right.normalize();
+        right = right.normalize().scale(-1.0D);      // ★ r87：抛壳方向与原来相反（用户反馈反了）
         server.sendParticles(new DustParticleOptions(BRASS, 0.75F),
                 port.x, port.y, port.z, 1, 0.02D, 0.02D, 0.02D, 0.0D);
         server.sendParticles(ParticleTypes.SMOKE, port.x, port.y, port.z, 1,

@@ -29,8 +29,8 @@ GEO = os.path.join(HERE, '..', 'src', 'main', 'resources', 'assets', 'hexalunar_
 TIP_X = 5.371          # 弦心到弓臂锚点的横向距离（生成器 TIP_X；r69 弓臂放大 2.05 倍后）
 DRAW_DZ = 1.80         # 拉满时弦心后退距离（生成器 DRAW_DZ）
 NOCK_Z0 = -5.20        # 弦面中心的 z（生成器 NOCK_Z0）
-STRING_LEN = 5.665     # 弦段方块长度（生成器按 hypot(5.371,1.80) 生成）
-FLEX_DEG = 8.0         # ★ 拉满时弓臂内收角（度）
+STRING_LEN = 6.221     # 弦段方块长度（= geo 里 string_left/right 的真实长度：5.371 + 0.85）
+FLEX_DEG = 13.0        # ★ r85：8 → 13（弓臂内收更多 ⇒ 固定长度的弦能拉成深 V）
 FLEX_BACK = 0.35       # ★ 拉满时两弓臂整体往射手方向滑的量（模型像素；只靠转的话外端主要只往内走）
 FLEX_PX = 1.599        # 弓臂弯折支点 x = 贴导轨内端的中心（生成器打印）
 FLEX_PZ = -8.697       # 弓臂弯折支点 z = 最前端（生成器打印）
@@ -73,12 +73,23 @@ def flex_disp(pivot, p, side, draw):
     return (d[0], d[1] + draw * FLEX_BACK)
 
 
+def string_phi(flex):
+    """弦两段绕锚点的转角（弧度）：**由几何解出来**（与 Java 的 CrossbowGeoModel.stringPhi 同一份）。
+
+    弦段长度固定，弓臂内收后锚点横向距离变成 x = TIP_X + δx ⇒ 能拉到的最深处
+    depth = √(L² − x²)，转角 φ = atan2(depth, x)。
+    """
+    d = flex_disp((FLEX_PX, FLEX_PZ), (TIP_X, CAM_Z), 1, flex)
+    x = TIP_X + d[0]
+    depth = math.sqrt(max(0.0, STRING_LEN * STRING_LEN - x * x))
+    return math.atan2(depth, x)
+
+
 def nock_travel(flex, draw):
     """弦心相对初始的后退量 —— 与 Java 的 CrossbowGeoModel.nockTravel(flexAmt, draw) 同一份：
-    锚点被弓臂带走的 z 位移（弓臂内收 flex，上膛后保持 1）+ 弦绷直所需的后退（弦长固定，draw）。"""
+    锚点被弓臂带走的 z 位移（弓臂内收 flex）+ 弦绷直所需的后退（弦长固定，draw）。"""
     d = flex_disp((FLEX_PX, FLEX_PZ), (TIP_X, CAM_Z), 1, flex)
-    phi = math.atan2(DRAW_DZ, TIP_X)
-    return d[1] + STRING_LEN * math.sin(draw * phi)
+    return d[1] + STRING_LEN * math.sin(draw * string_phi(flex))
 
 
 def nock_z(draw, flex=None):
@@ -113,9 +124,9 @@ def sign_theta(draw, side):
     return -side * FLEX_DEG * draw
 
 
-# (弓臂内收 flex, 弦拉动 draw, 标签)：r69 起上膛后 flex 保持 1、draw 回到 0
-STATES = [(0.0, 0.0, '张开'), (0.5, 0.5, '拉弦 50%'), (1.0, 1.0, '拉满'),
-          (1.0, 0.0, '上膛保持内敛')]
+# (弓臂内收 flex, 弦拉动 draw, 标签)：r73 起上膛后 draw **保持 1**（弦成 V、弦心在后位），
+# 只有击发那一刻才弹回；所以「上膛」与「拉满」是同一个姿态。
+STATES = [(0.0, 0.0, '张开'), (0.5, 0.5, '拉弦 50%'), (1.0, 1.0, '拉满/上膛')]
 
 
 def check():
@@ -140,7 +151,7 @@ def check():
         th = sign_theta(flex, 1)
         a = (TIP_X, CAM_Z)
         d = flex_disp((FLEX_PX, FLEX_PZ), a, 1, flex)
-        phi = draw * math.degrees(math.atan2(DRAW_DZ, TIP_X))
+        phi = draw * math.degrees(string_phi(flex))
         # 游戏里的弦内端 = (锚点 pivot + 平移 δ) + R(φ)·(−L, 0)
         r = roty(phi)
         off = r(-STRING_LEN, 0.0)
@@ -189,7 +200,7 @@ def bake(draw, flex=None, out=None):
     bs = bone_map(geo)
     if flex is None:
         flex = draw
-    phi = draw * math.degrees(math.atan2(DRAW_DZ, TIP_X))
+    phi = draw * math.degrees(string_phi(flex))
     pivots = {}
     shifts = {}
     rots = {}
@@ -205,7 +216,10 @@ def bake(draw, flex=None, out=None):
         d = flex_disp(piv, a, side, flex)
         shifts[cam] = (d[0], 0.0, d[1])
         shifts[string] = (d[0], 0.0, d[1])
-        rots[string] = (0.0, -side * phi, 0.0)
+        rots[string] = (0.0, side * phi, 0.0)        # ★ 符号必须与 Java 的 setRotY 一致
+                                                     #   （Java：左 -draw*phi、右 +draw*phi；
+                                                     #    以前这里写成 -side*phi，烘焙出来的预览图
+                                                     #    把弦扭到了另一侧，误导了 r86 的验收）
     travel = nock_travel(flex, draw)
     shifts['nock'] = (0.0, 0.0, travel)
     shifts['bolt'] = (0.0, 0.0, travel)

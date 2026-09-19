@@ -287,9 +287,23 @@ public class CrossbowWeaponItem extends Item implements WeaponAmmo, GeoItem {
                 ModSounds.CROSSBOW_SHOT.get(), SoundSource.PLAYERS, 1.0F,
                 0.95F + level.random.nextFloat() * 0.1F);
         player.swing(hand);
-        // ★ r72：击发后弦复位后就停在这里（cocked = false）—— **不自动上弦**。
-        //   模型/图标因此回到「未使用」样子：弩箭不在箭槽里、弦在初始位置、弓臂张开。
-        //   玩家用右键（或 R）上弦后才会重新拉弦 + 弩箭入槽。
+        // ★ r87（用户要求）：**开火后自动上弦** —— 不用再按右键/R，弩自己拉弦 + 装箭。
+        //   给 {@link #AUTO_COCK_DELAY} tick 的空档，让箭先飞出去再开始拉弦（实感像半自动弩）。
+        //   上弦期间 {@link #reloading} 为真 ⇒ 这段时间内打不出第二发。
         stack.getOrCreateTag().putBoolean(TAG_COCKED, false);
+        startAutoReload(level, player, stack, AUTO_COCK_DELAY);
+    }
+
+    /** 开火后自动上弦的延迟（tick）：箭先飞出去一点再拉弦 */
+    public static final int AUTO_COCK_DELAY = 6;
+
+    /** 自动上弦：与 {@link #tryStartReload} 同一套 NBT，只是多一段起始延迟 */
+    private void startAutoReload(Level level, Player player, ItemStack stack, int delay) {
+        if (AmmoUtil.count(player, AmmoType.BOLT) <= 0) return;
+        CompoundTag tag = stack.getOrCreateTag();
+        tag.putLong(TAG_RELOAD_UNTIL, level.getGameTime() + delay + RELOAD_TICKS);
+        tag.putBoolean(TAG_COCKED, false);
+        level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                ModSounds.RELOAD.get(), SoundSource.PLAYERS, 0.9F, 1.18F);
     }
 }

@@ -1,5 +1,8 @@
 package cn.blockforge.generated.hexalunarcalamity.client;
 
+import cn.blockforge.generated.hexalunarcalamity.weapon.GunPose;
+import org.joml.Vector3f;
+
 /**
  * 当前这一帧「枪本体」的变换：{@code move} 骨骼（位移 + 绕 pivot 的旋转）+ 物品 display 的平移/缩放。
  *
@@ -35,12 +38,30 @@ public final class GunFrame {
     private float rotX;
     private float rotY;
     private float rotZ;
+    /**
+     * 捕获这一帧时的「举枪进度」（0 腰射 / 1 举枪）。
+     *
+     * <p>它决定枪身那段 {@link GunPose} 姿态（腰射时枪身偏出去、举枪收回正），
+     * 所以必须和这一帧的枪一起记下来：用当前值而不是捕获时的值，手就会在过渡期间脱手。
+     */
+    private float aim = 1.0F;
 
     /** 由各武器的 GeoModel 在算完 {@code move} 骨骼后调用 */
     void capture(float dispTx, float dispTy, float dispTz, float dispScale,
                  float pivotX, float pivotY, float pivotZ,
                  float posX, float posY, float posZ,
                  float rotX, float rotY, float rotZ) {
+        capture(dispTx, dispTy, dispTz, dispScale, pivotX, pivotY, pivotZ,
+                posX, posY, posZ, rotX, rotY, rotZ, 1.0F);
+    }
+
+    /** 带举枪进度的版本（枪械用；手雷这类不叠 GunPose 的走上面那个重载） */
+    void capture(float dispTx, float dispTy, float dispTz, float dispScale,
+                 float pivotX, float pivotY, float pivotZ,
+                 float posX, float posY, float posZ,
+                 float rotX, float rotY, float rotZ, float aimNow) {
+        this.aim = aimNow;
+        WeaponDiag.frameAim = aimNow;                 // 诊断用（枪与手臂共用同一份 aim）
         this.tx = dispTx;
         this.ty = dispTy;
         this.tz = dispTz;
@@ -73,9 +94,15 @@ public final class GunFrame {
         float ox = (c2 * c3) * DX + (-c2 * s3) * DY + s2 * DZ;
         float oy = (s1 * s2 * c3 + c1 * s3) * DX + (-s1 * s2 * s3 + c1 * c3) * DY + (-s1 * c2) * DZ;
         float oz = (-c1 * s2 * c3 + s1 * s3) * DX + (c1 * s2 * s3 + s1 * c3) * DY + (c1 * c2) * DZ;
-        out[0] = (float) WeaponArms.ARM_X + (tx + scale * (pivotX + posX + ox)) / 16.0F;
-        out[1] = WeaponArms.baseY() + (ty + scale * (pivotY + posY + oy)) / 16.0F;
-        out[2] = (float) WeaponArms.ARM_Z + (tz + scale * (pivotZ + posZ + oz)) / 16.0F;
+        // display 那一段（平移 + 缩放）先算成相机空间向量，再过 GunPose 的姿态
+        // （与枪的 pose 链同序：Trans(ARM) · GunPose · Trans(display) · R · S · 模型点）
+        Vector3f v = new Vector3f((tx + scale * (pivotX + posX + ox)) / 16.0F,
+                (ty + scale * (pivotY + posY + oy)) / 16.0F,
+                (tz + scale * (pivotZ + posZ + oz)) / 16.0F);
+        GunPose.transform(aim, v);
+        out[0] = (float) WeaponArms.ARM_X + v.x;
+        out[1] = WeaponArms.baseY() + v.y;
+        out[2] = (float) WeaponArms.ARM_Z + v.z;
         return out;
     }
 }

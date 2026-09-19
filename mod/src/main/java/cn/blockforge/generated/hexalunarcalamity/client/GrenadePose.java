@@ -229,6 +229,7 @@ public final class GrenadePose {
 
     /** 手臂（第一人称补画的双臂）用：把**当前帧**的姿态算进 {@link #FRAME}（同 AkmGeoModel.captureNow 的思路） */
     public static void captureNow(WeaponAnim.Kind kind) {
+        cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.clearAds();   // 手雷不叠举枪位移
         computeMovePose(kind, MOVE);
         FRAME.capture(0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F,
                 MOVE[0], MOVE[1], MOVE[2], MOVE[3], MOVE[4], MOVE[5]);

@@ -34,7 +34,8 @@ ARM_X, ARM_Y, ARM_Z = 0.56, -0.52, -0.72
 # AWP 的 display（models/item/awp.json → firstperson_righthand）
 AWP_T = (-2.6, 1.575, 0.5)
 # 举枪增量（WeaponMount.AWP_AIM_*；DY 随 AWP_TY 变：8.32 − 3.15 − TY）
-AWP_AIM = (-6.36, 3.595, 1.4)
+# ★ r85：DZ 由 1.4 改成 6.0 —— 把眼睛贴到目镜上（TaCZ 那种「镜环占屏」）
+AWP_AIM = (-6.36, 3.595, 6.0)
 # 后坐 / move 骨骼 pivot
 KICK_BACK = 1.9
 MOVE_P = (0.0, -1.0725, 1.305)

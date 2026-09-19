@@ -5,6 +5,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
 
 /**
  * 第一人称「手持武器」的空间换算：把<b>模型像素坐标</b>换成世界坐标。
@@ -55,7 +56,25 @@ public final class WeaponMount {
     /** 举枪增量（上面公式的推演结果，右手） */
     public static final float AKM_AIM_DX = (float) (-HAND_X_PX - AKM_TX);              // -6.36
     public static final float AKM_AIM_DY = (float) (-ARM_Y * 16.0D - SIGHT_Y - AKM_TY); // +3.48
-    public static final float AKM_AIM_DZ = 1.4F;
+    public static final float AKM_AIM_DZ = -3.0F;
+    /** ★ r88：装了 4 倍镜时同样**往前走**（以前是把眼睛贴到目镜上，结果整把枪占满屏幕） */
+    public static final float AKM_SCOPE_AIM_DZ = -3.0F;
+    /**
+     * ★★ r88：举枪时给枪一点**横滚** —— TaCZ 的机瞷矄准就是这个构图：
+     * 枪身斜插在画面右下、机匣顶面看得见，而瞄准线（照门顶 = 准星顶）仍钉在屏幕中心。
+     *
+     * <p><b>为什么能做到「准星不动、枪身动」</b>：横滚是绕**眼睛**施加的（见 {@code GunPose.matrix}
+     * 的乘法顺序），而举枪平移已经把「照门顶—准星顶」那条线顶到了眼睛上 ⇒ 线上每一点
+     * 都在旋转轴上，横滚对它零影响；枪身其余部分离轴线越远甩得越多。
+     */
+    /**
+     * ★★ r92：举枪横滚常量 —— **0**（参考 TaCZ 的 AK47 配置，见 {@link #akmAdsRoll}）。
+     *
+     * <p>r88 曾用 15°（机瞷）/ 8°（红点）做「枪身斜插画面」的构图，但那是**绕眼睛**转，
+     * 虽然准星还在中心，用户要的却是图 1 那种「枪正着端在眼前」的持枪，所以归零。
+     * 常量保留下来是为了让 {@link #rollComp} 那段补心位移继续可用（0 时它自动跳过）。
+     */
+    public static final float AKM_ADS_ROLL = 0.0F;
     /** 枪口（模型像素）：枪管轴线 Y=1.75、最前端 z=-11.60 */
     public static final double[] AKM_MUZZLE = {0.0D, 1.75D, -11.60D};
     /** 抛壳口（模型像素）：枪机右侧 x≈0.95、高度 2.62 */
@@ -93,11 +112,73 @@ public final class WeaponMount {
         };
     }
 
+    /** 举枪握枪姿态的横滚角（度）：**恒为 0**。
+     *
+     * <p>★ r92：参考 TaCZ 的 {@code ak47_display.json} —— 那份配置里 **旋转与位移都不在这里给**
+     * （只有 {@code transform.scale}），枪的举枪姿态就是「模型内定位组 + 纯平移」；
+     * {@code iron_zoom = 1.33} / {@code zoom_model_fov = 45} / {@code show_crosshair = false}
+     * 这三项我们早已对齐。所以 r88 那种「机瞷 15°、红点 8° 横滚」的构图去掉：
+     * 举枪只做平移 ⇒ 照门—准星那条线永远钉在屏幕中心，枪身也是正的（就是用户图 1 那种持枪）。
+     */
+    public static float akmAdsRoll(int sight) {
+        return 0.0F;
+    }
     /** 举枪时该给的 display Y 增量（随瞄具高度变） */
     public static float akmAimDy(int sight) {
         return (float) (-ARM_Y * 16.0D - akmAnchorY(sight) - AKM_TY);
     }
-    /** 复合弓的箭杆（发射点）：模型像素 */
+    /** 举枪时向前拉的量：4 倍镜要贴到目镜上，机瞷/红点只是拉近一点 */
+    public static float akmAimDz(int sight) {
+        return sight == Sights.SCOPE ? AKM_SCOPE_AIM_DZ : AKM_AIM_DZ;
+    }
+
+    /**
+     * 举枪位移（**相机空间、单位格**）：渲染（{@link GunPose}）与弹道共用这一份。
+     *
+     * <p>★ r85：以前这些值是以「模型像素」推在 {@code move} 骨骼上的，会被动画关键帧遮掉
+     * （AKM 的 reload 动画自带 −1.2px/+7°）⇒ 画面上就是「换弹/发射时枪和手往下沉」。
+     * 现在一律换成相机空间格值，由我们自己填的那段 pose 施加。
+     *
+     * <p>★ r88b：{@code out[0..2]} = xyz，{@code out[3]} = 举枪横滚（度，供渲染用）。
+     * 横滚同时会带来一块**侧移**，已经在这里补掉了 —— 见 {@link #rollComp}。
+     */
+    public static void akmAds(LivingEntity entity, int sight, float[] out) {
+        float roll = akmAdsRoll(sight);
+        out[0] = akmAimDx(entity) / 16.0F;
+        out[1] = akmAimDy(sight) / 16.0F;
+        out[2] = akmAimDz(sight) / 16.0F;
+        rollComp(roll, (int) side(entity), out);
+        if (out.length > 3) out[3] = roll;
+    }
+
+    /** AWP 的举枪位移（相机空间、格）；{@code out[3]} = 0（镜筒必须正着） */
+    public static void awpAds(LivingEntity entity, float[] out) {
+        out[0] = awpAimDx(entity) / 16.0F;
+        out[1] = AWP_AIM_DY / 16.0F;
+        out[2] = AWP_AIM_DZ / 16.0F;
+        if (out.length > 3) out[3] = 0.0F;
+    }
+
+    /**
+     * ★★ r88b：横滚的「补心」位移（相机空间、格）。
+     *
+     * <p>为什么要它：{@link GunPose} 的横滚写在 pose 矩阵里，而 pose 原点在相机空间是
+     * {@code (side·0.56, −0.52, −0.72)}（原版手部基准）——**不是眼睛**。绕这一点转 θ 会把
+     * 整条瞄准线（它与视线平行）侧移 {@code Rz(−θ)·ARM − ARM}，于是准星/照门离开屏幕中心
+     * （用户实测：\"准星/照门不在准心\"）。把这块位移加回举枪平移里，瞄准线就精确回到眼睛上，
+     * 枪身照样绕它甩向右下。
+     *
+     * <p>推导：举枪平移后瞄准参照点落在相机空间 {@code −ARM}（加 ARM 后正好是眼睛），
+     * 横滚把它乘上 Rz ⇒ 需补 {@code ARM − Rz(−θ)·ARM}；补完后参照点仍映射到原点（眼睛）。
+     */
+    private static void rollComp(float rollDeg, int side, float[] ads) {
+        if (rollDeg == 0.0F) return;
+        double r = Math.toRadians(-rollDeg);
+        double c = Math.cos(r), s = Math.sin(r);
+        double ax = side * ARM_X, ay = ARM_Y;
+        ads[0] += (float) (ax - (ax * c - ay * s));
+        ads[1] += (float) (ay - (ax * s + ay * c));
+    }    /** 复合弓的箭杆（发射点）：模型像素 */
     public static final double[] BOW_ARROW = {0.0D, 0.85D, -8.0D};
 
     /**
@@ -154,9 +235,19 @@ public final class WeaponMount {
     public static final double AWP_SCOPE_Y = 3.15D;
     public static final float AWP_AIM_DX = (float) (-HAND_X_PX - AWP_TX);              // -6.36
     public static final float AWP_AIM_DY = (float) (-ARM_Y * 16.0D - AWP_SCOPE_Y - AWP_TY);
-    public static final float AWP_AIM_DZ = 1.4F;
     /** 枪口（模型像素）：枪管轴线 Y=1.575、最前端 z=-16.275 */
     public static final double[] AWP_MUZZLE = {0.0D, 1.575D, -16.275D};
+    /**
+     * ★★ r88：**往前走**（负值 = 远离眼睛）。
+     *
+     * <p>r85~r87 一直往正方向加（6.0 → 7.5），本意是「把眼睛贴到目镜上、镜环占屏」，
+     * 结果眼睛钻进了镜筒：目镜只剩 7 厘米 ⇒ 筒壁与目镜内侧面铺满屏幕（用户反馈「黑屏」）。
+     * 而往正方向加又有个硬门槛：枪托尾端在模型 z=+7.35，要让它退到眼睛后面得 dz ≥ 5.5
+     * —— 那时目镜已经只有 7 厘米，怎么都躲不开「黑屏 or 一堵枪托」。
+     * 所以反过来选「整把枪在眼前」：目镜 0.68 格、枪托 0.60 格，镜筒/枪身都看得清，
+     * 屏幕中心那点黑只是目镜玻璃（0.05 格宽）在 0.68 格外的投影。
+     */
+    public static final float AWP_AIM_DZ = -3.5F;
     /** 抛壳口（模型像素）：机匣右侧（弹壳从这儿翻出去） */
     public static final double[] AWP_EJECT = {0.90D, 1.39D, -0.60D};
     /**
@@ -174,11 +265,11 @@ public final class WeaponMount {
 
     /** AWP 的某个模型点 → 世界坐标（aiming = 正抵肩瞄准） */
     public static Vec3 awp(LivingEntity entity, boolean aiming, double[] modelPoint) {
-        return toWorld(entity,
-                AWP_TX + (aiming ? awpAimDx(entity) : 0.0F),
-                AWP_TY + (aiming ? AWP_AIM_DY : 0.0F),
-                AWP_TZ + (aiming ? AWP_AIM_DZ : 0.0F),
-                1.0F, modelPoint);          // awp.json 的 display scale = 1；无额外旋转，模型点直接用
+        float[] ads = new float[4];
+        awpAds(entity, ads);
+        float aim = aiming ? 1.0F : 0.0F;
+        return toWorld(entity, AWP_TX, AWP_TY, AWP_TZ, 1.0F, modelPoint, aim,
+                ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
     }
     // ------------------------------------------------------------------ 复合弓
     /** models/item/compound_bow.json → display.firstperson_righthand（平移 0、scale 0.75） */
@@ -221,16 +312,22 @@ public final class WeaponMount {
 
     /** AKM 的某个模型点 → 世界坐标（aiming = 正按住右键举枪；sight = 装了什么瞄具） */
     public static Vec3 akm(LivingEntity entity, boolean aiming, int sight, double[] modelPoint) {
-        return toWorld(entity,
-                AKM_TX + (aiming ? akmAimDx(entity) : 0.0F),
-                AKM_TY + (aiming ? akmAimDy(sight) : 0.0F),
-                AKM_TZ + (aiming ? AKM_AIM_DZ : 0.0F),
-                1.0F, modelPoint);          // AKM 的 display scale = 1
+        float[] ads = new float[4];
+        akmAds(entity, sight, ads);
+        float aim = aiming ? 1.0F : 0.0F;
+        return toWorld(entity, AKM_TX, AKM_TY, AKM_TZ, 1.0F, modelPoint, aim,
+                ads[0] * aim, ads[1] * aim, ads[2] * aim,
+                ads[3] * aim);                  // 渲染用的是同一个角（AKM 的 display scale = 1）
     }
 
     /** 机械瞄具版（等价于 akm(..., Sights.IRON, ...)，给不关心瞄具的调用点用） */
     public static Vec3 akm(LivingEntity entity, boolean aiming, double[] modelPoint) {
         return akm(entity, aiming, Sights.IRON, modelPoint);
+    }
+
+    public static Vec3 toWorld(LivingEntity entity, float tx, float ty, float tz, float scale,
+                               double[] p, float aim) {
+        return toWorld(entity, tx, ty, tz, scale, p, aim, 0.0F, 0.0F, 0.0F, 0.0F);
     }
 
     /**
@@ -239,9 +336,13 @@ public final class WeaponMount {
      * @param tx/ty/tz display.firstperson 的平移（单位 1/16 格；在 scale <b>之前</b>生效）
      * @param scale    display.firstperson 的缩放（模型点要乘它；骨骼位移不用管，另有 BOW_BONE_* 一组）
      * @param p        模型像素点
+     * @param aim      持枪姿态插值（1 = 举枪，0 = 腰射的 {@link GunPose} 姿态）
+     * @param adsX/Y/Z 举枪位移（相机空间、格），按 aim 插值
+     * @param rollDeg  举枪横滚（度，绕视线）—— 渲染同一个值，否则枪口与枪身会对不上
      */
-    public static Vec3 toWorld(LivingEntity entity, float tx, float ty, float tz,
-                               float scale, double[] p) {
+    public static Vec3 toWorld(LivingEntity entity, float tx, float ty, float tz, float scale,
+                               double[] p, float aim, float adsX, float adsY, float adsZ,
+                               float rollDeg) {
         Vec3 look = entity.getLookAngle();
         Vec3 right = look.cross(new Vec3(0.0D, 1.0D, 0.0D));
         if (right.lengthSqr() < 1.0E-6D) {
@@ -253,14 +354,26 @@ public final class WeaponMount {
         double s = side(entity);
         // display 的 x：json 里左右手两条互为镜像，而原版 apply() 对左手又会再取反一次，
         // 净效果两边相同（都等于右手那条的值），所以这里只按右手值算。
-        double lx = s * ARM_X + tx / 16.0D + scale * p[0] / 16.0D;
-        double ly = ARM_Y + ty / 16.0D + scale * p[1] / 16.0D;
-        double lz = ARM_Z + tz / 16.0D + scale * p[2] / 16.0D;
+        // ★ GunPose 那段姿态作用在「手臂基准之后、display 之前」，所以是先把 display 那部分
+        //   算成相机空间向量、过了 GunPose 再叠手臂基准（与枪的 pose 链完全同一顺序）。
+        Vector3f v = new Vector3f((float) (tx / 16.0D + scale * p[0] / 16.0D),
+                (float) (ty / 16.0D + scale * p[1] / 16.0D),
+                (float) (tz / 16.0D + scale * p[2] / 16.0D));
+        GunPose.transform(aim, adsX, adsY, adsZ, 0.0F, rollDeg, v);
+        double lx = s * ARM_X + v.x;
+        double ly = ARM_Y + v.y;
+        double lz = ARM_Z + v.z;
         // 手部空间：+X 屏幕右、+Y 屏幕上、+Z 朝玩家身后（相机朝 -Z）
         return entity.getEyePosition()
                 .add(right.scale(lx))
                 .add(up.scale(ly))
                 .add(look.scale(-lz));
+    }
+
+    /** 不叠持枪姿态的老口径（复合弓用：弓不走 {@link GunPose} 那一套） */
+    public static Vec3 toWorld(LivingEntity entity, float tx, float ty, float tz, float scale,
+                               double[] p) {
+        return toWorld(entity, tx, ty, tz, scale, p, 1.0F);
     }
 
     private static double side(LivingEntity entity) {

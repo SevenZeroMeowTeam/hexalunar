@@ -150,8 +150,8 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
     }
 
     // ------------------------------------------------------------------ 抛壳（从弹壳槽抛出空弹壳）
-    /** 弹壳初速（模型像素 / tick）：往右上方、略往后 */
-    private static final float CASE_VX = 0.75F;
+    /** 弹壳初速（模型像素 / tick）：**往后上方**飞（原版 AK 从右后侧的抛壳口抛，方向与枪口相反） */
+    private static final float CASE_VX = -0.75F;
     private static final float CASE_VY = 1.50F;
     private static final float CASE_VZ = 0.50F;
     /** 弹壳下落（像素 / tick²） */
@@ -239,10 +239,14 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
                 ? cn.blockforge.generated.hexalunarcalamity.weapon.Sights.IRON
                 : cn.blockforge.generated.hexalunarcalamity.weapon.Sights.sight(local.getMainHandItem());
         computeMovePose(MOVE_POSE, sight);
+        // 举枪位移（相机空间、格）写进 GunPose：手臂与枪共用同一份（见 WeaponHandGrip.pushAds）
+        WeaponHandGrip.pushAds(WeaponAnim.Kind.AKM, local == null ? ItemStack.EMPTY
+                : local.getMainHandItem(), local);
         frame.capture(WeaponMount.AKM_TX, WeaponMount.AKM_TY, WeaponMount.AKM_TZ, 1.0F,
                 MOVE_PX, MOVE_PY, MOVE_PZ,
                 MOVE_POSE[0], MOVE_POSE[1], MOVE_POSE[2],
-                MOVE_POSE[3], MOVE_POSE[4], MOVE_POSE[5]);
+                MOVE_POSE[3], MOVE_POSE[4], MOVE_POSE[5],
+                Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F));   // 持枪姿态（GunPose）
     }
 
     /**
@@ -316,26 +320,44 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
 
     /** 弹匣相对「到位」的下移量（模型像素，> 0 = 已经退出来） */
     private static float magDropAt(float p) {
-        if (p < 0.18F) return 0.0F;                                            // 就位
-        if (p < 0.42F) return MAG_DROP * ease(Mth.inverseLerp(p, 0.18F, 0.42F)); // 退匣
-        if (p < 0.55F) return MAG_DROP;                                        // 空窗
-        if (p < 0.82F) return MAG_DROP * (1.0F - ease(Mth.inverseLerp(p, 0.55F, 0.82F)));  // 新匣上行
+        if (p < 0.18F) return 0.0F;                                             // 就位
+        if (p < 0.42F) return MAG_DROP * ease(Mth.inverseLerp(p, 0.18F, 0.42F)); // 退匣：被抽出来
+        // ★ r84：退到一半就不回头 —— 继续往下掉（手也跟着下去拿新匣），到 1.35 倍行程时
+        //   已经掉出枪身了（这段时间骨骼被 {@link #magHidden} 藏起来 = 旧匣落地上）
+        if (p < 0.56F) {
+            return MAG_DROP * (1.0F + 0.35F * ease(Mth.inverseLerp(p, 0.42F, 0.56F)));
+        }
+        // 新匣：从下面（1.35 倍行程处）升上来卡回弹匣井
+        if (p < 0.82F) {
+            return MAG_DROP * 1.35F * (1.0F - ease(Mth.inverseLerp(p, 0.56F, 0.82F)));
+        }
         return -0.22F * Mth.sin(((p - 0.82F) / 0.18F) * (float) Math.PI);      // 卡紧：过冲一下
+    }
+
+    /**
+     * 旧匣已经掉出去、新匣还没从下面上来的那段（骨骼藏起来）。
+     *
+     * <p>只有一根 {@code magazine} 骨骼，要不把旧的那根藏掉，看上去就是「弹匣滑下去又滑回来」
+     * 而不是「掉了一个、插了一个」。TaCZ 也是这么做的（弹匣是模型里的一段动画，不是世界实体）。
+     */
+    private static boolean magHidden(float p) {
+        return p >= 0.36F && p < 0.56F;
     }
 
     /** 退匣过程的弹匣前后倾角（度），左手要跟着一起斜 */
     private static float magTiltAt(float p) {
         if (p < 0.18F) return 0.0F;
         if (p < 0.42F) return -MAG_TILT * ease(Mth.inverseLerp(p, 0.18F, 0.42F));
-        if (p < 0.55F) return -MAG_TILT;
-        if (p < 0.82F) return -MAG_TILT * (1.0F - ease(Mth.inverseLerp(p, 0.55F, 0.82F)));
+        if (p < 0.56F) return -MAG_TILT;
+        if (p < 0.82F) return -MAG_TILT * (1.0F - ease(Mth.inverseLerp(p, 0.56F, 0.82F)));
         return 0.0F;
     }
 
     private void driveMagazine(float p) {
-        if (p < 0.0F) return;
         CoreGeoBone mag = getAnimationProcessor().getBone("magazine");
         if (mag == null) return;
+        mag.setHidden(p >= 0.0F && magHidden(p));   // 旧匣掉出去的那段直接藏（否则会看成滑下去又滑回来）
+        if (p < 0.0F) return;
         mag.setPosY(-magDropAt(p));
         mag.setRotX(magTiltAt(p) * Mth.DEG_TO_RAD);
     }

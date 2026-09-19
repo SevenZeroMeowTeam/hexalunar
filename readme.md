@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r83`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r94`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r83.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r94.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -517,6 +517,127 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r94`
+
+- **AWP 也按 TaCZ 的配置对齐**（参考 `ai_awp_display.json` + `scope_standard_8x_display.json`）：
+  > TaCZ 仓库里**没有**叫 `awm` 的文件 —— AWP/AWM 在他们那儿就是 **`ai_awp`**，倍镜是
+  > `attachments/scope_standard_8x`。
+
+  | TaCZ 字段（ai_awp / scope_standard_8x） | 含义 | 我们 |
+  |---|---|---|
+  | `zoom_model_fov: 35` | 举枪时枪模投影 FOV | ★ 本次对齐：`GunPose.modelFov(true, aim)` ⇒ AWP 用 **35**（AK47 保持 45） |
+  | `iron_zoom: 1.5` | 机瞄放大（**没装镜**时） | 我们 AWP 自带 8 倍镜、抵肩即看镜 ⇒ 无此态 |
+  | 倍镜 `zoom: [5, 10]` / `"scope": true` | 看镜放大 5~10 倍、真·镜筒 | ✅ 我们用 8 倍（落在他们区间内），且 r91 起就是整屏镜筒 |
+  | 倍镜 `views_fov: 20` | 看镜时枪模 20° | 那时整把枪被镜筒遮住，用不上（已在代码注释里记下） |
+  | `transform.scale` 无 firstperson 项 | 第一人称模型 1.0 倍 | ✅ 我们的 display scale = 1.0 |
+  | `show_crosshair`（默认关） | 举枪隐藏准星 | ✅ r92 已对齐 |
+  | `bolt_shell_ejecting_time: 0.4` | 拉栓/抛壳时机 0.4 s | 我们 `AwpRifleItem.BOLT_DELAY` = 6 tick = 0.3 s（要 0.4 s 就说一声，一行改） |
+- `GunPose.modelFov(boolean awp, double aim)` 新增：**各枪自己的举枪模型 FOV**（AK 45 / AWP 35），
+  腰射统一 70。参数用 `boolean` 而不是 `WeaponAnim.Kind`，避免 weapon 包反向依赖 client 包
+  （`GunPose.transform` 在服务端算弹道时也会被调用，签名里出现客户端类有炸专用服务器的风险）。
+
+> 版本 `1.0.0-r93`
+
+- **AWP 开火后坐改成「枪托微微下沉 + 枪管微微上抬」的绕手俯仰**（用户要求）：
+  - `GunPose` 的举枪姿态层新增第 6 个分量 **`firePitch`（开火俯仰，度）**，乘在**最后**
+    （`Rz(横滚)·Trans(位移)·R(腰射姿态)·Rx(firePitch)`）⇒ 它最先作用在模型点上、**枢轴是姿态原点
+    （原版手部基准 ≈ 握把）**：正角时枪管（前端 −Z）上抬、枪托（后端 +Z）下沉。
+    `transform()`（手臂 / 枪口 / 弹道都走它）同步加了同一段，所以**双手绕同一点一起动、不会脱手**。
+  - `WeaponHandGrip`：AWP 的 `pushAds` 从「整枪 `AWP_FIRE_LIFT` 平抬」改成
+    **`AWP_FIRE_PITCH = 6° × 后坐量`**（抵肩 ≈2.5°、腰射 ≈3.6°，再按 ×0.55/tick 衰减 ⇒ 一记短促的枪口一跳）。
+    平抬会把枪托也抬起来，正好和「枪托下沉」相抵，所以改成 0。
+  - `AwpGeoModel.computeMovePose` 仍全零（骨骼不参与），后坐全部在姿态层算一份；
+    镜头那一份 `ClientEvents.applyRecoilKick` 保留（视角晃动）。
+  - 调参：嫌夸张就改 `WeaponHandGrip.AWP_FIRE_PITCH`（6 → 4），想要更猛就往上加。
+
+> 版本 `1.0.0-r92`
+
+- **AKM 持枪对齐 TaCZ 的 AK47 配置**（参考 `MCModderAnchor/TACZ`
+  `assets/tacz/custom/tacz_default_gun/assets/tacz/display/guns/ak47_display.json`）：
+  | TaCZ 字段 | 含义 | 我们 |
+  |---|---|---|
+  | `iron_zoom: 1.33` | 机瞄世界放大 | ✅ `ClientEvents.IRON_ZOOM` 已是 1.33 |
+  | `zoom_model_fov: 45` | 举枪时枪模单独投影 FOV | ✅ `GunPose.MODEL_FOV_AIM` 已是 45 |
+  | `show_crosshair: false` | 举枪隐藏准星 | ★ 本次对齐：拿枪抵肩时收掉原版准星（`onRenderGuiOverlay`） |
+  | `transform` 只给 `scale`，注释写明「**旋转和位移使用模型内定位组**」 | 举枪=纯平移、枪身不横滚 | ★ 本次对齐：`WeaponMount.akmAdsRoll` 恒返回 **0**（r88 的机瞷 15°/红点 8° 横滚去掉） |
+  - 去掉横滚后，举枪只剩平移 ⇒ 照门—准星（或红点）那条线永远钉在屏幕中心，枪身正着端在眼前
+    —— 就是用户图 1 那种持枪；`rollComp` 那段补心位移在 0 度时自动跳过，不用删。
+  - 复合弓例外：拉弓时保留准星（要看目标）。
+
+> 版本 `1.0.0-r91`
+
+- **AWP 开镜改用十字弩那一套「整屏镜筒」实现**（`client/ClientEvents.java`，用户要求）：
+  - `maskScoping` 重新把 **AWP 8 倍镜**算进去（与十字弩同一支）：{@link #onRenderHand} 在抵肩时
+    直接把枪与手臂一起藏掉（像原版望远镜），只留圆形镜筒 —— 镜筒外近黑遮罩 + 镜缘暗角 +
+    镜内分划 + **蓝色镜圈**（蓝圈画在镜筒半径上，就是一圈蓝色镜缘）。
+  - `drawScopeReticle(g, ringR, limitedToRing)` 新增「只画圈内」模式：整屏镜筒（十字弩 / AWP）
+    的十字只留在镜筒内，不再往黑色遮罩上画外段粗线；AKM 4 倍镜仍是「看得见枪」那一支
+    （十字贯穿整屏 + 蓝圈取短边 20%）。
+  - r90 曾把 AWP 改成「只叠分划、看得见枪」，本次按用户要求回退成整屏镜筒。
+
+> 版本 `1.0.0-r90`
+
+- **★★ 输入状态只认「真实鼠标事件」：修掉「断点/alt-tab 回来左键不发射」与「按住右键进不了机瞄」**
+  （`client/ClientWeaponInput.java`）：
+  - 根因是 `GLFW.glfwGetMouseButton` 给的是 **GLFW 缓存的按钮状态**：调试器断点、alt-tab、
+    点到别的窗口时鼠标松开事件落在别的窗口上 ⇒ 缓存**永远停在“按下”**。于是
+    ① 半自动武器（AWP / 复合弓）再也等不到一次「新的按下」，② 原版
+    `LivingEntity#startUsingItem` 里那句 `if (... && !this.isUsingItem())` 让**之后每一次右键都失效**
+    ——用户拿图报的「枪飘在手右上方、和手臂分离」「按住右键没有进入机瞄」都由此而来。
+  - 现在 `attackPressed` / `usePressed` **只由 `InputEvent.MouseButton` 维护**，GLFW 只作为
+    「已经收到过真实按下」时的兜底；松开事件**永远**处理（连界面开着时也处理），
+    窗口重新获得焦点时整套状态复位。
+  - 每 tick 兜底 `clearStuckUse()`：右键没按着、手上武器又不在换弹/拉弦，却还卡在
+    `isUsingItem()` ⇒ 主动 `releaseUsingItem`，右键不会因为一次丢事件永久坏掉。
+- **倍镜分划改成「蓝色圆圈 + 白色十字线」**（`client/ClientEvents.java`，用户图 2 的样式）：
+  - 白十字贯穿整屏（圈内细、圈外粗）、每 `r/4` 一颗密位点、中心一颗暖色点；
+  - ★ 新增 `drawScopeRing()`：`0xFF0099FF` 蓝色圆环（与用户标注同色）。AWP 8 倍 / AKM 4 倍镜
+    半径取短边的 **20%**（就是用户图上画的那个比例）；十字弩的整屏镜筒传镜筒半径进去，蓝圈正好压在镜筒边缘。
+  - ★ **AWP 不再走整屏镜筒遮罩**（`maskScoping` 只认十字弩）：用户图上镜外世界、枪、手全都看得见，
+    所以 AWP 抵肩 = 只叠分划 + 蓝圈，枪与手臂照常渲染。
+- **十字弩「弦」收口**（`client/CrossbowGeoModel.java`，上一轮未编译进 jar）：
+  `STRING_LEN` 5.665 → **6.221**（= geo 里弦方块的真实长度）。拉满时两段弦的内端此前停在
+  弦心前 0.56 px，看着就是「V 没合上/交叉过线」；现在由几何解出的 φ 让内端**精确落在弦心上**
+  （`tools/_cb_flex.py` 自带数值自检，实跑偏差 0.00）。
+- **新增现场诊断 `client/WeaponDiag.java`**：「枪 / 手错位」这类只能在游戏里复现的问题，
+  每秒往 **游戏目录 `hexalunar_diag.txt`**（同时进日志 INFO）写一行：手上是什么、有没有装瞄具、
+  `isUsingItem` / `getUseAnimation`、`aim` / `equip` / `attackAnim` / `swinging`、举枪位移、
+  **从烘焙模型里读到的 display 平移**对比 `WeaponMount` 常数（不一致会 WARN）、
+  以及这一帧 `applyForgeHandTransform` / 补画手臂有没有真的被调用。
+
+> 版本 `1.0.0-r88`
+
+- **右键瞄准构图重塑 + 「动画盖掉代码姿态」根治**（`weapon/GunPose.java`、`weapon/WeaponMount.java`、
+  `client/WeaponHandGrip.java`、各 `animations/*.json`）：
+  - ★★ **横滚绕眼睛**：`GunPose.matrix` 的乘法顺序改成 `横滚 · 平移 · 腰射姿态`（JOML 里最后一个乘上去的
+    最先作用在模型点上）。举枪平移已经把瞄准参照点（照门顶 / 镜筒光轴）顶到眼睛上，绕眼睛旋转时
+    该点不动 ⇒ **准星永远在屏幕中心**，只有枪身绕它甩向右下。r87 写成「先平移后横滚」= 绕模型原点转，
+    准星被甩飞、手与枪错开（用户反馈「瞄准不对」「手臂和枪分离」）。`transform()`（手臂 / 枪口 /
+    弹道都走它）同步改成同一顺序，三者不会脱节。
+  - **AKM**：`AKM_AIM_DZ` 4.0 → **−3.0**、4 倍镜 `AKM_SCOPE_AIM_DZ` 5.0 → **−3.0**（负值 = 把枪往前推）。
+    正方向加到 4~8 时眼睛在机匣/枪托内部，屏幕被后挡板铺满。
+  - **横滚随瞄具**（`WeaponMount.akmAdsRoll`）：机瞷 15° / 红点 8° / 4 倍镜 0°。
+  - **AWP**：`AWP_AIM_DZ` 7.5 → **−3.5**（目镜 0.68 格、枪托 0.60 格，镜筒与枪身都看得清）。
+  - ★★ **删掉会盖代码姿态的动画通道**（GeckoLib 的动画在 `setCustomAnimations` 之后套）：
+    `awp.bolt` / `awp.reload` 里的 `bolt`、`casing`，`crossbow.idle/run/run_fast/fire` 里的 `bolt`
+    与 `fire` 里的 `nock` / `string_left` / `string_right` / `move`。删掉之后 r87 的
+    「拉栓行程 4.2 px」「抛壳方向翻到 −X」才真正生效；十字弩上膛后弩箭也不再被 anim 的 `y=−40` 藏住。
+
+> 版本 `1.0.0-r87`
+
+- **右键瞄准构图对齐 TaCZ（AKM / AWP）+ 拉栓与抛壳/自动上膛**（`weapon/GunPose.java`、`weapon/WeaponMount.java`、`client/WeaponHandGrip.java`）：
+  - **AKM 举枪**：镜头前移 **1.4 → 4.0 px**，并新增 **绕视线横滚 7°**（`AKM_AIM_DZ` / `AKM_ADS_ROLL`）。
+    横滚绕的是**眼点**，所以准星/光点仍钉在屏幕中心，但机匣被甩向视野**右下**、顶面露出来 —— 即 TaCZ 那种
+    「枪身斜插进画面」的构图（原来是「一堵机匣墙」）。横滚在 `GunPose` 里统一施加，
+    所以**渲染出的枪、手臂（`GunFrame`）、枪口/抛壳点的世界坐标**用的是同一个 `WeaponMount.toWorld(..., rollDeg)`
+  - **AWP 举枪**：镜头前移 **6.0 → 7.5 px**（`AWP_AIM_DZ`），镜环更大、机匣本体基本落到近平面之后，消掉屏幕下方那片「白楔子」
+  - **AWP 开火抬枪**：新增 `WeaponHandGrip.AWP_FIRE_LIFT = 2.0F`（× 后坐量），抬升量走**姿态层**（`GunPose.ADS[3]`）
+    ⇒ **枪和双手一起抬**，不再是只有枪动
+  - **AWP 拉栓更真**：枪机后退 **3.4 → 4.2 px**（`BOLT_BACK`）；右手拉机柄的落点与枪机**共用同一份数学**，手不会脱开
+  - **抛壳方向翻转**（用户反馈原方向反了）：AKM `CASE_VX` 与 AWP `CASE_VX = −5.0` 均改为 **−X**，
+    `WeaponFx.ejectCasing` 的右向量同步取反 ⇒ 弹壳往玩家**左前方**飞
+  - **十字弩开火后自动上膛**：`CrossbowWeaponItem.AUTO_COCK_DELAY = 6`（帧）后自动开始 30 帧上弦（带上弦音效）
 
 > 版本 `1.0.0-r82`
 

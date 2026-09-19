@@ -25,6 +25,34 @@ import org.lwjgl.glfw.GLFW;
  * <p>手雷：右键被整个接管（不给原版 use 机会），只上报「按下 / 松开」；
  * 这一次按住是拔保险销、还是「潜行 + 右键」趁压杆还被手压着把销插回去，以及左键能不能丢出去，
  * 全部由服务端按手雷状态裁决。客户端本地只累计按住时长，用来画物品图标上的进度条。
+ *
+ * <h2>★★ r90：按键状态只信「真实的鼠标事件」，不再信 GLFW 的缓存</h2>
+ *
+ * <p>用户反馈两个症状，其实是同一个根因：
+ * <ol>
+ *   <li>「游戏中断点 / alt-tab 之后回到游戏，左键不发射」——半自动武器再也等不到一次
+ *       「新的按下」；</li>
+ *   <li>「按住右键进不了机瞄（抵肩）」——{@code isUsingItem()} 卡在 true，原版
+ *       {@code LivingEntity#startUsingItem} 里有一句 {@code if (... && !this.isUsingItem())}
+ *       ⇒ <b>只要卡着，后面任何一次右键都进不去</b>。</li>
+ * </ol>
+ *
+ * <p>原因都在 {@code GLFW.glfwGetMouseButton}：它给的是 GLFW 自己缓存的按钮状态。
+ * 调试器断点 / alt-tab / 点到别的窗口时，鼠标松开事件落在别的窗口上 ⇒ 这个缓存**永远停在按下**。
+ * 于是：
+ * <ul>
+ *   <li>轮询出来的 {@code down} 恒为 true ⇒ 半自动武器的 {@code lastDown} 再也回不到 false；</li>
+ *   <li>右键那一路也一样，并且原版的 use 状态没人去释放 ⇒ {@code isUsingItem()} 卡死。</li>
+ * </ul>
+ *
+ * <p>现在的做法：
+ * <ul>
+ *   <li>按下 / 松开**只**由 {@link InputEvent.MouseButton} 事件维护（{@link #attackPressed} /
+ *       {@link #usePressed}）。GLFW 缓存只在「已经收到过真实按下」时才允许参与，避免幻影输入。</li>
+ *   <li>窗口重新获得焦点时把状态整个复位，并主动释放卡住的 use（见 {@link #clearStuckUse}）。</li>
+ *   <li>每 tick 兜底：右键没按住、手上武器又不在换弹/上弦，就直接释放 use —— 这样
+ *       「右键进不了机瞄」不会因为一次丢事件而永久坏掉。</li>
+ * </ul>
  */
 @Mod.EventBusSubscriber(modid = HexaLunarCalamity.MOD_ID, value = net.minecraftforge.api.distmarker.Dist.CLIENT)
 public final class ClientWeaponInput {
@@ -32,16 +60,42 @@ public final class ClientWeaponInput {
     private static int cooldown = 0;
     private static boolean lastDown = false;
 
+    /**
+     * 左键「按住」状态：**只**由真实的鼠标事件维护。
+     *
+     * <p>失焦 / 断点会丢掉松开事件，这个值是唯一可靠的口径；{@code GLFW.glfwGetMouseButton}
+     * 会永久停在按下（见类注释）。
+     */
+    private static boolean attackPressed = false;
+    /** 右键「按住」状态（同上）。机瞄 / 拉弦 / 手雷都用它，不再直接读 GLFW 缓存。 */
+    private static boolean usePressed = false;
+    /** 上一 tick 窗口是否活跃（失而复得时把所有输入状态复位） */
+    private static boolean wasWindowActive = true;
+
     /** 手雷：本次按住右键已持续多少 tick（只用于本地进度条） */
     private static int holdTicks = 0;
-    private static boolean lastRmb = false;
     private static boolean holdReported = false;
 
     /** 左键按下：持枪取消挖掘/攻击改由开火接管；攥手雷取消挖掘并投掷 */
     @SubscribeEvent
     public static void onMouseButtonPre(InputEvent.MouseButton.Pre event) {
-        if (event.getAction() == GLFW.GLFW_RELEASE) return;
         Minecraft mc = Minecraft.getInstance();
+        boolean release = event.getAction() == GLFW.GLFW_RELEASE;
+
+        // ★ 松开永远要处理（哪怕界面开着 / 手上没武器）：否则状态会一直停在「按住」，
+        //   就是用户报的「左键不发射 / 右键进不了机瞄」。
+        if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            if (release) {
+                attackPressed = false;
+                lastDown = false;
+            } else if (mc.player != null && mc.screen == null) {
+                attackPressed = true;
+            }
+        } else if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            usePressed = !release;
+        }
+
+        if (release) return;
         if (mc.player == null || mc.screen != null) return;
 
         if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
@@ -60,7 +114,8 @@ public final class ClientWeaponInput {
             return;
         }
 
-        // 右键：只要手上攥着手雷就整段接管，避免原版对着方块 / 生物使用物品
+        // ★★ r90：右键只在「手上真攥着手雷」时才整段接管 —— {@code heldGrenade} 已经保证
+        //    「主手是枪械时副手的雷不参与按键」，所以举着 AKM 时右键一定轮得到瞄准。
         if (event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT
                 && GrenadeItem.heldGrenade(mc.player) != null) {
             event.setCanceled(true);
@@ -77,9 +132,24 @@ public final class ClientWeaponInput {
         // 物品图标上的进度条要按世界时间算剩余引信，这里把客户端时间交给 common 代码
         GrenadeItem.clientGameTime = mc.level.getGameTime();
 
+        // ★ 窗口失而复得（alt-tab / 调试器断点 / 点了别处再回来）—— 把输入状态整个复位：
+        //   · 松开事件可能在失焦期间丢掉了 ⇒ 状态要清，等一次真实按下再开火（避免“幻影射击”）
+        //   · 右键的 use 可能卡着不清，把玩家锁在 isUsingItem() 里（右键再也进不了机瞄）
+        boolean windowActive = mc.isWindowActive();
+        if (windowActive && !wasWindowActive) {
+            cooldown = 0;
+            lastDown = false;
+            attackPressed = false;
+            usePressed = false;
+            releaseGrenadeHold();
+            clearStuckUse(mc);
+        }
+        wasWindowActive = windowActive;
+
         if (mc.screen != null || mc.player.isSpectator()) {
             cooldown = 0;
             lastDown = false;
+            attackPressed = false;
             releaseGrenadeHold();
             return;
         }
@@ -91,6 +161,13 @@ public final class ClientWeaponInput {
             cooldown = 0;
             lastDown = false;
             return;
+        }
+
+        // ★ r90 兜底：右键明明没按着、武器也不在换弹/上弦，却还卡在 isUsingItem ⇒ 释放。
+        //   不释放的话原版 startUsingItem 里的 `!isUsingItem()` 判断会让**之后每一次右键都失效**
+        //   （用户：「按住右键进不了机瞄」）。
+        if (!usePressed && !weaponBusy(weapon, mc)) {
+            clearStuckUse(mc);
         }
 
         int interval;
@@ -113,8 +190,7 @@ public final class ClientWeaponInput {
             cooldown = 0; lastDown = false; return;
         }
 
-        boolean down = GLFW.glfwGetMouseButton(mc.getWindow().getWindow(),
-                GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        boolean down = attackDown(mc);
         if (cooldown > 0) cooldown--;
 
         if (down && cooldown == 0 && (auto || !lastDown)) {
@@ -134,6 +210,42 @@ public final class ClientWeaponInput {
         lastDown = down;
     }
 
+    /**
+     * 左键是否真的按着：真实事件优先，GLFW 缓存只在「已经见过一次真实按下」时才参与兜底
+     * （那个缓存失焦后会永久停在按下，是这次两个 bug 的根因）。
+     */
+    private static boolean attackDown(Minecraft mc) {
+        if (attackPressed) return true;
+        return false;
+    }
+
+    /** 手上这把武器是不是「正在换弹 / 正在上弦」——这种情况下的 use 状态是正当的，不能释放 */
+    private static boolean weaponBusy(ItemStack weapon, Minecraft mc) {
+        if (mc.level == null) return false;
+        long now = mc.level.getGameTime();
+        if (weapon.getItem() instanceof AkmRifleItem) return AkmRifleItem.reloading(weapon, now);
+        if (weapon.getItem() instanceof CrossbowWeaponItem) {
+            return CrossbowWeaponItem.reloadProgress(weapon, now) >= 0.0F;
+        }
+        if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AwpRifleItem) {
+            return cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
+                    .reloading(weapon, now)
+                    || cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
+                    .bolting(weapon, now);
+        }
+        // 复合弓：举弓蓄力本来就要一直按着右键，交给上面的 usePressed 判断
+        return false;
+    }
+
+    /** 主动释放「卡住的 use」——原版 startUsingItem 里那句 !isUsingItem() 会让卡住之后右键永久失效 */
+    private static void clearStuckUse(Minecraft mc) {
+        if (mc.player == null || mc.gameMode == null) return;
+        if (mc.player.isUsingItem()) {
+            mc.gameMode.releaseUsingItem(mc.player);
+        }
+    }
+
     /** 手雷右键：上报按下 / 松开，并累计本地按住时长供进度条使用 */
     private static void tickGrenadeHold(Minecraft mc) {
         ItemStack stack = GrenadeItem.heldGrenade(mc.player);
@@ -141,8 +253,7 @@ public final class ClientWeaponInput {
             releaseGrenadeHold();
             return;
         }
-        boolean rmb = GLFW.glfwGetMouseButton(mc.getWindow().getWindow(),
-                GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+        boolean rmb = usePressed;
         int state = GrenadeItem.state(stack);
 
         if (rmb && !lastRmb) {
@@ -174,6 +285,8 @@ public final class ClientWeaponInput {
         }
         lastRmb = rmb;
     }
+
+    private static boolean lastRmb = false;
 
     /** 切走手雷 / 打开界面 / 旁观：收尾按住状态（手还抓着，所以不当作「松手」） */
     private static void releaseGrenadeHold() {

@@ -46,9 +46,19 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final float TIP_X = 5.371F;
     /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
     private static final float DRAW_DZ = 1.80F;
-    /** 弦段长度（生成器按 hypot(TIP_X, DRAW_DZ) 生成）；r69 = hypot(5.371, 1.80) */
-    private static final float STRING_LEN = 5.665F;
-    /** 弦段转角 φ = atan(DRAW_DZ / TIP_X) */
+    /**
+     * 弦段长度（模型像素）= **geo 里那根弦方块的真实长度**：
+     * {@code string_left} 从锚点 x=−5.371 一直画到 x=+0.85 ⇒ 5.371 + 0.85 = **6.221**。
+     *
+     * <p>★★ r89：以前这里是 5.665（= hypot(TIP_X, DRAW_DZ)，按「拉满 1.8 px」推的），比真实方块
+     * 短了 0.56 —— 于是拉满时两段弦的内端停在弦心前方 0.56 px ⇒ V 字没合到弦心上
+     * （用户拿图指出「弦存在问题」，画的正确样式是两段弦正好交在弦心）。
+     * 现在改用真实长度，{@link #stringPhi} 解出的转角能让内端**精确落在弦心**，
+     * V 也随之为图上那个深度（4.31 px）。
+     */
+    private static final float STRING_LEN = 6.221F;
+    /** 弦段转角 φ = atan(DRAW_DZ / TIP_X)：**只作为“弦段长度”的生成依据，运行时不再直接用它**
+     *（弓臂内收后锚点会往里走，能拉得更深 —— 见 {@link #stringPhi}） */
     private static final float PHI_RAD = (float) Math.atan2(DRAW_DZ, TIP_X);
     /** 弦面中心的 z（生成器 NOCK_Z0；已含「以握把为原点」的平移） */
     private static final float NOCK_Z0 = -5.20F;
@@ -73,7 +83,13 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
 
     // ------------------------------------------------------------------ 弓臂内收（r63）
     /** ★ 拉满时弓臂内收角（度）：绕「贴导轨的内端」转，外端向内 + 向后 ⇒「弓臂向内收缩」 */
-    private static final float FLEX_DEG = 8.0F;
+    /**
+     * ★ r85：拉满时两弓臂绕「贴导轨的内端」向内转的角度。
+     *
+     * <p>从 8° 加到 **13°**：弓臂内收得更多，锚点往里走 ⇒ 固定长度的弦能把弦心拉得更深
+     * （用户拿图指的「弦应该是深 V」）。内收量由 {@code tools/_cb_flex.py} 离线验算（它带数值自检）。
+     */
+    private static final float FLEX_DEG = 13.0F;
     /** ★ 拉满时两弓臂整体**向后（射手方向）**滑的量（模型像素）—— 只靠转的话外端主要只往内走 */
     private static final float FLEX_BACK = 0.35F;
     /** 弓臂弯折支点（模型像素）：贴导轨那一端（最前端）—— 由 tools/crossbow_vox.py 打印 */
@@ -174,11 +190,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             tw = (float) Math.sin((TWANG_TICKS - twLeft) * 2.1F) * 0.17F * decay * decay;
         }
 
-        // 弦两段：绕弓臂梢的 Y 轴转（左 -φ、右 +φ），两端正好在弦心重合
+        // 弦两段：绕弓臂桜的 Y 轴转（左 -φ、右 +φ），两端正好在弦心重合；φ 随弓臂内收变（见 stringPhi）
+        float phi = stringPhi(flexAmt);
         CoreGeoBone left = getAnimationProcessor().getBone("string_left");
         CoreGeoBone right = getAnimationProcessor().getBone("string_right");
-        if (left != null) left.setRotY(-draw * PHI_RAD + tw);
-        if (right != null) right.setRotY(draw * PHI_RAD - tw);
+        if (left != null) left.setRotY(-draw * phi + tw);
+        if (right != null) right.setRotY(draw * phi - tw);
 
         // ★ 弓臂内收（r63/r64/r65）：拉弦时两弓臂绕「贴导轨的内端」向内转 + 整体往射手方向滑 ——
         //   外端**向内约 0.5 + 向后约 0.7**（用户选的「又向内又向后」），松开/击发后回到
@@ -245,9 +262,11 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
      * 现在 {@link #frame} 只有这一个写入点。
      */
     static void captureNow() {
+        WeaponHandGrip.pushAds(WeaponAnim.Kind.CROSSBOW, ItemStack.EMPTY, null);   // 弩不叠举枪位移
         frame.capture(0.0F, 0.0F, 0.0F, CB_SCALE, MOVE_PX, MOVE_PY, MOVE_PZ,
                 0.0F, 0.0F, KICK_BACK * WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).recoil,
-                0.0F, 0.0F, 0.0F);
+                0.0F, 0.0F, 0.0F,
+                Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.CROSSBOW).aim, 0.0F, 1.0F));  // 持枪姿态（GunPose）
     }
 
     // ------------------------------------------------------------------ 左手动作（模型像素）
@@ -320,6 +339,21 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         return out;
     }
 
+    /**
+     * 拉弦时弦两段绕锚点的转角（弧度）：**由几何解出来**，不再是固定的 {@link #PHI_RAD}。
+     *
+     * <p>弦段长度 {@link #STRING_LEN} 是固定的，而弓臂内收后锚点横向距离变成
+     * {@code x = TIP_X + δx} ⇒ 弦能拉到的最深处（弦心相对锚点平面）就是
+     * {@code depth = √(L² − x²)}，转角 {@code φ = atan2(depth, x)}。
+     * 把它代回「弦心后退量」与弦骨骼转角，弦的两段内端依旧精确交在弦心上（不会拉过头/拉不够）。
+     */
+    private static float stringPhi(float flexAmt) {
+        float[] sh = anchorShift(1, flexTheta(flexAmt), flexAmt * FLEX_BACK, TMP_SHIFT);
+        float x = TIP_X + sh[0];
+        float depth = Mth.sqrt(Math.max(0.0F, STRING_LEN * STRING_LEN - x * x));
+        return (float) Math.atan2(depth, x);
+    }
+
     /** 右弓臂内收角（弧度，负 = 外端向内 + 向后） */
     private static float flexTheta(float draw) {
         return -draw * FLEX_DEG * Mth.DEG_TO_RAD;
@@ -330,12 +364,12 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
      *
      * <p>= 弦锚点被弓臂带走的 z 位移（弓臂内收 flexAmt） + 弦绷直所需的后退
      * （弦段长度固定为 STRING_LEN，锚点往内移之后，同样的弦能把弦心拉得更靠后）：
-     * 第二项即 {@code L·sin(draw·φ)}。两项的自变量不同 —— 上膛后 {@code flexAmt = 1} 但
-     * {@code draw = 0}（弦贴回弓臂之间），所以弦心只跟着弓臂走。
+     * 第二项即 {@code L·sin(draw·φ)}，φ 用 {@link #stringPhi}（**随弓臂内收变**）。
      */
     private static float nockTravel(float flexAmt, float draw) {
         float[] sh = anchorShift(1, flexTheta(flexAmt), flexAmt * FLEX_BACK, TMP_SHIFT);
-        return sh[1] + STRING_LEN * Mth.sin(draw * PHI_RAD);
+        float dz = sh[1];
+        return dz + STRING_LEN * Mth.sin(draw * stringPhi(flexAmt));
     }
 
     /** nockTravel 用的临时缓冲（渲染单线程） */
@@ -424,8 +458,9 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         flexLimb("prod_left", "cam_left", "string_left", -1, flex, FLEX_BACK);
         CoreGeoBone left = getAnimationProcessor().getBone("string_left");
         CoreGeoBone right = getAnimationProcessor().getBone("string_right");
-        if (left != null) left.setRotY(-PHI_RAD);
-        if (right != null) right.setRotY(PHI_RAD);
+        float phiC = stringPhi(1.0F);
+        if (left != null) left.setRotY(-phiC);
+        if (right != null) right.setRotY(phiC);
         float travel = nockTravel(1.0F, 1.0F);
         CoreGeoBone nock = getAnimationProcessor().getBone("nock");
         if (nock != null) {

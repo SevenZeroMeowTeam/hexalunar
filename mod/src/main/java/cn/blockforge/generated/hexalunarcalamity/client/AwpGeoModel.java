@@ -72,8 +72,8 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * 与 {@code animation.awp.bolt}、{@code tools/_awp_arms.py} 里的值保持一致。
      */
     private static final float BOLT_LIFT = 88.0F;
-    /** 拉栓：枪机后退量（模型像素）—— r84 由 1.9 提到 **3.4**，看得出「拉到底」 */
-    private static final float BOLT_BACK = 3.4F;
+    /** 拉栓：枪机后退量（模型像素）—— r87 由 3.4 提到 **4.2**（≈26cm，比真实栓动略长但看得清抽壳行程） */
+    private static final float BOLT_BACK = 4.2F;
     /** {@code bolt} 骨骼 pivot（geo 里的值）—— 拉机柄绕它抬起来 */
     private static final float BOLT_PX = 0.615F;
     private static final float BOLT_PY = 1.50F;
@@ -107,7 +107,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * 让弹壳从抛壳口翻出去时**离开枪身与右臂**，能看清它三轴翻滚地飞走。
      */
     private static final float CASE_BACK = 3.0F;
-    private static final float CASE_VX = 5.0F;
+    private static final float CASE_VX = -5.0F;
     private static final float CASE_VY = 2.2F;
     private static final float CASE_G = 0.8F;
     /** 三轴翻滚（度） */
@@ -198,6 +198,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
         float rp = stack == null ? -1.0F : AwpRifleItem.reloadProgress(stack, now);
         CoreGeoBone mag = getAnimationProcessor().getBone("magazine");
         if (mag != null) {
+            mag.setHidden(rp >= 0.0F && magHidden(rp));   // 旧匣掉出去的那段直接藏
             float drop = rp < 0.0F ? 0.0F : magDropAt(rp);
             mag.setPosX(0.0F);
             mag.setPosY(-MAG_DROP * drop);
@@ -217,21 +218,16 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * 已按用户要求去掉。将来若还要调屏幕上的倾斜感，请改 display 旋转并同步 {@link WeaponMount}。
      */
     static void computeMovePose(float[] out) {
-        float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AWP).aim, 0.0F, 1.0F);
-        float px = 0.0F;
-        float py = 0.0F;
-        float pz = 0.0F;
-        if (aim > 0.001F) {
-            Player local = Minecraft.getInstance().player;
-            px = (local == null ? WeaponMount.AWP_AIM_DX : WeaponMount.awpAimDx(local)) * aim;
-            py = WeaponMount.AWP_AIM_DY * aim;
-            pz = WeaponMount.AWP_AIM_DZ * aim;
-        }
-        // ★ r84：后坐力**不再推枪/手臂**（用户要求「只晃视角」）—— 后座交给 ClientEvents.applyRecoilKick
-        out[0] = px;
-        out[1] = py;
-        out[2] = pz;
-        out[3] = 0.0F;      // 不做任何额外旋转（与 AKM 同一套规则）
+        // ★★ r85：举枪位移**不再推 move 骨骼**（改由 GunPose 在 pose 层施加，见
+        //   {@link WeaponHandGrip#pushAds}）；骨骼一律零位移、零角度：
+        //   · 举枪（ADS）：pose 层平移 —— 把眼睛贴到目镜上、镜筒光轴顶到屏幕中心
+        //   · 开火后坐（★ r93）：pose 层的 **firePitch 绕手俯仰** —— 枪管微抬 + 枪托微沉
+        //     （以前是整枪 lift 平抬，枪托会跟着往上走，不符合「枪托下沉」的手感）
+        //   · 后坐：同时推镜头（{@code ClientEvents.applyRecoilKick}）
+        out[0] = 0.0F;
+        out[1] = 0.0F;
+        out[2] = 0.0F;
+        out[3] = 0.0F;
         out[4] = 0.0F;
         out[5] = 0.0F;
     }
@@ -244,10 +240,15 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      */
     static void captureNow() {
         computeMovePose(MOVE_POSE);
+        // 举枪位移/开火上抬（相机空间、格）写进 GunPose：手臂与枪共用同一份
+        Player local = Minecraft.getInstance().player;
+        WeaponHandGrip.pushAds(WeaponAnim.Kind.AWP, local == null ? ItemStack.EMPTY
+                : local.getMainHandItem(), local);
         frame.capture(WeaponMount.AWP_TX, WeaponMount.AWP_TY, WeaponMount.AWP_TZ, 1.0F,
                 MOVE_PX, MOVE_PY, MOVE_PZ,
                 MOVE_POSE[0], MOVE_POSE[1], MOVE_POSE[2],
-                MOVE_POSE[3], MOVE_POSE[4], MOVE_POSE[5]);
+                MOVE_POSE[3], MOVE_POSE[4], MOVE_POSE[5],
+                Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AWP).aim, 0.0F, 1.0F));   // 持枪姿态（GunPose）
     }
 
     // ------------------------------------------------------------------ 左手动作（模型像素）
@@ -272,8 +273,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
             else if (rp < 0.82F) copy(TMP_A, out);
             else lerp(TMP_A, ARM_SUPPORT, ease((rp - 0.82F) / 0.18F), out);
         }
-        out[1] += 0.8F * WeaponAnim.of(WeaponAnim.Kind.AWP).recoil;   // ★ r84 开火时微微上抬
-        return out;
+        return out;      // 开火微抬改由 GunPose 的 lift（枪+双手一起抬），这里不再自己加
     }
 
     /** 弹匣上的握点（跟着弹匣下移 + 前倾） */
@@ -290,12 +290,25 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
         return out;
     }
 
-    /** 换弹时弹匣的「退出程度」0..1（0 = 就位，1 = 完全退出）—— 骨骼与手臂同一份 */
+    /**
+     * 换弹时弹匣的「退出程度」0..1（0 = 就位，1 = 完全退出）—— 骨骼与手臂同一份。
+     *
+     * <p>★ r84：旧匣退到底后**继续往下掉**（>1 的部分），到 1.30 倍行程时已经被
+     * {@link #magHidden} 藏起来（= 掉在地上）；新匣再从 1.30 倍处升上来卡回井里。
+     * 一根骨骼演完「退旧匣 + 插新匣」两个动作，不带世界实体（TaCZ 也是这个做法）。
+     */
     private static float magDropAt(float p) {
         if (p < 0.0F) return 0.0F;
         if (p < 0.28F) return ease(p / 0.28F);
-        if (p > 0.72F) return ease(Mth.clamp((1.0F - p) / 0.28F, 0.0F, 1.0F));
-        return 1.0F;
+        if (p < 0.46F) return 1.0F + 0.30F * ease((p - 0.28F) / 0.18F);         // 旧匣继续往下掉
+        if (p < 0.58F) return 1.30F;                                            // 空窗（匣已经掉出去了）
+        if (p < 0.80F) return 1.30F * (1.0F - ease((p - 0.58F) / 0.22F));        // 新匣从下面顶上来
+        return 0.0F;                                                            // 到位
+    }
+
+    /** 旧匣掉出去了、新匣还没上来的那段：藏起来（否则会看成「滑下去又滑回来」） */
+    private static boolean magHidden(float p) {
+        return p >= 0.38F && p < 0.58F;
     }
 
     private static float ease(float t) {
@@ -362,9 +375,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
                         ease(Mth.clamp((bp - BOLT_HAND_OUT) / BOLT_HAND_SNAP, 0.0F, 1.0F)), out);
             }
         }
-        // ★ r84：开火时手臂**微微上抬**（用户要求）—— 用后坐冲量抬，衰减与枪口一致
-        out[1] += 0.8F * WeaponAnim.of(WeaponAnim.Kind.AWP).recoil;
-        return out;
+        return out;      // ★ r85：开火微抬改由 GunPose 的 lift —— 整把枪与双手一起抬
     }
 
     /** 拉机柄握点（模型空间的绝对点）：绕 bolt pivot 抬起 LIFT 角，再随枪机后退 */
