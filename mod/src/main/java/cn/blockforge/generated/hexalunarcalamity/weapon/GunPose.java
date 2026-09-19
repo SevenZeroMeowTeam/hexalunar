@@ -47,10 +47,13 @@ public final class GunPose {
     public static final float MODEL_FOV_AIM_AWP = 35.0F;
     /**
      * 腰射时的枪模 FOV。原版手持那一遍本来就用 70°（{@code GameRenderer.renderItemInHand} 里
-     * {@code getFov(camera, partial, false)} —— 那个 {@code false} 表示"不套 fov 设置与各种修正"），
-     * 所以这里取 70 就是"和以前一模一样"，枪的大小不变。
+     * {@code getFov(camera, partial, false)} —— 那个 {@code false} 表示"不套 fov 设置与各种修正"）。
+     *
+     * <p>★ r98：70 → **76**。用户拿标注图指出「枪要往左下靠、手臂要往右上收，两者贴在一起」——
+     * 放宽一点枪模投影就是「屏幕上的枪和手臂一起向画面中心收」，正是他要的构图；
+     * 同时枪会略小一点（腰射时不再顶到右下角）。举枪（ADS）那一路不受影响（照门/准星靠平移对齐）。
      */
-    public static final float MODEL_FOV_HIP = 70.0F;
+    public static final float MODEL_FOV_HIP = 76.0F;
 
     // ---------------------------------------------------------------- 腰射姿态（TaCZ 风格）
     /** 枪口略偏左：屏幕上就能看到枪身右侧，而不是对着一根正对着你的管子 */

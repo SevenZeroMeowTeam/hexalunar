@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""第一人称预览：按原版手持变换链，把模型**从眼睛透视**渲染出来（离线，不开游戏）。
+"""第一人称预览：按原版手持变换链，把模�?*从眼睛透视**渲染出来（离线，不开游戏）�?
 
 原版链条（`ItemInHandRenderer` + `ItemRenderer`，本项目的枪都跳过挥剑那两段）：
     相机 = Trans(±0.56, -0.52 - 0.6·equip, -0.72) · Trans(display.t/16) · R(display.rot) · S · (模型像素/16)
-相机在眼睛处、朝 -Z 看、+Y 向上、+X 向右；竖直 FOV 默认 70°、画面 16:9。
+相机在眼睛处、朝 -Z 看�?Y 向上�?X 向右；竖�?FOV 默认 70°、画�?16:9�?
 
 用法:
   python tools\\_awpfp.py <geo.json> <tex.png> <out.png> [选项]
-    --tx/-ty/--tz    display.firstperson_righthand.translation（默认取 AWP 的 -2.6/1.575/0.5）
-    --rot rx,ry,rz   display 旋转（默认 0,0,0）
-    --fov 70         竖直视场角
+    --tx/-ty/--tz    display.firstperson_righthand.translation（默认取 AWP �?-2.6/1.575/0.5�?
+    --rot rx,ry,rz   display 旋转（默�?0,0,0�?
+    --fov 70         竖直视场�?
     --h 816 --aspect 1.79   输出高度 / 画幅比（默认就是 1462x816 那一档）
     --aim            叠加举枪（ADS）平移；--kick 0..1 开火后坐；--bp 0..1 拉栓进度
-    --pitch -12.5    move 骨骼下压角（度，负 = 枪口下压）——默认 0（= 现在 Java 的做法：无额外旋转）
-    --hands          把两只手臂画成方块（校核手有没有连在枪上）
+    --pitch -12.5    move 骨骼下压角（度，�?= 枪口下压）——默�?0�? 现在 Java 的做法：无额外旋转）
+    --hands          把两只手臂画成方块（校核手有没有连在枪上�?
     --svg            额外输出一张线框图（看枪管轴线在屏幕上的斜率）
 """
 import json
@@ -27,14 +27,14 @@ from PIL import Image
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import geo_texview as gv                                    # noqa: E402  复用逐面 UV 光栅化
+import geo_texview as gv                                    # noqa: E402  复用逐面 UV 光栅�?
 
 # ---------------------------------------------------------------- 与原版一致的手部基准
 ARM_X, ARM_Y, ARM_Z = 0.56, -0.52, -0.72
-# AWP 的 display（models/item/awp.json → firstperson_righthand）
-AWP_T = (-2.6, 1.575, 0.5)
-# 举枪增量（WeaponMount.AWP_AIM_*；DY 随 AWP_TY 变：8.32 − 3.15 − TY）
-# ★ r85：DZ 由 1.4 改成 6.0 —— 把眼睛贴到目镜上（TaCZ 那种「镜环占屏」）
+# AWP �?display（models/item/awp.json �?firstperson_righthand�?
+AWP_T = (-5.0, -0.425, 0.5)
+# 举枪增量（WeaponMount.AWP_AIM_*；DY �?AWP_TY 变：8.32 �?3.15 �?TY�?
+# �?r85：DZ �?1.4 改成 6.0 —�?把眼睛贴到目镜上（TaCZ 那种「镜环占屏」）
 AWP_AIM = (-6.36, 3.595, 6.0)
 # 后坐 / move 骨骼 pivot
 KICK_BACK = 1.9
@@ -42,7 +42,7 @@ MOVE_P = (0.0, -1.0725, 1.305)
 # 拉栓
 BOLT_P = (0.615, 1.50, 0.375)
 BOLT_LIFT, BOLT_BACK = 62.0, 1.9
-# 手臂（WeaponArms）
+# 手臂（WeaponArms�?
 SHOULDER_R = (0.55, -0.85, -0.80)
 SHOULDER_L = (-0.42, -0.85, -0.78)
 ARM_LEN, THICK, HALF = 0.75, 0.85, 0.375
@@ -56,10 +56,10 @@ def rot_mat(rot_deg):
 
 
 def xform(pts, rot, trans_px, pitch=0.0):
-    """模型像素 → 相机空间（格）。rot 单位度（display 旋转），trans_px 单位模型像素。
+    """模型像素 �?相机空间（格）。rot 单位度（display 旋转），trans_px 单位模型像素�?
 
-    pitch = move 骨骼的 rotX（度，负 = 枪口下压，绕握把 pivot）——与 Java 的
-    AwpGeoModel.computeMovePose / GunFrame.toCamera 同一套顺序：先绕 pivot 转，再加平移。
+    pitch = move 骨骼�?rotX（度，负 = 枪口下压，绕握把 pivot）——与 Java �?
+    AwpGeoModel.computeMovePose / GunFrame.toCamera 同一套顺序：先绕 pivot 转，再加平移�?
     """
     R = rot_mat(rot)
     a = math.radians(pitch)
@@ -78,7 +78,7 @@ def xform(pts, rot, trans_px, pitch=0.0):
 
 
 def load_quads(geo_path, bolt_lift=0.0):
-    """读 geo → 逐面世界点（相机空间之前）。bolt_lift 直接改 geo 里 bolt 骨骼的 rotZ。"""
+    """�?geo �?逐面世界点（相机空间之前）。bolt_lift 直接�?geo �?bolt 骨骼�?rotZ�?""
     data = json.load(open(geo_path, encoding='utf-8'))
     g = data['minecraft:geometry'][0]
     if abs(bolt_lift) > 1e-6:
@@ -95,7 +95,7 @@ def load_quads(geo_path, bolt_lift=0.0):
 
 
 def project(cam, W, H, fov_y):
-    """相机空间点 → (屏幕x, 屏幕y, 1/深度)；在相机后面的点用 w<=0 标记。"""
+    """相机空间�?�?(屏幕x, 屏幕y, 1/深度)；在相机后面的点�?w<=0 标记�?""
     f = 1.0 / math.tan(math.radians(fov_y) / 2.0)
     aspect = W / float(H)
     out = []
@@ -120,7 +120,7 @@ def render(geo, tex_path, out, trans=AWP_T, rot=(0.0, 0.0, 0.0), fov=70.0, size=
     ux, uy = TW / tw, TH / th
 
     # move 骨骼姿态（举枪平移 + 后坐 + 腰射下压角）——整个模型都挂在 move 下，
-    # 所以下压角直接对所有顶点绕握把 pivot 转一次（和 Java 的 move 骨骼完全等价）
+    # 所以下压角直接对所有顶点绕握把 pivot 转一次（�?Java �?move 骨骼完全等价�?
     pitch = 0.0 if aim else pitch
     t = [trans[0], trans[1], trans[2]]
     pose = [0.0, 0.0, 0.0]
@@ -163,8 +163,8 @@ def render(geo, tex_path, out, trans=AWP_T, rot=(0.0, 0.0, 0.0), fov=70.0, size=
             inside = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
             if not inside.any():
                 continue
-            invz = w0 * a[2] + w1 * b[2] + w2 * c[2]          # 线性插值 1/z
-            # 透视正确的 UV：插值 u/z、v/z 后除以 1/z
+            invz = w0 * a[2] + w1 * b[2] + w2 * c[2]          # 线性插�?1/z
+            # 透视正确�?UV：插�?u/z、v/z 后除�?1/z
             uiw = (w0 * uva[0] * a[2] + w1 * uvb[0] * b[2] + w2 * uvc[0] * c[2]) / invz
             viw = (w0 * uva[1] * a[2] + w1 * uvb[1] * b[2] + w2 * uvc[1] * c[2]) / invz
             if rgba is None:
@@ -204,14 +204,14 @@ def render(geo, tex_path, out, trans=AWP_T, rot=(0.0, 0.0, 0.0), fov=70.0, size=
     if all(p is not None for p in pp):
         (x0, y0, _), (x1, y1, _) = pp
         ang = math.degrees(math.atan2(y1 - y0, x1 - x0))        # 屏幕 y 向下为正
-        print('%-28s 枪管轴线：近端(%.0f,%.0f) → 远端(%.0f,%.0f)，屏幕倾角 %+.1f°（0 = 水平）'
+        print('%-28s 枪管轴线：近�?%.0f,%.0f) �?远端(%.0f,%.0f)，屏幕倾角 %+.1f°�? = 水平�?
               % (os.path.basename(out), x0 / ss, y0 / ss, x1 / ss, y1 / ss, ang))
     else:
-        print('%-28s 枪管轴线有一部分在相机后面' % os.path.basename(out))
+        print('%-28s 枪管轴线有一部分在相机后�? % os.path.basename(out))
 
 
 def draw_arm(draw, hand, shoulder, roll_deg, rgb):
-    """和 WeaponArms.drawArm 同一套几何：从 shoulder 伸到 hand 的方块。"""
+    """�?WeaponArms.drawArm 同一套几何：�?shoulder 伸到 hand 的方块�?""
     y = np.array([hand[0] - shoulder[0], hand[1] - shoulder[1], hand[2] - shoulder[2]])
     dist = float(np.linalg.norm(y))
     if dist < 1e-4 or dist > 3.0:

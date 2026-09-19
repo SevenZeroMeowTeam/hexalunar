@@ -50,8 +50,8 @@ public final class WeaponMount {
 
     // ------------------------------------------------------------------ AKM
     /** models/item/akm.json → display.firstperson_righthand.translation */
-    public static final float AKM_TX = -2.6F;
-    public static final float AKM_TY = 1.4F;
+    public static final float AKM_TX = -5.0F;
+    public static final float AKM_TY = -0.6F;
     public static final float AKM_TZ = 1.8F;
     /** 举枪增量（上面公式的推演结果，右手） */
     public static final float AKM_AIM_DX = (float) (-HAND_X_PX - AKM_TX);              // -6.36
@@ -228,8 +228,8 @@ public final class WeaponMount {
      * 手臂走 {@code GunFrame}、跟着枪走，不会脱手；举枪（ADS）只做平移，
      * 镜筒光轴照样顶到屏幕中心（见 {@link #AWP_AIM_DY}）。
      */
-    public static final float AWP_TX = -2.6F;
-    public static final float AWP_TY = 1.575F;
+    public static final float AWP_TX = -5.0F;
+    public static final float AWP_TY = -0.425F;
     public static final float AWP_TZ = 0.50F;
     /** 8 倍镜光轴（模型 Y；对应 awp_gen.py 打印的 SCOPE_AXIS = 3.15） */
     public static final double AWP_SCOPE_Y = 3.15D;
