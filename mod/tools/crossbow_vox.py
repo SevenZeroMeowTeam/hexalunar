@@ -39,6 +39,11 @@ FACES = ('north', 'east', 'south', 'west', 'up', 'down')
 GRIP_TARGET = (0.0, -0.95, 0.66)
 # 拉弦行程（模型像素）：弦心从 NOCK_Z0 再往 +Z（射手方向）退这么多
 DRAW_DZ = 1.80
+# ★★ r97：**弦方块的长度**（模型像素）—— 必须与 Java 侧
+#   `client/CrossbowGeoModel.STRING_LEN` 一致：Java 用它解出「绕锚点转 φ 后内端落在弦心」的 φ。
+#   弓臂内收（FLEX）会把锚点往里带、拉满时弦心退得更深，所以它比 hypot(TIP_X, DRAW_DZ)=5.6646 长，
+#   等于「拉满时锚点到弦心」的距离（tools/_cb_flex.py 末尾会做数值自检）。
+STRING_LEN_RUNTIME = 6.221
 # 体素大小（模型像素）：0.45 -> ~820 方块（0.35 要 1400+，太贵；0.5 -> ~690）
 STEP = 0.45
 # ★ 弓臂放大（r65）：用户要求「弓臂明显探出机身」（参照 模型/十字弩.bbmodel 那个宽弓臂）。
@@ -337,7 +342,11 @@ def main(argv):
              (meshes['rail'][1][1] + delta[1])))
     nock_z = (smin[2] + smax[2]) / 2 + delta[2]
     str_y = (smin[1] + smax[1]) / 2 + delta[1]
-    half = math.hypot(tip_x, DRAW_DZ)
+    # ★★ r97：弦的长度必须**与 Java 侧 CrossbowGeoModel.STRING_LEN 完全一致**。
+    #   Java 用这个长度解出「绕锚点转 φ 之后内端正好落在弦心」的 φ；两边不一致，V 就收不到弦心。
+    #   r89 的 bug 就在这里：Java 改成了 6.221（那是下面**线缆**的长度），方块还是 5.6646
+    #   ⇒ 米白的弦短 0.56 收不上，深灰的线缆反而正好落到弦心并交叉（用户看到的「外 V」）。
+    half = STRING_LEN_RUNTIME
 
     def rect(pat):
         x, y, w, h = pat
@@ -361,17 +370,11 @@ def main(argv):
     buckets['nock'].append(box(-0.45, 0.45, str_y - 0.16, str_y + 0.16,
                                nock_z - 0.16, nock_z + 0.16, PAT_NOCK))
 
-    # ★ r71：再给弓臂梢加**两根线缆**（参考照片 model/图2：从两梢斜向内、在中间交叉的两根细线）。
-    #   它们就放在 string_left / string_right 骨骼里 ⇒ 拉弦、弓臂内收时跟弦一起走（“使用时”那条）；
-    #   静止时两根在中间交叉、弦在上方，就是“未使用”那张参考图的样子。
-    #   两根分前后两个 z（错开 0.16），交叉处才看得出一前一后，不会 z-fighting。
-    cable_len = tip_x + 0.85          # 越过中线 0.85 像素 ⇒ 形成交叉
-    buckets['string_left'].append(box(
-        -tip_x, -tip_x + cable_len, str_y - 0.26 - th, str_y - 0.26 + th,
-        nock_z + 0.50 - th, nock_z + 0.50 + th, PAT_CABLE))
-    buckets['string_right'].append(box(
-        tip_x - cable_len, tip_x, str_y - 0.26 - th, str_y - 0.26 + th,
-        nock_z + 0.66 - th, nock_z + 0.66 + th, PAT_CABLE))
+    # ★★ r97：删掉 r71 那两根「线缆」（PAT_CABLE）。它们被刻意做成 cable_len = tip_x + 0.85
+    #   ——「越过中线 0.85 像素 ⇒ 形成交叉」，和细弦并排渲染出来就是「双线 + 交叉」，
+    #   用户明确要求「弦和弦心应该是内 V 字型，不是外 V 字型」。现在弦骨格里只有一根弦，
+    #   拉满/上膛时两段内端精确交在弦心上，就是干净的内 V。
+    #   （历史值留档：cable_len = tip_x + 0.85，y = str_y − 0.26，z = nock_z + 0.50 / + 0.66）
 
     rmin, rmax = meshes['rail']
     rail_front, rail_top = rmin[2] + delta[2], rmax[1] + delta[1]

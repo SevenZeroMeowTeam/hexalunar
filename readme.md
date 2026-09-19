@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r96`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r97`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -517,6 +517,24 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r97`
+
+- ★★ **十字弩弦：删掉 r71 的「线缆」，让弦真正收口成内 V**（`geo/crossbow_geo.geo.json`、
+  `tools/crossbow_vox.py`、`client/CrossbowGeoModel.java` 注释）：
+  - 现场：每个 `string_*` 骨骼里其实**有两条线**：
+    `PAT_STRING`（米白，真正的弦，`size[0]=5.6646 = hypot(TIP_X, DRAW_DZ)`）与
+    `PAT_CABLE`（深灰，r71 按参考照片加的"线缆"，`cable_len = tip_x + 0.85 = 6.221`，
+    生成器注释原话「**越过中线 0.85 像素 ⇒ 形成交叉**」）。
+  - 根因：r89 只把 Java 的 `STRING_LEN` 从 5.665 改成 **6.221**（那是**线缆**的长度），方块没动
+    ⇒ Java 解的 φ 让**线缆**正好落到弦心并交叉，而**米白的弦短 0.56 收不到弦心**
+    —— 就是用户说的「外 V 字型」。`_cb_flex.py` 的自检之所以显示 0.00，是因为它按 6.221 算，
+    恰好验的是那根线缆。
+  - 修法：geo 与生成器里**每条弦骨骼只留一根弦**、长度统一 **6.221**（= Java `STRING_LEN`，
+    左右两条分别从各自锚点画到枢轴，y/z 与弦心对齐），r71 的两根线缆整段删除；
+    `_cb_flex.py` 复跑：拉满时弦内端 = 弦心 (0.00, +0.22)，偏差 **(0.00, 0.00)** ✓
+  - 记档：`tools/crossbow_vox.py` 顶部新增 `STRING_LEN_RUNTIME = 6.221` 常量并写明
+    「必须与 Java 一致」，避免以后再各改一边。
 
 > 版本 `1.0.0-r96`
 

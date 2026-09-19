@@ -47,14 +47,17 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
     private static final float DRAW_DZ = 1.80F;
     /**
-     * 弦段长度（模型像素）= **geo 里那根弦方块的真实长度**：
-     * {@code string_left} 从锚点 x=−5.371 一直画到 x=+0.85 ⇒ 5.371 + 0.85 = **6.221**。
+     * 弦段长度（模型像素）—— **必须与 geo 里那根弦方块的长度、以及 {@code tools/crossbow_vox.py}
+     * 的 {@code STRING_LEN_RUNTIME} 完全一致**：{@link #stringPhi} 用它解出「绕锚点转 φ 之后
+     * 内端正好落在弦心」的 φ，三者不一致 V 就收不到弦心。
      *
-     * <p>★★ r89：以前这里是 5.665（= hypot(TIP_X, DRAW_DZ)，按「拉满 1.8 px」推的），比真实方块
-     * 短了 0.56 —— 于是拉满时两段弦的内端停在弦心前方 0.56 px ⇒ V 字没合到弦心上
-     * （用户拿图指出「弦存在问题」，画的正确样式是两段弦正好交在弦心）。
-     * 现在改用真实长度，{@link #stringPhi} 解出的转角能让内端**精确落在弦心**，
-     * V 也随之为图上那个深度（4.31 px）。
+     * <p>★★ r89/r97 的踩坑记录：这条弦方块曾经是 5.6646（= hypot(TIP_X, DRAW_DZ)，按「拉满 1.8 px」
+     * 推的），而同一个骨骼里还并排放着 r71 加的一根**线缆**（{@code PAT_CABLE}，长度刻意做成
+     * {@code tip_x + 0.85 = 6.221}「越过中线形成交叉」）。r89 只改了这里的 Java 值、把它对齐到
+     * **线缆**的 6.221，方块没动 ⇒ 米白的弦短 0.56 收不到弦心，深灰的线缆反而正好落到弦心并交叉
+     * —— 用户看到的「外 V 字型」。
+     * <p>r97 起：geo / 生成器里**只留一根弦**、长度统一 6.221，线缆整段删掉 ⇒ 拉满时两段弦的内端
+     * 精确交在弦心上（{@code tools/_cb_flex.py} 自检偏差 0.00）。
      */
     private static final float STRING_LEN = 6.221F;
     /** 弦段转角 φ = atan(DRAW_DZ / TIP_X)：**只作为“弦段长度”的生成依据，运行时不再直接用它**
