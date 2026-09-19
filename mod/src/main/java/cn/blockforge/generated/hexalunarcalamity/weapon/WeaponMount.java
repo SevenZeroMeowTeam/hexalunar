@@ -56,7 +56,25 @@ public final class WeaponMount {
     /** 举枪增量（上面公式的推演结果，右手） */
     public static final float AKM_AIM_DX = (float) (-HAND_X_PX - AKM_TX);              // -6.36
     public static final float AKM_AIM_DY = (float) (-ARM_Y * 16.0D - SIGHT_Y - AKM_TY); // +3.48
-    public static final float AKM_AIM_DZ = -3.0F;
+    /**
+     * ★★ r100：**按 TaCZ AK47 的定位组改** —— 机瞄时把枪朝射手方向收（贴近眼睛）。
+     *
+     * <p>TaCZ 的枪没有 display 位移，姿态全靠模型内的定位组（display json 原话：
+     * 「旋转和位移使用模型内定位组」）。AK47 的两组是：
+     * <pre>
+     *   idle_view（腰射）pivot = (2.5, 12.0,    13.75)      z 最大 = 枪离眼最远
+     *   iron_view（机瞄）pivot = (0.0, 10.8875, 10.15625)   z 小了 3.59 ⇒ 枪**朝射手收 3.59 单位**
+     * </pre>
+     * 三把枪规律一致（M4A1 收 3.8、Glock 收 0.75、均**右移归零 + 上抬**），而且
+     * **`iron_view` 没有任何旋转** —— 步枪机瞄就是「枪管正对视线 + 把后照门拉到你眼前」。
+     *
+     * <p>我们原来的 {@code -3.0} 是**往枪口方向推**（枪越举越远、屏幕上越小），方向正好相反。
+     * 现在改成 **+1.8**（这是**相对 akm.json 腰射位移的增量**，见 {@code GunPose.matrix}）：
+     * TaCZ 的 3.59 单位是相对它 38 单位长的枪，我们这把约 19 单位 ⇒ 按比例取 3.59 × 0.5 ≈ 1.8。
+     * 相对旧值相当于**把枪拉近 4.8 px ≈ 0.3 格**，屏幕上有明显变大，又刻意没取满
+     * （r88 试过增量 +4.0：眼睛会被塞进机匣里、后摇板铺满屏幕）。
+     */
+    public static final float AKM_AIM_DZ = 1.8F;
     /** ★ r88：装了 4 倍镜时同样**往前走**（以前是把眼睛贴到目镜上，结果整把枪占满屏幕） */
     public static final float AKM_SCOPE_AIM_DZ = -3.0F;
     /**
