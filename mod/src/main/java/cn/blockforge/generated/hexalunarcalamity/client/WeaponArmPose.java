@@ -39,7 +39,32 @@ public final class WeaponArmPose implements IClientItemExtensions {
      * 不需要 mixin；{@code twoHanded = true} 时原版只会把这个姿势给「持枪那只手」，
      * 所以两条手臂都要在同一个 transformer 里摆（跟原版 {@code animateCrossbowHold} 一样）。
      */
-    public static final HumanoidModel.ArmPose RIFLE_AIM = createAimPose();
+    /**
+     * ★★ r95：自定义姿势**必须在模组构造期就建好**，不能等第一次渲染懒加载 —— 见
+     * {@link cn.blockforge.generated.hexalunarcalamity.HexaLunarCalamity#clientBootstrapping} 的详细说明：
+     * javac 给 {@code switch (ArmPose)} 生成的 {@code $SwitchMap} 表按「建表那一刻的
+     * {@code values().length}」定长；世界里第一只人形生物（含我们加的僵尸）被渲染时表就定成 10 长，
+     * 之后才出现的第 11 个常量（ordinal 10）会让 {@code HumanoidModel.poseRightArm} 的 switch
+     * 抛 {@code ArrayIndexOutOfBoundsException: Index 10 out of bounds for length 10} ⇒ 游戏 FATAL。
+     *
+     * <p>所以：模组构造期（{@code clientBootstrapping = true} 的窗口内）由
+     * {@link #initArmPoses()} 主动触碰本类，触发静态初始化、把常量建出来；
+     * 一旦本类是被**懒加载**的（窗口已关），就直接退回原版姿势 —— 姿势朴素总比崩游戏好。
+     */
+    public static final HumanoidModel.ArmPose RIFLE_AIM =
+            cn.blockforge.generated.hexalunarcalamity.HexaLunarCalamity.clientBootstrapping
+                    ? createAimPose()
+                    : HumanoidModel.ArmPose.CROSSBOW_HOLD;
+
+    /**
+     * ★ r95：构造期引导入口 —— 由 {@code HexaLunarCalamity} 的构造函数在客户端调用。
+     *
+     * <p>方法体是空的：**调用它本身**就会触发本类的静态初始化，从而在上面的三目里把
+     * {@link #RIFLE_AIM} 建出来（那时 {@code clientBootstrapping} 还是 true）。
+     */
+    public static void initArmPoses() {
+        // 故意为空 —— 见上面的说明
+    }
 
     /**
      * 建姿势带兜底：{@code ArmPose.create} 走的是 Forge 的 {@code IExtensibleEnum} 运行时改写，
@@ -50,7 +75,10 @@ public final class WeaponArmPose implements IClientItemExtensions {
             return HumanoidModel.ArmPose.create("HEXALUNAR_RIFLE_AIM", true,
                     (model, entity, arm) -> poseRifleAim(model, entity));
         } catch (Throwable t) {
-            return HumanoidModel.ArmPose.CROSSBOW_CHARGE;
+            // 不再静默：退回原版「双手持握」姿势，并记一条日志，方便一眼看出姿势没生效
+            org.slf4j.LoggerFactory.getLogger("hexalunar_calamity").warn(
+                    "[hexalunar] 自定义 ArmPose 创建失败，退回 CROSSBOW_HOLD（第三人称举枪姿势会朴素一些）", t);
+            return HumanoidModel.ArmPose.CROSSBOW_HOLD;
         }
     }
 

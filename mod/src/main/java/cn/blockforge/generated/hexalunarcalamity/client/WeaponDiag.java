@@ -74,19 +74,26 @@ public final class WeaponDiag {
         }
         WeaponAnim.State st = WeaponAnim.heldKind(mc.player) == null
                 ? null : WeaponAnim.of(WeaponAnim.heldKind(mc.player));
-        Vector3f disp = firstPersonTranslation(mc, weapon == null ? held : weapon);
-        boolean dispMismatch = disp != null
-                && (Math.abs(disp.x - WeaponMount.AKM_TX) > 0.01F
-                    || Math.abs(disp.y - WeaponMount.AKM_TY) > 0.01F
-                    || Math.abs(disp.z - WeaponMount.AKM_TZ) > 0.01F);
+        ItemStack shown = weapon == null ? held : weapon;
+        Vector3f disp = firstPersonTranslation(mc, shown);
+        // ★ r95 修：单位对齐 —— 模型里读到的 display 平移是**格**（已经是 模型像素/16），
+        //   而 WeaponMount 那三个常数是**模型像素**。以前拿「格」比「像素」，于是永远 MISMATCH
+        //   （日志里 held=awp/akm 全都误报），把现场数据也带歪了。
+        float[] expectPx = expectedDisplayPx(shown);
+        boolean dispMismatch = false;
+        if (disp != null && expectPx != null) {
+            dispMismatch = Math.abs(disp.x - expectPx[0] / 16.0F) > 0.006F
+                    || Math.abs(disp.y - expectPx[1] / 16.0F) > 0.006F
+                    || Math.abs(disp.z - expectPx[2] / 16.0F) > 0.006F;
+        }
 
         String line = String.format(Locale.ROOT,
                 "t=%d held=%s off=%s sight=%d | using=%s useItem=%s useAnim=%s | aim=%.2f frameAim=%.2f"
                         + " equip=%.2f attack=%.2f swinging=%s | ads=(%.2f,%.2f,%.2f) roll=%.1f"
-                        + " | modelDisp=%s const=(%.2f,%.2f,%.2f) MISMATCH=%s"
+                        + " | modelDisp=%s expect=%s MISMATCH=%s"
                         + " | apply=%s arms=%s | fovSetting=%d mainHand=%s",
                 mc.level.getGameTime(),
-                weapon == null ? held.getItem() : weapon.getItem(),
+                shown.getItem(),
                 mc.player.getOffhandItem().getItem(),
                 weapon == null ? -1 : Sights.sight(weapon),
                 mc.player.isUsingItem(), mc.player.getUseItem().getItem(),
@@ -97,22 +104,47 @@ public final class WeaponDiag {
                 cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.ADS[1],
                 cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.ADS[2],
                 cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.ADS[4],
-                disp == null ? "null" : String.format(Locale.ROOT, "(%.2f,%.2f,%.2f)", disp.x, disp.y, disp.z),
-                WeaponMount.AKM_TX, WeaponMount.AKM_TY, WeaponMount.AKM_TZ, dispMismatch,
+                disp == null ? "null" : String.format(Locale.ROOT, "(%.3f,%.3f,%.3f)", disp.x, disp.y, disp.z),
+                expectPx == null ? "null"
+                        : String.format(Locale.ROOT, "(%.3f,%.3f,%.3f)",
+                                expectPx[0] / 16.0F, expectPx[1] / 16.0F, expectPx[2] / 16.0F),
+                dispMismatch,
                 applyCalled, armsCalled,
                 mc.options.fov().get(), mc.player.getMainArm());
 
         // 模型里的 display 与 WeaponMount 常数不一致 = 枪/手必然错开的硬证据（只警告一次）
         if (dispMismatch && !warnedDisplay) {
             warnedDisplay = true;
-            LOGGER.warn("★ 枪械 display 平移与 WeaponMount 常数不一致：model={} 常数=({}, {}, {})"
+            LOGGER.warn("★ 枪械 display 平移与 WeaponMount 常数不一致：model={} 期望=(格){}"
                             + " —— 手臂与弹道都按常数算，枪按模型画，两者会错开",
-                    disp, WeaponMount.AKM_TX, WeaponMount.AKM_TY, WeaponMount.AKM_TZ);
+                    disp, expectPx == null ? "null" : String.format(Locale.ROOT, "(%.3f,%.3f,%.3f)",
+                            expectPx[0] / 16.0F, expectPx[1] / 16.0F, expectPx[2] / 16.0F));
         }
         LOGGER.info("[HLCDIAG] {}", line);
         append(mc, line);
         applyCalled = false;
         armsCalled = false;
+    }
+
+    /**
+     * 这把枪在 {@code models/item/*.json} 里写死的 firstperson display 平移（**模型像素**），
+     * 用来和从烘焙模型读到的那份（**格**）做对照。单位别搞混 —— r95 之前就是「格比像素」，
+     * 于是一路误报 MISMATCH。
+     */
+    private static float[] expectedDisplayPx(ItemStack stack) {
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AkmRifleItem) {
+            return new float[]{WeaponMount.AKM_TX, WeaponMount.AKM_TY, WeaponMount.AKM_TZ};
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AwpRifleItem) {
+            return new float[]{WeaponMount.AWP_TX, WeaponMount.AWP_TY, WeaponMount.AWP_TZ};
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .CrossbowWeaponItem) {
+            return new float[]{0.0F, 0.0F, 0.0F};            // crossbow.json：平移 0 / scale 0.8
+        }
+        return null;
     }
 
     /**

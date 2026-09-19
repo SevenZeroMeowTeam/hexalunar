@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r94`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r95`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -517,6 +517,28 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r95`
+
+- ★★ **修致命崩溃：自定义 `ArmPose` 必须在模组构造期创建**（据用户提供的 `mod/logs/latest.log`）：
+  - 日志里那条 FATAL：
+    `java.lang.ArrayIndexOutOfBoundsException: Index 10 out of bounds for length 10`
+    → `HumanoidModel.poseRightArm(HumanoidModel.java:234)`（`switch (this.rightArmPose)`）
+    → 由 TaCZ 的第一人称手臂渲染链（`RenderHelper.renderFirstPersonArm`）触发。
+  - 根因：javac 给 `switch (枚举)` 生成的 `$SwitchMap` 表按**建表那一刻** `ArmPose.values().length`
+    定长；世界里第一只人形生物（含我们自己的僵尸）被渲染时表就定成 **10** 长，
+    而我们的第 11 个常量 `HEXALUNAR_RIFLE_AIM`（ordinal **10**）是**懒加载**创建的
+    （第一次 `getArmPose` 才触发类初始化）⇒ 索引 10 越界 ⇒ 整个游戏 FATAL。
+  - 修法：`HexaLunarCalamity` 构造函数在客户端把 `clientBootstrapping = true` 后主动触碰
+    `WeaponArmPose`（`initArmPoses()`）——**在任何渲染之前**把枚举常量建出来，之后建的表就是
+    11 长；万一本类仍被懒加载（窗口已关），直接退回原版 `CROSSBOW_HOLD`，**姿势朴素也绝不崩游戏**。
+    创建失败的兜底也从静默改成打日志。
+- **诊断器 `WeaponDiag` 修两处自己带歪数据的 bug**（同一份日志暴露的）：
+  - 模型里读到的 display 平移是**格**（= 模型像素/16），`WeaponMount` 常数是**模型像素** ——
+    以前拿「格」比「像素」，于是 `held=awp/akm` 全都误报 `MISMATCH=true`。现在按枪各自换算后再比
+    （日志实测：AKM `(0.09*16, 0.11*16)` 与常数完全一致 ⇒ 模型与常数本来就是对的）。
+  - `armsCalled` 以前只有 `renderAkm` 会置位，AWP / 十字弩那一支永远是 `false`（看着像"手臂没画"）；
+    现在三个 `render*` 都置位。
 
 > 版本 `1.0.0-r94`
 

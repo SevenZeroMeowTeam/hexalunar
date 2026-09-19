@@ -85,6 +85,7 @@ public final class WeaponArms {
     }
 
     public static void renderCrossbow(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        WeaponDiag.armsCalled = true;                            // 诊断
         CrossbowGeoModel.captureNow();
         render(mc, pose, buffer, light, CrossbowGeoModel.frame,
                 CB_RIGHT, CrossbowGeoModel.leftHandPx(new float[3]));
@@ -96,6 +97,7 @@ public final class WeaponArms {
      * （栓动步枪的支撑手），只在换弹时伸过去拆 / 装弹匣。
      */
     public static void renderAwp(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        WeaponDiag.armsCalled = true;                            // 诊断
         AwpGeoModel.captureNow();
         render(mc, pose, buffer, light, AwpGeoModel.frame,
                 AwpGeoModel.rightHandPx(new float[3]), AwpGeoModel.leftHandPx(new float[3]));
