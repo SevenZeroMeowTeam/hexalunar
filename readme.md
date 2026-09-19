@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r75`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r82`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r78.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r82.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -53,7 +53,7 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 |---|---|
 | 右键按住 | 瞄准（各武器行为不同） |
 | 左键 | 开火 / 投掷（按住连发由武器决定） |
-| `R` | 换弹（AKM，默认键位，可在设置里改）· **手里有已拔销 / 引信在烧的手雷时 = 紧急投掷**（立刻按准星丢出）|
+| `R` | 换弹（AKM / **AWP 换弹匣** / 十字弩上弦，默认键位，可在设置里改）· **手里有已拔销 / 引信在烧的手雷时 = 紧急投掷**（立刻按准星丢出）|
 | 右键按住（手雷 / 震爆弹） | **拔保险销**（1 秒）；拔销后**必须一直按住**（松手 / **切武器** 就点火）；销已拔出时可 **潜行 + 右键 1 秒** 插回销 |
 | 潜行 + 右键 | **装/拆 AKM 顶部导轨上的瞄具**：副手拿着瞄具 = 装上（消耗一个），空着 = 拆下还给你 |
 
@@ -67,6 +67,7 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 > **十字弩外形（r61）**：换成参考网格 `模型/十字弩_v2.bbmodel` 那把**现代复合弩**（窄弓臂 + 高导轨 + 枪式握把 + 镜筒 + 线缆），
 > 由 `tools/crossbow_vox.py` **表面体素化**成 824 个方块（逐格从原 512² 贴图采样 UV）。
 > 骨骼名 / 握把原点 / 显示缩放都保持原样，所以武器动画、手部锚点不用重写。
+| **AWP 栓动狙击枪** | .338 狙击弹 | **单发 24 点伤害**（12 颗心，一枪基本带走）· **5 发弹匣 + 膛内 1 发**· 栓动（必须膛内有弹才能击发）· **每发后自动拉栓抛壳**（拉机柄抬 62°、枪机后退 1.9px、弹壳翻滚抛出，约 1.4 s 一发）· **8 倍镜**（右键抵肩）· 腰射散布大、抵肩几乎指哪打哪 · **有效射程 96 格**（射程内重力 0.004，比步枪弹更平）· 第一人称**双手：右手握把/拉栓、左手托护木** |
 | **复合弓** | 复合弓箭 / 尸毒箭 | 右键蓄力（20 tick 满蓄），**三段拉弦动画**（0.65 / 0.9 蓄力切换模型）· 蓄力越高穿透与伤害越强 · 没普通箭时自动改用尸毒箭 · **有效射程 34 格** |
 
 > **十字弩的弦（r60）**：上弦（已装填）后弦**不往后拉**，直接贴回两弓臂之间 ——
@@ -98,16 +99,22 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
   （r67 把护木导轨齿顶抬到瞄准线 3.44，两个参照点也随之 +0.28）
 - 目前只能在创造模式「六相月灾」页签取用（还没加合成配方）
 
+> **AWP 的 8 倍镜（r79）**：不是装在导轨上的配件，而是枪自带的 —— 按住右键抵肩，
+> 把**镜筒光轴**顶到屏幕正中、视场角缩到 **1/8**，屏幕上叠一层圆形镜筒遮罩 + **duplex 双柱式十字分划**
+> （外侧粗柱 / 内侧细线（贯穿中心不断开）/ 线上每 r/4 一个密位点 / 中心暖色亮点，见 `client/ClientEvents.java#drawCrossReticle`）。
+> 光轴参照点 = 模型 Y 3.15（`WeaponMount.AWP_SCOPE_Y`，必须与 `tools/awp_gen.py` 打印的 `SCOPE_AXIS` 一致）。
+
 ### 双手持枪（第一人称）
 
 原版对**非空物品**只画物品、不画手臂（`renderArmWithItem` 里只有空手才走 `renderPlayerArm`），
-所以枪看着像浮在空中。现在主手拿 AKM / 十字弩时，用**玩家自己的皮肤**另外补画两条手臂：
+所以枪看着像浮在空中。现在主手拿 AKM / 十字弩 / **AWP** 时，用**玩家自己的皮肤**另外补画两条手臂：
 **右手始终握在握把上**，左手则按动作走（见 `client/WeaponArms.java`）：
 
 | 武器 | 左手动作（按换弹读条推进） |
 |---|---|
 | **AKM** | 托护木 → 抓住弹匣抽出来（跟着弹匣下坠/前倾）→ 满弹匣升上来时扶着往上推 → 换到拉机柄拉栓上膛 → 回护木 |
 | **十字弩** | 托护木 → 抓住弩弦往后拉（跟着弦心）→ 松手下去取箭 → 把箭推上箭槽 → 回护木 |
+| **AWP** | 托护木（**拉栓时不动**，栓动步枪的支撑手就该留在原地）→ 换弹时伸手抓弹匣、跟着它下坠/前倾 → 回护木 |
 
 - 手的目标点写在各自 GeoModel 里（模型像素），经 `client/GunFrame.java` 换成相机空间；
   `GunFrame` 记的是 `move` 骨骼（含**举枪位移**与**开火后坐**），所以手臂自动跟着枪一起动，
@@ -154,8 +161,24 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
   只沿长度方向拉伸（`pose.scale(1,s,1)`），粗细保持原版。注意右臂方块局部 x 中心是 **−0.375**、左臂（mirror）是 **+0.375**，不补偿手就偏半个方块
 - 离线核对：`mod/tools/_armstory.py akm|crossbow` 会按进度渲出故事板（枪 + 双臂），
   改手位不用反复进游戏
+- **AWP 是唯一的「右手干活」武器（r80~r82）**：右手平时握把（食指在扳机上），**拉栓时抬起来抓拉机柄**
+  —— 手的落点与枪机**共用同一份数学**（`boltLiftAt` / `boltBackAt`：抬 62° + 后退 1.9 像素），
+  所以手永远不脱手，拉完自动回握把；左手全程托着护木，只在换弹时去抓弹匣
+  - 拉栓还带 **6 帧缓冲**（`AwpRifleItem.BOLT_DELAY`）：击发后右手先留在握把上扣扳机，
+    **拉栓音效也晚 6 帧响**，不会和枪声糊在一起
+  - ★ **扣扳机是程序化推的**：`animation.awp.fire` 那段 11° 键帧**永远轮不到**
+    （击发同一帧就开始拉栓，控制器优先级 bolt > fire），现在按 `fireWindow` 推 `trigger` 骨骼
+- ★ **腰射时枪身下压 14°（r82）**：枪管轴线与**视线平行**时，透视下它的投影必然收敛到屏幕正中
+  ⇒ 屏幕上看着就是「枪斜着往上翘、枪托往下掉」（实测 21.6°，AKM 更斜 40°，因为它的 display TY 更低）。
+  现在 `AwpGeoModel.HIP_PITCH = -14°` 把 `move` 骨骼压下去，轴线在屏幕上变成**水平**（-0.2°）；
+  **举枪时这个角线性归零**（镜筒光轴不能歪）、第三人称不加（`AwpGeoRenderer.firstPerson`），
+  枪口 / 抛壳点的**世界坐标同步转同一个角**（`WeaponMount.awpHipPitch`），弹道不会与枪脱节
+- **离线第一人称预览器（r82）**：`python mod/tools/_awpfp.py <geo> <tex> out.png
+  [--aim --kick --bp --pitch --hands --rot]` —— 按原版手持变换链从**眼睛**做透视渲染
+  （Z-buffer + 透视正确 UV），渲染结果与游戏截图逐像素级对得上，调手持姿态再也不必开游戏；
+  `--hands` 会把两条手臂画成方块，校核「手有没有连在枪上」。扫角度用 `mod/tools/_awpscan.py`
 
-> **获取途径**：三把武器本体可在原版探险箱里按概率开出（附赠一份对应弹药）—— 常见箱 6%（地牢 / 矿井 / 神庙 / 前哨 / 村庄武器商…）、稀有箱 16%（古城 / 林宅 / 末地城 / 宝藏 / 堡垒…），权重 复合弓 > 十字弩 > AKM；也可在创造模式「六相月灾」页签直接取用。
+> **获取途径**：四把武器本体可在原版探险箱里按概率开出（附赠一份对应弹药）—— 常见箱 6%（地牢 / 矿井 / 神庙 / 前哨 / 村庄武器商…）、稀有箱 16%（古城 / 林宅 / 末地城 / 宝藏 / 堡垒…），权重 复合弓 6 : 十字弩 3 : AKM 1 : **AWP 1**（稀有箱 3 : 4 : 3 : **2**）；也可在创造模式「六相月灾」页签直接取用。
 
 ### 弹药与弹药盒
 
@@ -165,8 +188,10 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | 复合弓箭 | — | 木棍 + 燧石 + 线 ×4 |
 | 尸毒箭 | — | 复合弓箭 + 尸毒萃取剂 ×2 |
 | 7.62×39mm | — | 火药 + 铁粒 ×6 |
+| **.338 狙击弹** | — | 火药 + 铁锭 ×4（AWP 专用，与 7.62 **不通用**）|
 | 弩箭 / 箭矢 / 步枪弹药盒 | 64 / 96 / 300 | 同一形状 `ppp/p■p/iii`，**中心槽放对应弹药**（三个配方靠中心材料区分，不会互相冲突） |
-| 创造弹药箱 | ∞ | 创造页；**放在物品栏（快捷栏 / 背包 / 副手）里就生效**：三把武器无限供弹，不用手持、不用切弹种 |
+| **.338 弹药盒** | 120 | 同上形状，**中心槽放 .338 狙击弹**；快捷栏 HUD 占第 4 格 |
+| 创造弹药箱 | ∞ | 创造页；**放在物品栏（快捷栏 / 背包 / 副手）里就生效**：四把武器无限供弹，不用手持、不用切弹种 |
 
 ### 投掷物
 
@@ -240,7 +265,7 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 ```
 mod/
 ├── src/main/java/cn/blockforge/generated/hexalunarcalamity/
-│   ├── weapon/     枪械、弩、弓、**瞄具**、射击数学（AkmRifleItem / WeaponMount / Sights / Ballistics / WeaponFx）
+│   ├── weapon/     枪械、弩、弓、**瞄具**、射击数学（AkmRifleItem / **AwpRifleItem** / WeaponMount / Sights / Ballistics / WeaponFx）
 │   ├── item/       弹药盒、创造弹药箱、解毒剂、手雷（GrenadeItem）
 │   ├── entity/     弹丸与投掷物（子弹、弩箭、箭矢、手雷 GrenadeEntity）+ 特殊感染者
 │   ├── client/     输入、FOV/瞄准、HUD、**GeckoLib 模型与渲染器**（*GeoModel / *GeoRenderer）、物品属性注册
@@ -374,6 +399,35 @@ tools/  开发辅助脚本（见第五节）
     取明细：`cmd /c "gradlew.bat compileJava --offline --console=plain > build\err.log 2>&1"` 再读日志
     （`--offline` 顺带绕开本机偶发的依赖卡网络）。改完记得用 `get_errors`（语言服务器）交叉核对。
 
+20. **★ 枪管轴线与视线平行 ⇒ 它在屏幕上「必然是斜的」（这是透视，不是模型歪）**
+    一阶近似：相机在眼睛处朝 −Z，枪管轴线上离相机 t 处的点投影屏幕坐标 ∝ `offset / t`
+    ⇒ **近端（枪托）远远偏离画面中心、远端（枪口）贴着中心**。实测 AWP 屏幕倾角 **21.6°**
+    （AKM 更斜 **40°**，因为它的 display TY 更低、枪整体更靠下）。
+    所以「枪看着斜着往上翘、枪托往下掉」不是模型长歪了，也**不能靠挪 display 平移修** ——
+    只能给一个**俯仰角**：让枪管轴线不再与视线平行，它的收敛点就会离开屏幕中心。
+    AWP 用 `AwpGeoModel.HIP_PITCH = -14°`（绕 `move` pivot 下压），轴线在屏幕上变成水平（-0.2°）；
+    **举枪时必须归零**（镜筒光轴不能歪），**第三人称也不加**（`AwpGeoRenderer.firstPerson`）。
+    ⚠️ 加了角度以后，**枪口 / 抛壳点的世界坐标必须同步转**（`WeaponMount.awpHipPitch`），
+    否则弹道与枪口焰会和枪管对不上（这个项目的弹道是从模型点出发的）。
+    离线定位：`python mod/tools/_awpfp.py <geo> <tex> out.png [--pitch -14]`（会打印轴线倾角）、
+    `mod/tools/_awpscan.py`（扫角度）。
+
+21. **`setCustomAnimations` 在动画控制器之后跑 ⇒ 程序化推骨骼一定赢，但也可能「让动画白播」**
+    GeckoLib 的顺序是：控制器挑一段动画 → 按时间写骨骼 → 再调 `setCustomAnimations` 让你覆盖。
+    所以「控制器选了 `bolt` 动画」和「我在 `setCustomAnimations` 里把 `bolt` 骨骼设成我算的值」
+    完全不冲突 —— 后者是最终值（AWP 的拉栓/抛壳/弹匣/扳机全靠这条）。
+    **反面**：某段动画的骨骼如果**每一根**都被程序化覆盖，那它就等于没播。
+    AWP 的 `animation.awp.fire` 就这么消失过 —— 击发**同一帧**就开始拉栓，控制器优先级 `bolt > fire`
+    ⇒ 那段 11° 扣扳机键帧**永远轮不到**。要用「按下扳机的进度」就把窗口时间存进 NBT
+    （`HlcFireAt` + `AwpRifleItem.fireWindow`），再自己推骨骼。
+
+22. **参考包坐标系与本项目相反时，要把旋转「烘进几何」，不能挂在根骨骼上**
+    AWP 参考包是 **X = 枪口向前**，本项目是 **枪口 = −Z**。看着最省事的做法是加一根 `rotY = 90°`
+    的根骨骼 —— 但**子骨骼的位移是写在父级局部系里的**：`move` 骨骼往 Z 推会变成「往侧面推」、
+    抬枪会变成歪着抬。正确做法是在生成几何时就把 `R_y(+90°)` 乘进每个顶点
+    （见 `tools/awp_gen.py`：`(x, y, z) → (z, y, -x)`），导出的 geo 里**没有任何根旋转**，
+    后续动画/骨骼位移的语义才和 AKM、十字弩一致。
+
 ---
 
 ## 五、开发辅助工具（`tools/`）
@@ -395,6 +449,14 @@ tools/  开发辅助脚本（见第五节）
 | `_cb_flex.py` | 十字弩**弓臂内收**的离线验算 + 姿态烘焙：打印「弓臂外端往内/往后走了多少」「弦内端相对弦心的偏差」，`--bake 1.0` 能把该姿态烘成 `build/cb_flex_*.geo.json` 直接用 `geo_texview.py` 出图。<br>★ 常数（`FLEX_DEG` / `FLEX_PX` / `FLEX_PZ`）必须与 `client/CrossbowGeoModel.java` 一致 |
 | `_scopemock.py` | 离线复刻倍镜遮罩绘制数学出 PNG（调分划参数不用反复进游戏） |
 | `gen_sight_icons.py` | 生成红点 / 4 倍镜的物品图标 PNG |
+| `awp_gen.py` | **AWP 模型生成器**：把参考包 `模型/AWP_Printstream_Minecraft` 转成 GeckoLib 用的 geo + 贴图（烘 `R_y(+90°)`、缩放 0.75、逐面 UV 重映射、重排成 512² 图集 @19 像素/单位），再按本项目的骨骼/动画约定做二次造型（机匣瘦身、枪管加长、倍镜改八边形、扳机拆骨骼、弹壳双段、点阵明细…）；末尾打印骨骼表 / 包围盒 / 图集密度 / 关键模型点。**流光遮罩由它自己画**（参考图几乎全白，`gen_glowmask.py` 的百分位法失效，那个脚本已排除 awp） |
+| `install_awp_sounds.py` | 把 `模型/` 里用户提供的音频改名拷进 `sounds/weapon/`（`awp枪声.ogg` / `AWP狙击步枪换弹音效.ogg` / **`拉栓上膛.ogg`**）|
+| `gen_ammo338_icons.py` | 画 `.338 狙击弹` 与 `.338 弹药盒` 的 16×16 图标（并出大图预览）|
+| `_awpfp.py` | ★ **第一人称离线预览器**：按原版手持变换链（`ItemInHandRenderer` + `ItemRenderer` 的 display）从**眼睛**做**透视**渲染（Z-buffer + 透视正确 UV），与游戏截图逐像素级对得上。`--aim / --kick / --bp / --pitch / --hands / --rot / --h --aspect` 可复现举枪 / 后坐 / 拉栓 / 下压角 / 双臂，并打印**枪管轴线在屏幕上的倾角**（调姿态不用开游戏）|
+| `_awpscan.py` | 扫描「俯仰角 ↦ 枪管轴线屏幕倾角」（display 旋转 / `move` 骨骼旋转两套都算），用来定腰射下压角 |
+| `_awp_arms.py` | AWP 双手**可达性校核**：把手部落点换算到相机空间，检查肩距是否在 `drawArm` 的 (0.1, 3.0) 格内、拉伸倍率多少、在画面哪个位置 |
+| `_awpanim.py` | 把某段动画按时间点烘成静态 geo 再出图（拉栓 / 抛壳 / 换弹 / 开镜的**故事板**）|
+| `_oggdur.py` | 不装第三方库读 Ogg 时长（解析 page 的 granule / 采样率）—— 配音效前先量长度，再用 `playSound` 的 pitch 对齐动作时长 |
 | `fp_preview.py` | 第一人称 / GUI / 第三人称离线预览：读模型 JSON 的 `display` + OBJ，按游戏同样的矩阵光栅化出 PNG，并打印屏幕像素包围盒。<br>调手持姿态用它：`python fp_preview.py --json akm.json --obj akm.obj --ctx firstperson_righthand --rot 0,0,0 --trans=-5,-3,4.5 --scale=0.5 --out t.png` |
 | `obj_normalize.py` | OBJ 顶点 ÷16（单位修复），自动留 `.unit16bak` 备份 |
 | `bbmodel_to_obj.py` | Blockbench `.bbmodel`（网格模型）→ OBJ + MTL，自动 ÷16、居中、UV 归一化 |
@@ -413,7 +475,10 @@ tools/  开发辅助脚本（见第五节）
 
 | 想改什么 | 位置 |
 |---|---|
-| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_vox.py`（体素化参考网格）、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`）→ 再跑 `install_models.py` + `gen_glowmask.py` |
+| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_vox.py`（体素化参考网格）、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`、**AWP `awp_gen.py`**）→ 再跑 `install_models.py` + `gen_glowmask.py`（awp 的遮罩由 `awp_gen.py` 自己画，不用跑后者）|
+| **AWP 腰射姿态 / 屏幕斜不斜** | `client/AwpGeoModel.java` 的 `HIP_PITCH`（**-14°**，举枪时 ×(1-aim) 归零、第三人称不加）+ `weapon/WeaponMount.java` 的 `AWP_HIP_PITCH` / `awpHipPitch()`（**两处必须一致**，后者给枪口/抛壳取点用）；离线扫角 `tools/_awpscan.py`、看效果 `tools/_awpfp.py --pitch -14` |
+| **AWP 数值（弹匣 / 时序 / 弹道）** | `weapon/AwpRifleItem.java`（`MAG_SIZE` 5 · `RELOAD_TICKS` 44 · `BOLT_TICKS` 22 · `BOLT_DELAY` 6 · `CYCLE_TICKS` 28 · `BULLET_SPEED` 6.2 · `SCOPE_ZOOM` 8）+ `Ballistics.AWP_RANGE` / `AWP_IN_RANGE_GRAVITY` + `BulletEntity.SNIPER_DAMAGE`（24；用初速 >5.5 识别狙击弹）|
+| **AWP 栓动 / 抛壳 / 扳机 / 手** | `client/AwpGeoModel.java`：`boltLiftAt` / `boltBackAt`（**骨骼与右手共用**）、`BOLT_LIFT` 62° / `BOLT_BACK` 1.9px、抛壳轨迹常数（`CASE_T0/T1` / `CASE_VX/Y/G` / 三轴翻滚）、`triggerPullAt`（按 `fireWindow` 推扳机）；左手目标 `ARM_SUPPORT`（**不要放到 z<-4.2**，那儿是露出的枪管 + 折叠两脚架）|
 | **瞄具挂点高度 / 举枪对心** | `weapon/WeaponMount.java`（`SIGHT_Y` = 照门顶/准星顶/**导轨齿顶** = 3.44、`AKM_DOT_Y` / `AKM_SCOPE_Y` / `akmAimDy`）—— **必须**与生成器 `akm_v3.py` 里的 `SIGHT_Y` / `RAIL_LIFT` 及 `build_dot_sight` / `build_scope_4x` 的注释值一致 |
 | **红点 / 倍镜显示逻辑** | `client/AkmGeoModel.java`（`sightNow` 隐藏骨骼 + 举枪位移）+ `client/ClientEvents.java`（`scoping` / `drawRedDot` / `drawScopeOverlay`） |
 | **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞（收敛上限 = **归零距离**：举枪 16 / 腰射 24 格，`tools/_akm_ballistic.py` 验算） |
@@ -441,6 +506,49 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r82`
+
+- **AWP：腰射姿态压平 + 补齐生存获取**
+  - ★ **枪不再「斜着往上翘、枪托往下掉」**：枪管轴线与视线平行时，透视下它的投影必然收敛到
+    屏幕正中（实测屏幕倾角 21.6°）。现在腰射给 `move` 骨骼 **`HIP_PITCH = -14°`** 的枪口下压角，
+    轴线在屏幕上变成水平（-0.2°）；举枪线性归零、第三人称不加，
+    **枪口 / 抛壳点的世界坐标同步转同一个角**（`WeaponMount.awpHipPitch`）
+  - 新增 **`tools/_awpfp.py`（第一人称离线透视预览器）** + `tools/_awpscan.py`，本轮的角度就是它扫出来的
+  - 补齐配方：`.338 狙击弹 ×4`（火药 + 铁锭）、`.338 弹药盒`（木板围框 + 中心弹 + 三铁锭）；
+    AWP 进武器箱战利品池（常见箱权重 1 / 稀有箱 2，附 6 / 10 发 .338）
+  - 修中文名错字：`AWP 德动狙击枪` → **`AWP 栓动狙击枪`**
+
+> 版本 `1.0.0-r81`
+
+- **AWP：拉栓音效 + 右手真的去拉栓 + 扣扳机看得见了**
+  - 用户提供的 `模型/拉栓上膛.ogg` → `sounds/weapon/bolt_1.ogg`，新增音效事件 `ModSounds.BOLT`，
+    **AKM 与 AWP 共用**（AKM 打空自动拉栓也补上了声音，以前只有动作没声）；装瞄具那声「咔」保留 `akm_bolt`
+  - **击发后顿 6 帧（`BOLT_DELAY`）再拉栓**：这 6 帧右手还握在握把上扣扳机，**拉栓音效也晚 6 帧响**
+    （`TAG_BOLT_SFX` 定时），不会和枪声糊在一起；`CYCLE_TICKS = 28`（≈1.4 s 一发，约 43 RPM）
+  - **右手拉栓**：`rightHandPx` 把「相对 bolt pivot 的握点」按抬 62° 旋转 + 后退 1.9px，
+    与枪机**共用同一份数学**（`boltLiftAt` / `boltBackAt`）—— 手永远不脱手
+  - ★ **修正「扳机从来不扣」**：`animation.awp.fire` 那段 11° 键帧**永远轮不到**（击发同一帧就开
+    始拉栓，控制器优先级 bolt > fire），现改成按 `fireWindow` **程序化推 `trigger` 骨骼**
+
+> 版本 `1.0.0-r80`
+
+- **AWP：第一人称双手**（`WeaponArms.renderAwp` + `AwpGeoModel.rightHandPx / leftHandPx`）
+  - 右手握把（枪本来就画在右手位置），左手托在护木下方；换弹时左手跟着弹匣一起下坠、前倾
+    （与弹匣骨骼共用 `magDropAt`，所以手与匣不会脱开）
+  - 手臂经 `GunFrame` 换到相机空间 ⇒ 举枪 / 后坐 / 拉栓时**枪动、手一定跟着动**；
+    离线可达性校核 `tools/_awp_arms.py`
+
+> 版本 `1.0.0-r79`
+
+- **AWP 栓动狙击枪整套接入**（参考包 `模型/AWP_Printstream_Minecraft`）
+  - **模型**：`tools/awp_gen.py` 烘 `R_y(+90°)` + 缩放 0.75 + 逐面 UV 重映射 + 重排 512² 图集（19 px/单位），
+    13 骨骼 / 58 方块 / 348 四边面；坐标约定：**枪口 = -Z、上 = +Y、原点 = 机匣中心、握把（`move`）在 (0, -1.07, 1.31)**
+  - **弹道**：`.338` 初速 6.2 · **有效射程 96 格** · 射程内重力 0.004 · 命中 **24 点伤害**
+    （`BulletEntity.SNIPER_DAMAGE`，用初速 >5.5 区分狙击弹，不必新增同步字段）
+  - **8 倍镜**：`SCOPE_ZOOM = 8` + 圆形镜筒遮罩 + 新增 **duplex 双柱式十字分划**；HUD 显示「弹匣 + 膛内」
+  - **弹药**：`.338 狙击弹` / `.338 弹药盒`（`AmmoType.SNIPER`，容量 120，快捷栏 HUD 第 4 格）
+  - **音效**：用户提供的 `模型/awp枪声.ogg`、`模型/AWP狙击步枪换弹音效.ogg`（中文名由 `install_awp_sounds.py` 改名拷入）
 
 > 版本 `1.0.0-r78`
 
