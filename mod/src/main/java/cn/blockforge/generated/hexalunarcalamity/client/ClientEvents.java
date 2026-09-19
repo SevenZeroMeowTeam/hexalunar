@@ -133,17 +133,17 @@ public final class ClientEvents {
      * <p>AKM 的 4 倍镜仍然走「看得见枪」的那一支（{@link #drawScopeReticle}），
      * 因为机瞄 / 红点 / 4 倍镜的构图在 r88 已经按 TaCZ 那套定好了。
      */
+    /**
+     * ★★ r91/r99：需要「整屏镜筒遮罩」的开镜状态 —— **十字弩 4 倍镜 + AWP 8 倍镜 + AKM 4 倍镜**。
+     *
+     * <p>★ r99（用户要求）：AKM 装上 4 倍镜后右键开镜，也要**把枪和手一起藏掉**，
+     * 画面上只留镜筒 + 分划 + 蓝色镜圈（就是 AWP / 十字弩那套）。判定直接用
+     * {@link #scoping}：它已经覆盖 AWP（抵肩即开镜）、十字弩（上弦后开镜）、
+     * 以及 **AKM 且瞄具 == 4 倍镜**；机瞄 / 红点仍然保持「看得见枪」——
+     * 那是用户先前明确要的构图（图 1）。
+     */
     private static boolean maskScoping(Player player) {
-        if (player == null || !player.isUsingItem()) return false;
-        ItemStack using = player.getUseItem();
-        if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
-                .CrossbowWeaponItem) {
-            return cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem
-                    .isScoping(player);
-        }
-        // AWP：抵肩就是 8 倍整屏镜筒开镜（与十字弩同一套实现）
-        return using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
-                .AwpRifleItem;
+        return scoping(player);
     }
 
     /**

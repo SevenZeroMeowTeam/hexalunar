@@ -59,6 +59,16 @@ public final class WeaponArms {
      */
     private static final float[] SHOULDER_R = {0.55F, -0.85F, -0.80F};
     private static final float[] SHOULDER_L = {-0.42F, -0.85F, -0.78F};
+
+    /**
+     * ★★ r99：举枪（ADS）时肩点外推倍率。
+     *
+     * <p>枪模投影在举枪时会从 {@code MODEL_FOV_HIP = 76°} 收到 {@code MODEL_FOV_AIM = 45°}
+     * （≈1.69 倍放大），而肩点（{@link #SHOULDER_R}/{@link #SHOULDER_L}）离眼睛只有 0.78~0.80 格
+     * ⇒ 在 ADS 里两条手臂会被放大成一大片皮肤色楔子，正好糊在准星上（用户截图里的"机瞄问题"）。
+     * 按 aim 把肩点整体外推这个倍率之后，手臂在 ADS 与腰射下的**视觉粗细/长度**基本一致。
+     */
+    private static final float ADS_SHOULDER_PUSH = 1.55F;
     /** 原版手臂长度（格） */
     private static final float ARM_LEN = 0.75F;
     /** 手臂方块在 pose 坐标里的 x 中心（格） */
@@ -162,7 +172,20 @@ public final class WeaponArms {
 
     private static void render(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light,
                                GunFrame frame, float[] rightPx, float[] leftPx) {
-        render(mc, pose, buffer, light, frame, rightPx, leftPx, SHOULDER_R, SHOULDER_L, true);
+        // ★★ r99：举枪（ADS）时枪模投影 FOV 会从 76° 收到 45°（≈1.69 倍放大），而肩点离眼睛只有
+        //   0.8 格 ⇒ 两条手臂在屏幕上会胀成一大片皮肤色楔子，把准星/机瞷糊住（用户截图里的问题）。
+        //   这里按 aim 把肩点整体往外推，让手臂在 ADS 时的**视觉粗细和长度**与腰射接近。
+        float aim = 0.0F;
+        WeaponAnim.Kind kind = WeaponAnim.heldKind(mc.player);
+        if (kind != null) aim = Mth.clamp(WeaponAnim.of(kind).aim, 0.0F, 1.0F);
+        float push = 1.0F + (ADS_SHOULDER_PUSH - 1.0F) * aim;
+        render(mc, pose, buffer, light, frame, rightPx, leftPx,
+                scale(SHOULDER_R, push), scale(SHOULDER_L, push), true);
+    }
+
+    /** 把肩点向量按倍率外推（相机空间、以眼睛为原点） */
+    private static float[] scale(float[] v, float k) {
+        return new float[]{v[0] * k, v[1] * k, v[2] * k};
     }
 
     /**
