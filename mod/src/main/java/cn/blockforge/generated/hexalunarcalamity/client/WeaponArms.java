@@ -74,6 +74,49 @@ public final class WeaponArms {
     /** 十字弩右手（模型像素）：grip 骨骼方块中心 */
     private static final float[] CB_RIGHT = {0.0F, -0.90F, 0.60F};
 
+    // ---------------------------------------------------------------- ★ r96 干净基准
+    /**
+     * ★★ r96：手持渲染链的「干净起点」。
+     *
+     * <p><b>为什么需要</b>：{@code RenderHandEvent} 上不止挂了我们 —— TaCZ + SimpleBedrockModel 的
+     * {@code FirstPersonRenderHandler} 也挂在同一个事件上，它给自家的枪做第一人称渲染时会**直接改事件里的
+     * PoseStack**。拿**不是它家**的物品（比如我们的 AKM）时，它的 {@code Optional} 为空、什么都没画，
+     * 但**改动可能已经留在栈上** ⇒ 之后原版那一遍 {@code renderArmWithItem}（枪）和我们的手臂都会被这段
+     * 残留的平移/缩放带走 ⇒ 画面上就是「枪飘在手右上方、和手臂分离」。
+     *
+     * <p><b>做法</b>：在事件的 **HIGHEST 优先级**（还没被任何人动过）记下这一层的 pose/normal，
+     * 然后在我们画手臂、以及 {@code applyForgeHandTransform} 里给枪摆位之前，把
+     * {@code poseStack.last() } 覆盖回这份干净矩阵 ⇒ 枪和手永远用同一个基准。
+     * 没有任何外部篡改时这就是一次无副作用的复制。
+     */
+    private static final org.joml.Matrix4f CLEAN_POSE = new org.joml.Matrix4f();
+    private static final org.joml.Matrix3f CLEAN_NORMAL = new org.joml.Matrix3f();
+    private static boolean cleanValid = false;
+    /** 自上次报告以来检测到的最大「外部篡改量」（矩阵元素最大绝对差，诊断用） */
+    public static volatile float externalPoseDelta = 0.0F;
+
+    /** 在 {@code RenderHandEvent} 的 HIGHEST 优先级里调用：记下还没被别的模组改过的这一层 pose */
+    public static void captureCleanPose(PoseStack pose) {
+        CLEAN_POSE.set(pose.last().pose());
+        CLEAN_NORMAL.set(pose.last().normal());
+        cleanValid = true;
+    }
+
+    /** 把最后一层覆盖回干净矩阵；顺便量一下这次被外部改了多少（诊断） */
+    public static void restoreCleanPose(PoseStack pose) {
+        if (!cleanValid) return;
+        org.joml.Matrix4f cur = pose.last().pose();
+        float delta = 0.0F;
+        for (int c = 0; c < 4; c++) {
+            for (int r = 0; r < 4; r++) {
+                delta = Math.max(delta, Math.abs(cur.get(c, r) - CLEAN_POSE.get(c, r)));
+            }
+        }
+        externalPoseDelta = Math.max(externalPoseDelta, delta);
+        cur.set(CLEAN_POSE);
+        pose.last().normal().set(CLEAN_NORMAL);
+    }
+
     public static void renderAkm(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
         WeaponDiag.armsCalled = true;                            // 诊断
         // ★ 先把「当前帧」的枪姿态算出来：手臂在 RenderHandEvent 里画，比物品渲染早，
@@ -150,6 +193,8 @@ public final class WeaponArms {
         float dist = y.length();
         // 数值不对劲（还没捕获到 / 数据坏了）宁可这一帧不画，也别糊一大片在屏幕上
         if (!(dist > 1.0E-4F) || dist > 3.0F) return;
+        // ★ r96：手臂也用「干净基准」—— 见 captureCleanPose 的说明（否则会被别的手持渲染带走）
+        restoreCleanPose(pose);
         float s = dist / ARM_LEN;                   // 只沿长度方向拉伸，粗细保持原版
         y.div(dist);
         Vector3f ref = new Vector3f(0.0F, 1.0F, 0.0F);

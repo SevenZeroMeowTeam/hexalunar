@@ -46,6 +46,14 @@ public final class WeaponDiag {
     public static volatile boolean armsCalled;
     /** 最近一次 {@code GunFrame} 捕获到的举枪进度 */
     public static volatile float frameAim = -1.0F;
+    /**
+     * ★ r96：**渲染那一刻**手上是哪个物品。
+     *
+     * <p>以前只用 tick 时刻的 {@code heldWeapon} 打日志，而 {@code applyCalled/armsCalled} 是过去一秒里
+     * 累积的 ⇒「held=akm 但 arms=false」这种组合可能只是换枪过程中的时间窗错位，白读一轮。
+     * 现在渲染侧直接把自己的物品记下来，两边同一时刻。
+     */
+    public static volatile net.minecraft.world.item.Item renderedItem;
 
     private static int ticks;
     private static boolean warnedDisplay;
@@ -88,12 +96,14 @@ public final class WeaponDiag {
         }
 
         String line = String.format(Locale.ROOT,
-                "t=%d held=%s off=%s sight=%d | using=%s useItem=%s useAnim=%s | aim=%.2f frameAim=%.2f"
-                        + " equip=%.2f attack=%.2f swinging=%s | ads=(%.2f,%.2f,%.2f) roll=%.1f"
+                "t=%d held=%s render=%s off=%s sight=%d | using=%s useItem=%s useAnim=%s"
+                        + " | aim=%.2f frameAim=%.2f equip=%.2f attack=%.2f swinging=%s"
+                        + " | ads=(%.2f,%.2f,%.2f) roll=%.1f poseDelta=%.3f"
                         + " | modelDisp=%s expect=%s MISMATCH=%s"
                         + " | apply=%s arms=%s | fovSetting=%d mainHand=%s",
                 mc.level.getGameTime(),
                 shown.getItem(),
+                renderedItem == null ? "null" : renderedItem,
                 mc.player.getOffhandItem().getItem(),
                 weapon == null ? -1 : Sights.sight(weapon),
                 mc.player.isUsingItem(), mc.player.getUseItem().getItem(),
@@ -104,6 +114,7 @@ public final class WeaponDiag {
                 cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.ADS[1],
                 cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.ADS[2],
                 cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.ADS[4],
+                WeaponArms.externalPoseDelta,
                 disp == null ? "null" : String.format(Locale.ROOT, "(%.3f,%.3f,%.3f)", disp.x, disp.y, disp.z),
                 expectPx == null ? "null"
                         : String.format(Locale.ROOT, "(%.3f,%.3f,%.3f)",
@@ -111,6 +122,12 @@ public final class WeaponDiag {
                 dispMismatch,
                 applyCalled, armsCalled,
                 mc.options.fov().get(), mc.player.getMainArm());
+
+        // ★ r96：外部手持渲染留下的篡改量 —— 非 0 就说明有别的模组改了事件里的 PoseStack
+        if (WeaponArms.externalPoseDelta > 0.001F) {
+            LOGGER.info("[HLCDIAG] ★ 检测到外部手持渲染篡改 PoseStack：poseDelta={}（已用干净基准覆盖回去）",
+                    String.format(Locale.ROOT, "%.4f", WeaponArms.externalPoseDelta));
+        }
 
         // 模型里的 display 与 WeaponMount 常数不一致 = 枪/手必然错开的硬证据（只警告一次）
         if (dispMismatch && !warnedDisplay) {
@@ -124,6 +141,7 @@ public final class WeaponDiag {
         append(mc, line);
         applyCalled = false;
         armsCalled = false;
+        WeaponArms.externalPoseDelta = 0.0F;              // ★ r96：篡改量按报告周期复位
     }
 
     /**

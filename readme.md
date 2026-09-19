@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r95`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r96`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -517,6 +517,26 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r96`
+
+- ★★ **「枪飘在手右上方、和手臂分离」：加「干净 pose 基准」防护**（`client/WeaponArms.java`、
+  `client/ClientEvents.java`、`client/WeaponHandGrip.java`）：
+  - 现场线索：用户装了 **TaCZ 1.1.8 + SimpleBedrockModel**，它俩的
+    `FirstPersonRenderHandler` **挂在同一个 `RenderHandEvent` 上**，给自家枪做第一人称渲染时会
+    **直接改事件里的 `PoseStack`**。拿我们的 AKM 时它 `Optional` 为空、什么都没画，
+    **但改动可能已经留在栈上** ⇒ 之后原版那一遍 `renderArmWithItem`（枪）和我们补画的手臂
+    一起被这段残留平移/缩放带走 —— 正是用户截图里那个姿态。
+  - 修法：新增 **HIGHEST 优先级**的 `onRenderHandEarly`，在**还没人被任何人动过**时记下
+    `poseStack.last()` 的 pose/normal；随后在画手臂（`WeaponArms.drawArm`）和给枪摆位
+    （`WeaponHandGrip.apply`，即 `applyForgeHandTransform` 里）之前，把 `last()` **覆盖回这份干净矩阵**
+    ⇒ 枪与手永远共用同一份基准。没有任何外部篡改时它就是一次无副作用的复制（向后兼容）。
+  - 同时把**篡改量**（矩阵元素最大绝对差）写进诊断：日志里 `poseDelta=` 非 0 即坐实有别的模组
+    在动手持 pose（`WeaponDiag` 还会额外打一条 `[HLCDIAG] ★ 检测到外部手持渲染篡改 PoseStack`）。
+- **诊断器 `WeaponDiag` 再修一处时间窗错位**：以前只打 tick 时刻的 `heldWeapon`，而
+  `applyCalled/armsCalled` 是过去一秒累积的 ⇒「held=akm 但 arms=false」可能只是换枪过程中的错位
+  （上一份日志就把我误导过一次）。现在渲染侧把**渲染那一刻**的物品记进 `renderedItem`，
+  日志同时打 `held=`（tick 时刻）与 `render=`（渲染时刻），两边同一时刻可比。
 
 > 版本 `1.0.0-r95`
 

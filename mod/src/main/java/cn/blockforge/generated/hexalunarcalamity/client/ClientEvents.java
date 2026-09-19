@@ -350,6 +350,22 @@ public final class ClientEvents {
      * 不画手；左手还会按换弹进度做事：AKM 托护木 / 抽弹匣 / 拉机柄，AWP 托护木 / 拆装弹匣，
      * 十字弩拉弦 / 递箭上槽。
      */
+    /**
+     * ★★ r96：最高优先级，**只做一件事** —— 记下还没被任何人动过的这一层 pose。
+     *
+     * <p>为什么要在别人之前：{@code RenderHandEvent} 上还挂着 TaCZ / SimpleBedrockModel 的
+     * {@code FirstPersonRenderHandler}，它给自家枪做手持渲染时会直接改事件里的 {@code PoseStack}；
+     * 拿我们的枪时它没画东西，但改动可能留在栈上，于是枪与我们的手臂一起被带偏
+     * （用户反馈的「枪飘在手右上方、和手臂分离」）。这份干净矩阵会在
+     * {@link WeaponArms#restoreCleanPose} 里被覆盖回去，枪和手共用同一份基准。
+     */
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    public static void onRenderHandEarly(net.minecraftforge.client.event.RenderHandEvent event) {
+        if (event.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND) {
+            WeaponArms.captureCleanPose(event.getPoseStack());
+        }
+    }
+
     @SubscribeEvent
     public static void onRenderHand(net.minecraftforge.client.event.RenderHandEvent event) {
         Minecraft mc = Minecraft.getInstance();

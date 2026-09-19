@@ -125,6 +125,10 @@ public final class WeaponHandGrip {
     public static boolean apply(PoseStack pose, LocalPlayer player, HumanoidArm arm,
                                 ItemStack stack, float equip) {
         WeaponDiag.applyCalled = true;                           // 诊断：我们的手持变换真的被调用了
+        WeaponDiag.renderedItem = stack.getItem();                // 诊断：渲染这一刻手上是什么
+        // ★ r96：先把「别的手持渲染留下的残留变换」清掉（TaCZ 的 FirstPersonRenderHandler 会改同一个
+        //   事件里的 PoseStack；拿我们的枪时它什么都没画，但改动可能留在栈上）—— 枪与手必须用同一份基准
+        WeaponArms.restoreCleanPose(pose);
         equipNow = Math.min(Math.max(equip, 0.0F), EQUIP_MAX);   // ★ 夹掉「开火/换弹下沉」
         // 举弓/拉弦的姿势（十字弩按住右键）交给原版；开镜时手臂本来就隐藏了
         if (player.isUsingItem() && player.getUseItem() == stack
