@@ -626,12 +626,18 @@ public final class ClientEvents {
                                 + (cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
                                 .chambered(weapon) ? "+1" : "") + " / " + reserveText
                         : reserveText;
-        int x = g.guiWidth() - 78;
-        int y = g.guiHeight() - 38;
-        g.fill(x - 6, y - 5, x + 72, y + 19, 0x66000000);
-        g.renderItem(new ItemStack(type.get()), x - 2, y);
+        // ★★ r101：框宽按**文字实测宽度**算，别再写死 —— AWP 的 "4+1 / ∞" 比 "30 / ∞" 宽，
+        //   原来写死 78 宽 ⇒ ∞ 被挤到框外面（用户截图）。现在右对齐时整框随文字宽度伸缩。
         Font font = mc.font;
-        g.drawString(font, line, x + 18, y + 5, 0xE5E5E5, true);
+        int padLeft = 22;                       // 图标 18 + 间隙
+        int padRight = 8;
+        int boxW = padLeft + font.width(line) + padRight;
+        int boxH = 24;
+        int x = g.guiWidth() - boxW - 10;       // 距屏幕右边 10px（原来固定 -78 ⇒ 长文字溢出）
+        int y = g.guiHeight() - 38;
+        g.fill(x, y - 5, x + boxW, y - 5 + boxH, 0x66000000);
+        g.renderItem(new ItemStack(type.get()), x + 4, y);
+        g.drawString(font, line, x + padLeft, y + 5, 0xE5E5E5, true);
     }
 
     private static void drawHitMarker(GuiGraphics g) {

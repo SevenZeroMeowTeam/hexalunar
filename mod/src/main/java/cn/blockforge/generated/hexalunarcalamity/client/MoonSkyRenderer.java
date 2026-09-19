@@ -53,10 +53,13 @@ public final class MoonSkyRenderer {
     private static final float MOON_Y = -100.0F;
 
     /** 天顶不透明度 / 地平线不透明度（不盖死星空） */
-    private static final float SKY_TOP_A = 0.42F;
-    private static final float SKY_HORIZON_A = 0.60F;
+    private static final float SKY_TOP_A = 0.55F;
+    private static final float SKY_HORIZON_A = 0.72F;
     /** 地平线以下那一圈（避免天地交界处出现硬缝） */
-    private static final float SKY_BELOW_A = 0.16F;
+    private static final float SKY_BELOW_A = 0.20F;
+
+    /** ★ r101：着色生效证据（每个相位只打一次）——方便从日志确认天穹/月盘真的在画 */
+    private static MoonPhase logged;
 
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
@@ -65,6 +68,13 @@ public final class MoonSkyRenderer {
         if (phase == null) return;
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
+        if (logged != phase) {
+            logged = phase;
+            org.slf4j.LoggerFactory.getLogger("hexalunar_calamity").info(
+                    "[HLCMOON] 天穹/月盘着色生效：{}（超级={}） skyTop=#{:06X} skyHorizon=#{:06X} moon=#{:06X}",
+                    phase.zhName, phase.superMoon, phase.skyTop, phase.skyHorizon,
+                    phase.moonColor);
+        }
 
         PoseStack pose = event.getPoseStack();
         pose.pushPose();

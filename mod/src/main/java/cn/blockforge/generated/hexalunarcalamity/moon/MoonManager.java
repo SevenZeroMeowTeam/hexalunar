@@ -58,7 +58,18 @@ public final class MoonManager {
                 next = data.phase();          // 指令已经指定过 ⇒ 今夜就用它，不再掷骰
                 data.forced = false;
             } else {
-                next = rollNightPhase(data, level.random);
+                // ★★ r102：装了 Crafting Dead Survival ⇒ **今夜月相以它为准**（两边 HUD / 天上颜色一致）
+                next = null;
+                if (CraftingDeadCompat.available()) {
+                    next = CraftingDeadCompat.phase(level);
+                    // 还是 available ⇒ CD 确实说"NONE"（今晚无月，正确）；
+                    // 若已变成 false ⇒ 刚才是反射失败，退回自己的轮转
+                    if (next == null && !CraftingDeadCompat.available()) {
+                        next = rollNightPhase(data, level.random);
+                    }
+                } else {
+                    next = rollNightPhase(data, level.random);
+                }
                 data.setPhase(next);
             }
             if (next != null) {

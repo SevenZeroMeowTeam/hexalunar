@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r100`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r102`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -517,6 +517,62 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r102`
+
+- ★★ **月相与 Crafting Dead Survival 同步**（新增 `moon/CraftingDeadCompat.java`、改 `moon/MoonManager.java`）：
+  - 用户要求：「需要同步 craftingdead 的月相」。
+  - 现状：Crafting Dead Survival（modId `craftingdeadsurvival`）自己有一整套**同名同构**的月相 ——
+    `MoonEventType`: `NONE / BLOOD_MOON / BLUE_MOON / YELLOW_MOON / SUPER_BLOOD_MOON /
+    SUPER_BLUE_MOON / SUPER_YELLOW_MOON`，规则写死在 `forDay(day)`（已从它的字节码里读出）：
+    ```
+    day % 28 == 6  → 蓝月        7  → 超级蓝月    13 → 血月
+             20 → 黄月           21 → 超级黄月    27 → 超级血月    其余 → NONE
+    ```
+    它还有 `ApocalypseManager.getMoonEvent(Level)`（会参考它自己的 `/moon` 手动指令）、
+    客户端 `MoonDataHolder.getEventType()`（`SyncMoonDataMessage` 同步）。两边各转各的时，
+    它 HUD 显示"月相: 满月"、我们 HUD 显示"黄月"，天上颜色也对不上。
+  - 做法：**装了 CD 时，今夜月相完全以 CD 为准** —— 服务端在选相那一步调
+    `ApocalypseManager.getMoonEvent(level)`（反射，**软依赖**：不把它写进 build.gradle，
+    找不到类/方法就自动退回本模组原来的概率轮转），把 CD 的枚举名映射到我们的 `MoonPhase`
+    （`BLOOD_MOON → 血月` … `SUPER_* → 超级*`，`NONE → 无月之夜`）。
+    随后本模组的公告 / 尸潮 / 加成 / 天空着色 / HUD 与 CD 的 HUD 自然全部一致。
+  - 保留两个**显式覆盖**：`/hexalunar moon set <相位>`（`data.forced`）依旧最高优先级；
+    `/hexalunar moon roll` 仍然走本模组自己的随机轮转（玩家主动要"另一个月相"时用）。
+  - 日志证据（一次）：`[HLCMOON] 检测到 Crafting Dead Survival —— 月相将跟随它` +
+    `[HLCMOON] 月相已与 Crafting Dead 同步：BLOOD_MOON ⇒ 血月`。
+  - 注意：同步的是**月相本身**（哪一晚是什么月），两边各自的月相**效果**（我们催作物/给幸运/开尸潮，
+    CD 自己的进化与尸潮）会同时生效 —— 这是"同步"的预期结果；若只想要视觉一致、不要效果叠加，
+    可以再加一个配置开关单独关掉我们的效果。
+
+> 版本 `1.0.0-r101`
+
+- ★ **修复右下角弹药框被截断**（`client/ClientEvents.drawAmmoHud`）：
+  - 现象：AWP 的 `"4+1 / ∞"` 里那个 ∞ 跑到框外（用户截图）。
+  - 原因：背景框**写死 78 宽**（`g.fill(x-6, y-5, x+72, y+19)`），而 AWP 的弹匣串比 AKM 的
+    `"30 / ∞"` 多一个 `+1` ⇒ 文字比框宽。
+  - 修法：框宽改成 `22 + font.width(line) + 8`（图标 + 实测文字宽 + 右边距），整框从屏幕右边
+    留 10px 右对齐 ⇒ 以后任何弹数/文案都不会再溢出。
+- ★★ **修月相天空与月亮配色**（`moon/MoonPhase.java`、`client/MoonSkyRenderer.java`）：
+  - 用户要求：**黄月/超级黄月**天空与月亮都要**黄**；**蓝月/超级蓝月**都要**蓝**；
+    **血月/超级血月**都要**大红**。
+  - 原因：月亮色（`moonColor`）本来就是对的，但**天穹色 `skyTop/skyHorizon` 写得太黑** ——
+    黄月原本是 `0x141005`（RGB 20,16,5 ≈ 全黑）、血月 `0x1C0608`、蓝月 `0x06101F`
+    ⇒ 叠在夜空上几乎看不见，所以整体没有"黄月/蓝月/血月"的氛围。
+  - 修法：
+    | 相位 | skyTop（天顶） | skyHorizon（地平线） | moon（月盘） |
+    |---|---|---|---|
+    | 血月 | `0x5A0C0E` | `0xB01818` | `0xFF3030` |
+    | 蓝月 | `0x0C2258` | `0x2A5ABE` | `0x88B8FF` |
+    | 黄月 | `0x4E3C0C` | `0xB08A1E` | `0xFFD35E` |
+    | 超级血月 | `0x7A1012` | `0xD01818` | `0xFF5A46` |
+    | 超级蓝月 | `0x142E78` | `0x3A74E0` | `0xB8D8FF` |
+    | 超级黄月 | `0x634D10` | `0xD8AC28` | `0xFFE070` |
+    天穹不透明度同时上调（天顶 0.42→**0.55**、地平线 0.60→**0.72**），超级相位本来就更高。
+  - 另外新增一次性日志，方便从日志确认这套着色真的在画（每个相位只打一条）：
+    `[HLCMOON] 天穹/月盘着色生效：黄月（超级=false） skyTop=#4E3C0C skyHorizon=#B08A1E moon=#FFD35E`
+  - 实现方式没变（仍是 `RenderLevelStageEvent.Stage.AFTER_SKY` 自绘天穹 + 月盘，
+    位于原版天空之后、地形之前，见 `LevelRenderer` L1155→L1158）。
 
 > 版本 `1.0.0-r100`
 
