@@ -27,6 +27,7 @@ public final class WeaponArmPose implements IClientItemExtensions {
     private final WeaponAnim.Kind kind;
 
     public static final WeaponArmPose AKM = new WeaponArmPose(WeaponAnim.Kind.AKM);
+    public static final WeaponArmPose AWP = new WeaponArmPose(WeaponAnim.Kind.AWP);
     public static final WeaponArmPose CROSSBOW = new WeaponArmPose(WeaponAnim.Kind.CROSSBOW);
     public static final WeaponArmPose BOW = new WeaponArmPose(WeaponAnim.Kind.BOW);
     public static final WeaponArmPose GRENADE = new WeaponArmPose(WeaponAnim.Kind.GRENADE);
@@ -39,7 +40,7 @@ public final class WeaponArmPose implements IClientItemExtensions {
     public HumanoidModel.ArmPose getArmPose(LivingEntity entity, InteractionHand hand, ItemStack stack) {
         boolean using = entity.isUsingItem() && entity.getUseItem() == stack;
         return switch (kind) {
-            case AKM -> using ? HumanoidModel.ArmPose.CROSSBOW_CHARGE : HumanoidModel.ArmPose.CROSSBOW_HOLD;
+            case AKM, AWP -> using ? HumanoidModel.ArmPose.CROSSBOW_CHARGE : HumanoidModel.ArmPose.CROSSBOW_HOLD;
             case CROSSBOW -> {
                 // 上弦时也用「弩蓄力」姿势：原版那套会把左手放在弦上往回拉，正好是上弦动作
                 long now = entity.level() == null ? 0L : entity.level().getGameTime();
@@ -69,6 +70,9 @@ public final class WeaponArmPose implements IClientItemExtensions {
      */
     public static WeaponArmPose forWeapon(ItemStack stack) {
         if (stack.getItem() instanceof AkmRifleItem) return AKM;
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem) {
+            return AWP;
+        }
         if (stack.getItem() instanceof CrossbowWeaponItem) return CROSSBOW;
         if (stack.getItem() instanceof CompoundBowItem) return BOW;
         if (stack.getItem() instanceof GrenadeItem) return GRENADE;

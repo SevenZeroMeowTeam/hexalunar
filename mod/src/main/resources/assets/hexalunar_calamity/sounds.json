@@ -27,6 +27,23 @@
       {"name": "hexalunar_calamity:weapon/ak47_shot_4", "pitch": 1.05}
     ]
   },
+  "awp_shot": {
+    "sounds": [
+      {"name": "hexalunar_calamity:weapon/awp_shot_1", "pitch": 1.0, "weight": 3},
+      {"name": "hexalunar_calamity:weapon/awp_shot_1", "pitch": 0.93, "weight": 1}
+    ]
+  },
+  "bolt": {
+    "sounds": [
+      {"name": "hexalunar_calamity:weapon/bolt_1", "pitch": 1.0}
+    ]
+  },
+  "awp_reload": {
+    "sounds": [
+      {"name": "hexalunar_calamity:weapon/awp_reload_1", "pitch": 1.0, "weight": 3},
+      {"name": "hexalunar_calamity:weapon/awp_reload_1", "pitch": 1.06, "weight": 1}
+    ]
+  },
   "reload": {
     "sounds": [
       "minecraft:block/barrel/open1",

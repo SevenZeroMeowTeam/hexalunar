@@ -287,6 +287,14 @@ public class AkmRifleItem extends Item implements WeaponAmmo, GeoItem {
                 ModSounds.AKM_SHOT.get(), SoundSource.PLAYERS, 1.1F,
                 0.97F + level.random.nextFloat() * 0.08F);
 
+        // 打空最后一发：客户端会自动拉机柄（AkmAnimState 看到 mag==0 就播 bolt_pull），
+        // 这里同步把拉栓上膛音效放出来
+        if (mag(stack) == 0) {
+            level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                    ModSounds.BOLT.get(), SoundSource.PLAYERS, 0.85F,
+                    1.04F + level.random.nextFloat() * 0.06F);
+        }
+
         // 枪口焰（白闪 + 火星 + 枪口烟）与抛壳：位置都取模型上的实际点
         if (level instanceof ServerLevel server) {
             WeaponFx.muzzleFlash(server, muzzle, dir, aiming);
@@ -328,8 +336,8 @@ public class AkmRifleItem extends Item implements WeaponAmmo, GeoItem {
         setMag(stack, mag(stack) + got);
         player.swing(InteractionHand.MAIN_HAND);
         level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                ModSounds.AKM_BOLT.get(), SoundSource.PLAYERS, 1.0F,
-                0.98F + level.random.nextFloat() * 0.08F);
+                ModSounds.BOLT.get(), SoundSource.PLAYERS, 1.0F,
+                1.02F + level.random.nextFloat() * 0.06F);
     }
 
     // ================================================================ tick

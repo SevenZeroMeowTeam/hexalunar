@@ -26,6 +26,8 @@ public class BulletEntity extends ThrowableItemProjectile {
 
     /** 命中伤害：10 点 = 5 颗心（原版铁剑 6 / 下界合金剑 8，所以这是一枪很痛的水平） */
     public static final float BULLET_DAMAGE = 10.0F;
+    /** 狙击弹（AWP）伤害：24 点 = 12 颗心，一枪基本带走 */
+    public static final float SNIPER_DAMAGE = 24.0F;
 
     public BulletEntity(EntityType<? extends BulletEntity> type, Level level) {
         super(type, level);
@@ -43,18 +45,36 @@ public class BulletEntity extends ThrowableItemProjectile {
     /** 发射点：首个 tick 捕获，主客侧各自以同步到的出生点起算，弹道一致 */
     private Vec3 launchOrigin;
 
-    /** 有效射程内几乎平直；超过 60 格后下坠按超出比例的平方加剧 */
+    /**
+     * 出膛速度（首个 tick 捕获）—— 用来分辨**狙击弹**：
+     * AWP 的初速 6.2，AKM 最高 5.0，取 5.5 为界。
+     *
+     * <p>为什么不加个布尔字段再同步：弹道在**主客两侧各自独立演算**（客户端画曳光、服务端算命中），
+     * 多一个字段就得多一条同步路径，不如直接用它手头已有的、两侧一致的初速来判定。
+     */
+    private double launchSpeed;
+
+    private boolean sniper() {
+        return launchSpeed > 5.5D;
+    }
+
+    /** 有效射程内几乎平直；超出有效射程后下坠按超出比例的平方加剧 */
     @Override
     protected float getGravity() {
-        if (launchOrigin == null) return (float) Ballistics.AKM_IN_RANGE_GRAVITY;
+        boolean sn = sniper();
+        double base = sn ? Ballistics.AWP_IN_RANGE_GRAVITY : Ballistics.AKM_IN_RANGE_GRAVITY;
+        double range = sn ? Ballistics.AWP_RANGE : Ballistics.AKM_RANGE;
+        if (launchOrigin == null) return (float) base;
         double flown = Ballistics.flown(launchOrigin, position());
-        return (float) (Ballistics.AKM_IN_RANGE_GRAVITY
-                + Ballistics.extraGravity(flown, Ballistics.AKM_RANGE));
+        return (float) (base + Ballistics.extraGravity(flown, range));
     }
 
     @Override
     public void tick() {
-        if (launchOrigin == null) launchOrigin = position();
+        if (launchOrigin == null) {
+            launchOrigin = position();
+            launchSpeed = getDeltaMovement().length();
+        }
         super.tick();
         if (level() instanceof ServerLevel server && !isRemoved()) {
             // 曳光：光点每 tick + 热痕隔 tick，拼出连续弹道光带（轻量）
@@ -77,7 +97,7 @@ public class BulletEntity extends ThrowableItemProjectile {
     @Override
     protected void onHitEntity(EntityHitResult result) {
         Entity hit = result.getEntity();
-        float damage = BULLET_DAMAGE;
+        float damage = sniper() ? SNIPER_DAMAGE : BULLET_DAMAGE;
         LivingEntity attacker = getOwner() instanceof LivingEntity living ? living : null;
         if (attacker != null) {
             hit.hurt(level().damageSources().mobProjectile(this, attacker), damage);

@@ -20,15 +20,18 @@ public final class ModTabs {
                         output.accept(new ItemStack(ModItems.CROSSBOW.get()));
                         output.accept(new ItemStack(ModItems.COMPOUND_BOW.get()));
                         output.accept(new ItemStack(ModItems.AKM.get()));
+                        output.accept(new ItemStack(ModItems.AWP.get()));
                         output.accept(new ItemStack(ModItems.RED_DOT_SIGHT.get()));
                         output.accept(new ItemStack(ModItems.SCOPE_4X.get()));
                         output.accept(new ItemStack(ModItems.CROSSBOW_BOLT.get()));
                         output.accept(new ItemStack(ModItems.COMPOUND_ARROW.get()));
                         output.accept(new ItemStack(ModItems.AMMO_762.get()));
+                        output.accept(new ItemStack(ModItems.AMMO_338.get()));
                         output.accept(new ItemStack(ModItems.POISON_ARROW.get()));
                         output.accept(new ItemStack(ModItems.AMMO_BOX_BOLT.get()));
                         output.accept(new ItemStack(ModItems.AMMO_BOX_ARROW.get()));
                         output.accept(new ItemStack(ModItems.AMMO_BOX_RIFLE.get()));
+                        output.accept(new ItemStack(ModItems.AMMO_BOX_SNIPER.get()));
                         output.accept(new ItemStack(ModItems.CREATIVE_AMMO_BOX.get()));
                         output.accept(new ItemStack(ModItems.ANTIDOTE.get()));
                         output.accept(new ItemStack(ModItems.POISON_REAGENT.get()));

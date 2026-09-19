@@ -29,6 +29,9 @@ public final class ModItems {
             ITEMS.register("compound_bow", () -> new CompoundBowItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> AKM =
             ITEMS.register("akm", () -> new AkmRifleItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> AWP =
+            ITEMS.register("awp", () -> new cn.blockforge.generated.hexalunarcalamity.weapon
+                    .AwpRifleItem(new Item.Properties().stacksTo(1)));
 
     // 三种弹药 + 毒箭
     public static final RegistryObject<Item> CROSSBOW_BOLT =
@@ -37,6 +40,9 @@ public final class ModItems {
             ITEMS.register("compound_arrow", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> AMMO_762 =
             ITEMS.register("ammo_762", () -> new Item(new Item.Properties()));
+    /** .338 狙击弹（AWP 专用） */
+    public static final RegistryObject<Item> AMMO_338 =
+            ITEMS.register("ammo_338", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> POISON_ARROW =
             ITEMS.register("poison_arrow", () -> new Item(new Item.Properties()));
 
@@ -47,6 +53,8 @@ public final class ModItems {
             ITEMS.register("ammo_box_arrow", () -> new AmmoBoxItem(AmmoType.ARROW, new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> AMMO_BOX_RIFLE =
             ITEMS.register("ammo_box_rifle", () -> new AmmoBoxItem(AmmoType.RIFLE, new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> AMMO_BOX_SNIPER =
+            ITEMS.register("ammo_box_sniper", () -> new AmmoBoxItem(AmmoType.SNIPER, new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> CREATIVE_AMMO_BOX =
             ITEMS.register("creative_ammo_box", () -> new CreativeAmmoBoxItem(new Item.Properties().stacksTo(1)));
 

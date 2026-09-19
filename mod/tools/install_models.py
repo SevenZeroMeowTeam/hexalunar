@@ -17,6 +17,17 @@ PAIRS = [
     ('flashbang_v3', 'flashbang.geo.json', 'flashbang_geo.png'),
     ('bow_v3', 'compound_bow.geo.json', 'compound_bow_geo.png'),
     ('crossbow_v4', 'crossbow_geo.geo.json', 'crossbow_geo.png'),
+    ('awp_v1', 'awp.geo.json', 'awp_geo.png'),
+]
+
+# (build 里的动画, 目标名)
+ANIMS = [
+    ('awp_v1.animation.json', 'awp.animation.json'),
+]
+
+# (build 里的流光遮罩, 目标名) —— AWP 的遮罩由 awp_gen.py 自产（参考图纯白太多，分位法失效）
+GLOWS = [
+    ('awp_v1_glowmask.png', 'awp_geo_glowmask.png'),
 ]
 
 
@@ -37,6 +48,24 @@ def main():
             h = hashlib.md5(open(dst, 'rb').read()).hexdigest()[:8]
             print('%-30s <- %-22s md5=%s' % (os.path.basename(dst),
                                              os.path.basename(src), h))
+    for src_name, dst_name in ANIMS:
+        src = os.path.join(ROOT, 'build', src_name)
+        dst = os.path.join(ASSETS, 'animations', dst_name)
+        if not os.path.exists(src):
+            print('!! 缺动画 %s' % src)
+            continue
+        shutil.copy2(src, dst)
+        print('%-30s <- %-22s md5=%s'
+              % (dst_name, src_name, hashlib.md5(open(dst, 'rb').read()).hexdigest()[:8]))
+    for src_name, dst_name in GLOWS:
+        src = os.path.join(ROOT, 'build', src_name)
+        dst = os.path.join(ASSETS, 'textures', 'models', dst_name)
+        if not os.path.exists(src):
+            print('!! 缺遮罩 %s' % src)
+            continue
+        shutil.copy2(src, dst)
+        print('%-30s <- %-22s md5=%s'
+              % (dst_name, src_name, hashlib.md5(open(dst, 'rb').read()).hexdigest()[:8]))
 
 
 if __name__ == '__main__':

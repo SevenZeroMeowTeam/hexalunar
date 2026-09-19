@@ -33,6 +33,8 @@ public final class ClientGunController {
         boolean holding = player != null && weapon != null && mc.screen == null && !mc.isPaused()
                 && !player.isDeadOrDying()
                 && (weapon.getItem() instanceof AkmRifleItem
+                    || weapon.getItem() instanceof cn.blockforge.generated
+                            .hexalunarcalamity.weapon.AwpRifleItem
                     || weapon.getItem() instanceof CrossbowWeaponItem
                     || weapon.getItem() instanceof cn.blockforge.generated
                             .hexalunarcalamity.weapon.CompoundBowItem);

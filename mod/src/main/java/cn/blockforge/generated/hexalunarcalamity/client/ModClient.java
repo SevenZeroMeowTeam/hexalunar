@@ -66,6 +66,8 @@ public final class ModClient {
         if (path.contains("crossbow_bolt")) return null;
         // AKM 用 GeckoLib 骨骼渲染（AkmGeoRenderer），不再需要 OBJ 分件包装
         if (path.startsWith("akm")) return null;
+        // AWP 同样用 GeckoLib 骨骼渲染（AwpGeoRenderer + geo/awp.geo.json）
+        if (path.startsWith("awp")) return null;
         // 十字弩也改 GeckoLib 骨骼渲染（CrossbowGeoRenderer + geo/crossbow_geo.geo.json），
         // 拉弦装弹由 CrossbowGeoModel 程序化驱动，不再走 OBJ 分件/display 包装
         if (path.startsWith("crossbow") || path.contains("crossbow_pulling")) return null;

@@ -9,7 +9,9 @@ import java.util.function.Supplier;
 public enum AmmoType {
     BOLT("crossbow_bolt", ModItems.CROSSBOW_BOLT, 64, 0),
     ARROW("compound_arrow", ModItems.COMPOUND_ARROW, 96, 1),
-    RIFLE("ammo_762", ModItems.AMMO_762, 300, 2);
+    RIFLE("ammo_762", ModItems.AMMO_762, 300, 2),
+    /** .338 拉普阿马格努姆：AWP 专用，与 7.62 不通用 */
+    SNIPER("ammo_338", ModItems.AMMO_338, 120, 3);
 
     public final String id;
     public final Supplier<Item> item;

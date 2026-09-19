@@ -13,6 +13,8 @@ public final class Ballistics {
 
     /** AKM 有效射程（格）：步枪弹初速高，射程最远 */
     public static final double AKM_RANGE = 60.0D;
+    /** AWP 有效射程（格）：.338 栓动狙击，比步枪弹更远更直 */
+    public static final double AWP_RANGE = 96.0D;
     /** 十字弩有效射程（格） */
     public static final double BOLT_RANGE = 40.0D;
     /** 复合弓有效射程（格） */
@@ -20,6 +22,8 @@ public final class Ballistics {
 
     /** AKM 弹头在有效射程内的重力（原版投掷物为 0.03，这里几乎平直） */
     public static final double AKM_IN_RANGE_GRAVITY = 0.006D;
+    /** AWP 弹头在有效射程内的重力（比步枪弹更平） */
+    public static final double AWP_IN_RANGE_GRAVITY = 0.004D;
     /** 弩箭在有效射程内的重力（原版箭为 0.05，这里收紧一半以上） */
     public static final double BOLT_IN_RANGE_GRAVITY = 0.022D;
     /** 复合弓箭在有效射程内的重力 */

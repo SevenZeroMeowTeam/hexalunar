@@ -90,6 +90,17 @@ public final class WeaponArms {
     }
 
     /**
+     * AWP：**右手**平时握在握把上（食指在扳机上），拉栓时抬起来抓拉机柄、
+     * 跟着枪机一起抬起 / 后退抛壳，拉完再回握把；**左手**托在护木下方不动
+     * （栓动步枪的支撑手），只在换弹时伸过去拆 / 装弹匣。
+     */
+    public static void renderAwp(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        AwpGeoModel.captureNow();
+        render(mc, pose, buffer, light, AwpGeoModel.frame,
+                AwpGeoModel.rightHandPx(new float[3]), AwpGeoModel.leftHandPx(new float[3]));
+    }
+
+    /**
      * 手雷 / 震爆弹：**右手**握在弹体上；**左手**只在拔销 / 插销的时候出现（抓保险销拉环），
      * 投掷时绝不把左手也甩出去（用户要求「不是双手投掷动作」）。
      */

@@ -36,6 +36,12 @@
         "weight": 3,
         "ammo": "hexalunar_calamity:ammo_762",
         "ammo_count": 20
+      },
+      {
+        "weapon": "hexalunar_calamity:awp",
+        "weight": 2,
+        "ammo": "hexalunar_calamity:ammo_338",
+        "ammo_count": 10
       }
     ]
   }

@@ -15,9 +15,15 @@ public final class ModSounds {
     public static final RegistryObject<SoundEvent> CROSSBOW_HIT = sound("crossbow_hit");
     public static final RegistryObject<SoundEvent> BOW_SHOT = sound("bow_shot");
     public static final RegistryObject<SoundEvent> AKM_SHOT = sound("akm_shot");
+    /** AWP 枪声（大口径、更沉），音频来自用户提供的 `模型/awp枪声.ogg` */
+    public static final RegistryObject<SoundEvent> AWP_SHOT = sound("awp_shot");
+    /** AWP 换弹音效（`模型/AWP狙击步枪换弹音效.ogg`） */
+    public static final RegistryObject<SoundEvent> AWP_RELOAD = sound("awp_reload");
     public static final RegistryObject<SoundEvent> RELOAD = sound("reload");
     public static final RegistryObject<SoundEvent> AKM_RELOAD = sound("akm_reload");
     public static final RegistryObject<SoundEvent> AKM_BOLT = sound("akm_bolt");
+    /** 拉栓上膛（`模型/拉栓上膛.ogg`）：AKM 拉机柄、AWP 拉栓抛壳共用同一条音频 */
+    public static final RegistryObject<SoundEvent> BOLT = sound("bolt");
     public static final RegistryObject<SoundEvent> EMPTY = sound("empty");
     public static final RegistryObject<SoundEvent> HIT = sound("hit");
     public static final RegistryObject<SoundEvent> KILL = sound("kill");

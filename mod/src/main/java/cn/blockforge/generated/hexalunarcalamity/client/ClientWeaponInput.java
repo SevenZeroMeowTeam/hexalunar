@@ -98,6 +98,11 @@ public final class ClientWeaponInput {
         if (weapon.getItem() instanceof AkmRifleItem) {
             interval = AkmRifleItem.FIRE_INTERVAL; // 全自动
             auto = true;
+        } else if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AwpRifleItem) {
+            interval = cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
+                    .CYCLE_TICKS / 2;              // 栓动：击发 + 拉栓整个循环，按住也不会连发
+            auto = false;
         } else if (weapon.getItem() instanceof CrossbowWeaponItem) {
             interval = CrossbowWeaponItem.FIRE_INTERVAL; // 按住连发
             auto = true;

@@ -52,8 +52,12 @@ public final class ClientEvents {
         if (!player.isUsingItem()) return;
         if (AmmoUtil.weaponAmmoType(player.getUseItem()) == null) return;
         if (scoping(player)) {
-            // 4 倍镜：视野缩到 1/4；同时保留原版最小视角钳制
-            event.setNewFovModifier(1.0F / cn.blockforge.generated
+            // 十字弩 4 倍镜 / AWP 8 倍镜：视野缩到 1/N
+            boolean awp = player.getUseItem().getItem() instanceof cn.blockforge.generated
+                    .hexalunarcalamity.weapon.AwpRifleItem;
+            event.setNewFovModifier(awp
+                    ? 1.0F / cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem.SCOPE_ZOOM
+                    : 1.0F / cn.blockforge.generated
                     .hexalunarcalamity.weapon.CrossbowWeaponItem.SCOPE_ZOOM);
             return;
         }
@@ -83,6 +87,11 @@ public final class ClientEvents {
     public static boolean scoping(Player player) {
         if (player == null || !player.isUsingItem()) return false;
         ItemStack using = player.getUseItem();
+        // AWP：抵肩就是开 8 倍镜（没装/拆镜的说法，望远镜就长在枪上）
+        if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AwpRifleItem) {
+            return true;
+        }
         if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .CrossbowWeaponItem) {
             return cn.blockforge.generated.hexalunarcalamity.weapon
@@ -278,6 +287,11 @@ public final class ClientEvents {
                 .CrossbowWeaponItem) {
             WeaponArms.renderCrossbow(mc, event.getPoseStack(), event.getMultiBufferSource(),
                     event.getPackedLight());
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AwpRifleItem) {
+            // AWP：右手握把 + 左手托枪管（换弹时去抓弹匣）
+            WeaponArms.renderAwp(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
         } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.item.GrenadeItem) {
             // 手雷 / 震爆弹：右手握雷；左手只在拔销 / 插销时伸进来抓拉环
             WeaponArms.renderGrenade(mc, event.getPoseStack(), event.getMultiBufferSource(),
@@ -319,6 +333,11 @@ public final class ClientEvents {
             g.fill(cx - outer, y, cx - outer + 2, y + 1, 0x33FFFFFF);
             g.fill(cx + outer - 2, y, cx + outer, y + 1, 0x33FFFFFF);
         }
+        // 分划：AWP 用十字分划（粗外柱 + 细交叉 + 密位点），十字弩保留原来的细十字
+        if (awpScoping()) {
+            drawCrossReticle(g, cx, cy, r);
+            return;
+        }
         // 十字分划：对称，中心留空，外侧一段更淡
         int gap = 10;
         int len = Math.max(14, Math.min(r / 4, 40));
@@ -334,6 +353,44 @@ public final class ClientEvents {
         g.fill(cx + gap, cy - 1, cx + gap + tick, cy, near);          // 右
         g.fill(cx + gap + tick, cy - 1, cx + gap + len, cy, far);
         g.fill(cx - 1, cy - 1, cx, cy, 0x9CFFFFFF);                   // 中心 1px
+    }
+
+    /** 当前开镜的是不是 AWP（决定用哪套分划） */
+    private static boolean awpScoping() {
+        Player player = Minecraft.getInstance().player;
+        return player != null && player.isUsingItem()
+                && player.getUseItem().getItem() instanceof cn.blockforge.generated
+                .hexalunarcalamity.weapon.AwpRifleItem;
+    }
+
+    /**
+     * AWP 的**十字分划**（duplex 双柱式）：
+     * <ul>
+     *   <li>外侧 35% 是粗柱（2px），内侧到中心是细线（1px），且**贯穿中心不断开**</li>
+     *   <li>细线上每隔一段一个密位点（测距用），中心一个暖色亮点</li>
+     * </ul>
+     */
+    private static void drawCrossReticle(GuiGraphics g, int cx, int cy, int r) {
+        int thin = 0xB4FFFFFF;
+        int thick = 0xE8FFFFFF;
+        int post = Math.max(10, r * 35 / 100);          // 粗柱起点（离中心）
+        for (int i = 1; i <= r; i++) {
+            boolean far = i > post;
+            int col = far ? thick : thin;
+            int w = far ? 2 : 0;                        // 粗柱加宽 2 像素
+            g.fill(cx, cy - i, cx + 1 + w, cy - i + 1, col);            // 上
+            g.fill(cx, cy + i, cx + 1 + w, cy + i + 1, col);            // 下
+            g.fill(cx - i, cy, cx - i + 1, cy + 1 + w, col);            // 左
+            g.fill(cx + i, cy, cx + i + 1, cy + 1 + w, col);            // 右
+        }
+        int step = Math.max(10, r / 4);                 // 密位点
+        for (int i = step; i < post; i += step) {
+            g.fill(cx - 1, cy - i - 1, cx + 2, cy - i + 1, thin);
+            g.fill(cx - 1, cy + i, cx + 2, cy + i + 2, thin);
+            g.fill(cx - i - 1, cy - 1, cx - i + 1, cy + 2, thin);
+            g.fill(cx + i, cy - 1, cx + i + 2, cy + 2, thin);
+        }
+        g.fill(cx - 1, cy - 1, cx + 1, cy + 1, 0xE6FF6A3C);            // 中心亮点
     }
 
     /**
@@ -416,7 +473,12 @@ public final class ClientEvents {
         String reserveText = reserve >= Integer.MAX_VALUE ? "∞" : String.valueOf(reserve);
         String line = weapon.getItem() instanceof AkmRifleItem
                 ? AkmRifleItem.mag(weapon) + " / " + reserveText
-                : reserveText;
+                : weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                        .AwpRifleItem
+                        ? cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem.mag(weapon)
+                                + (cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
+                                .chambered(weapon) ? "+1" : "") + " / " + reserveText
+                        : reserveText;
         int x = g.guiWidth() - 78;
         int y = g.guiHeight() - 38;
         g.fill(x - 6, y - 5, x + 72, y + 19, 0x66000000);

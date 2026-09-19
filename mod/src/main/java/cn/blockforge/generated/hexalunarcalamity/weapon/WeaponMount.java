@@ -131,6 +131,64 @@ public final class WeaponMount {
     public static float akmAimDx(LivingEntity entity) {
         return side(entity) > 0 ? AKM_AIM_DX : (float) (HAND_X_PX - AKM_TX);        // +11.56
     }
+
+    // ------------------------------------------------------------------ AWP（栓动狙击枪）
+    /**
+     * {@code models/item/awp.json → display.firstperson_righthand.translation}。
+     *
+     * <p>AWP 的模型原点是**机匣中心**、握把（move 骨骼 pivot）在 {@code (0, -1.07, 1.31)}，
+     * 而 AKM 的原点就是握把 {@code (0, 1.75, 0)}。所以这里 = AKM 的平移 + 两个握把之差，
+     * 让「握把握在手里」的手感和 AKM 完全一致（离线推算，见 README 的坐标约定）。
+     */
+    public static final float AWP_TX = -2.6F;
+    public static final float AWP_TY = 4.22F;
+    public static final float AWP_TZ = 0.50F;
+    /** 8 倍镜光轴（模型 Y；对应 awp_gen.py 打印的 SCOPE_AXIS = 3.15） */
+    public static final double AWP_SCOPE_Y = 3.15D;
+    public static final float AWP_AIM_DX = (float) (-HAND_X_PX - AWP_TX);              // -6.36
+    public static final float AWP_AIM_DY = (float) (-ARM_Y * 16.0D - AWP_SCOPE_Y - AWP_TY);
+    public static final float AWP_AIM_DZ = 1.4F;
+    /** 枪口（模型像素）：枪管轴线 Y=1.575、最前端 z=-16.275 */
+    public static final double[] AWP_MUZZLE = {0.0D, 1.575D, -16.275D};
+    /** 抛壳口（模型像素）：机匣右侧（弹壳从这儿翻出去） */
+    public static final double[] AWP_EJECT = {0.90D, 1.39D, -0.60D};
+    /**
+     * 腰射下压角（度，负 = 枪口下压）：和 {@code AwpGeoModel.HIP_PITCH} 是同一个数。
+     *
+     * <p>枪在屏幕上看着「斜着往上翘、枪托掉下去」是透视造成的（枪管轴线平行于视线，
+     * 它的投影必然收敛到屏幕中心），压这么多度以后轴线在屏幕上就水平了。
+     * 举枪（开镜）时骨骼里这个角归零，所以下面两个取点函数也只在 {@code !aiming} 时转。
+     */
+    public static final float AWP_HIP_PITCH = -14.0F;
+    /** move 骨骼 pivot（模型像素）：整把枪绕它下压 */
+    private static final double[] AWP_MOVE_PIVOT = {0.0D, -1.0725D, 1.305D};
+
+    /** 把模型点按腰射下压角转一下（举枪时原样返回）——与骨骼旋转同一套数学 */
+    public static double[] awpHipPitch(double[] p, boolean aiming) {
+        if (aiming || AWP_HIP_PITCH == 0.0F) return p;
+        double a = Math.toRadians(AWP_HIP_PITCH);
+        double c = Math.cos(a);
+        double s = Math.sin(a);
+        double dy = p[1] - AWP_MOVE_PIVOT[1];
+        double dz = p[2] - AWP_MOVE_PIVOT[2];
+        return new double[]{p[0],
+                AWP_MOVE_PIVOT[1] + dy * c - dz * s,
+                AWP_MOVE_PIVOT[2] + dy * s + dz * c};
+    }
+
+    /** 举枪时的 display X 增量（左撇子走另一侧） */
+    public static float awpAimDx(LivingEntity entity) {
+        return side(entity) > 0 ? AWP_AIM_DX : (float) (HAND_X_PX - AWP_TX);
+    }
+
+    /** AWP 的某个模型点 → 世界坐标（aiming = 正抵肩瞄准） */
+    public static Vec3 awp(LivingEntity entity, boolean aiming, double[] modelPoint) {
+        return toWorld(entity,
+                AWP_TX + (aiming ? awpAimDx(entity) : 0.0F),
+                AWP_TY + (aiming ? AWP_AIM_DY : 0.0F),
+                AWP_TZ + (aiming ? AWP_AIM_DZ : 0.0F),
+                1.0F, awpHipPitch(modelPoint, aiming));   // awp.json 的 display scale = 1
+    }
     // ------------------------------------------------------------------ 复合弓
     /** models/item/compound_bow.json → display.firstperson_righthand（平移 0、scale 0.75） */
     public static final float BOW_TX = 0.0F;

@@ -37,7 +37,7 @@ import java.util.Random;
 public final class WeaponAnim {
 
     /** 有动作的武器种类 */
-    public enum Kind { AKM, CROSSBOW, BOW, GRENADE, FLASH }
+    public enum Kind { AKM, AWP, CROSSBOW, BOW, GRENADE, FLASH }
 
     /** 每种武器一份运行时状态（同一时刻只有手上那把在推进，其余衰减归零） */
     public static final class State {
@@ -90,6 +90,9 @@ public final class WeaponAnim {
         if (stack == null || stack.isEmpty()) return null;
         Item item = stack.getItem();
         if (item instanceof AkmRifleItem) return Kind.AKM;
+        if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem) {
+            return Kind.AWP;
+        }
         if (item instanceof CrossbowWeaponItem) return Kind.CROSSBOW;
         if (item instanceof CompoundBowItem) return Kind.BOW;
         if (item instanceof FragGrenadeItem) return Kind.GRENADE;
