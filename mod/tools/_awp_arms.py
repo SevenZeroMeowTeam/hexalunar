@@ -20,13 +20,13 @@ SHOULDER_R = (0.55, -0.85, -0.80)
 SHOULDER_L = (-0.42, -0.85, -0.78)
 ARM_LEN = 0.75
 # models/item/awp.json 的 display 平移
-AWP_TX, AWP_TY, AWP_TZ = -2.6, 4.22, 0.50
+AWP_TX, AWP_TY, AWP_TZ = -2.6, 1.575, 0.50
 
 # 拉栓 / 手臂常量（与 AwpGeoModel 一致）
-BOLT_LIFT, BOLT_BACK = 62.0, 1.9
+BOLT_LIFT, BOLT_BACK = 88.0, 3.4
 BOLT_P = (0.615, 1.50, 0.375)
 BOLT_GRIP_DX, BOLT_GRIP_DY = 0.685, -0.05
-BOLT_HAND_IN, BOLT_HAND_OUT = 0.18, 0.88
+BOLT_HAND_IN, BOLT_HAND_OUT, BOLT_HAND_SNAP = 0.18, 0.60, 0.18
 TRIGGER_PULL = 11.0
 ARM_GRIP = (0.0, -1.07, 1.31)
 ARM_SUPPORT = (0.0, -0.55, -3.30)
@@ -74,7 +74,7 @@ def right_hand(bp):
     elif bp < BOLT_HAND_OUT:
         t = None
     else:
-        t = ease((bp - BOLT_HAND_OUT) / (1.0 - BOLT_HAND_OUT))
+        t = ease(min(1.0, max(0.0, (bp - BOLT_HAND_OUT) / BOLT_HAND_SNAP)))
     if t is None:
         return h
     return tuple(ARM_GRIP[i] + (h[i] - ARM_GRIP[i]) * t for i in range(3))

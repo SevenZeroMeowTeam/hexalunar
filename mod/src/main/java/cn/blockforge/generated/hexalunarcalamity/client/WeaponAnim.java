@@ -176,6 +176,13 @@ public final class WeaponAnim {
                     st.reload = AkmRifleItem.reloadProgress(held, gameTime);
                     st.wasUsing = using;
                 }
+                case AWP -> {
+                    // ★★ r84：这个 case 以前**漏了** ⇒ {@code Kind.AWP.aim} 永远是 0，
+                    //   「抵肩举枪（镜筒光轴顶到屏幕中心）」的姿态从来没生效过（以前开镜是整屏遮罩、
+                    //   枪还藏着，所以看不出来）。现在开镜看得见枪了，一按右键枪必须抬到屏幕中央。
+                    st.aim = approach(st.aim, using ? 1.0F : 0.0F, 0.3F);
+                    st.wasUsing = using;
+                }
                 case CROSSBOW -> {
                     st.aim = approach(st.aim, using ? 1.0F : 0.0F, 0.35F);
                     // 上弦（装填）：进度喂给模型覆盖属性与分件动画

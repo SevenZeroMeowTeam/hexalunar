@@ -34,12 +34,10 @@ public class AwpGeoRenderer extends GeoItemRenderer<AwpRifleItem> {
                              net.minecraft.client.renderer.MultiBufferSource bufferSource,
                              int packedLight, int packedOverlay) {
         AwpGeoModel.handPass = isHand(transformType);
-        AwpGeoModel.firstPerson = isFirstPerson(transformType);
         try {
             super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
         } finally {
             AwpGeoModel.handPass = false;
-            AwpGeoModel.firstPerson = false;
         }
     }
 
@@ -49,12 +47,6 @@ public class AwpGeoRenderer extends GeoItemRenderer<AwpRifleItem> {
                 || type == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_LEFT_HAND
                 || type == net.minecraft.world.item.ItemDisplayContext.THIRD_PERSON_RIGHT_HAND
                 || type == net.minecraft.world.item.ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
-    }
-
-    /** 第一人称：腰射下压角只加在这里（第三人称枪要端平） */
-    static boolean isFirstPerson(net.minecraft.world.item.ItemDisplayContext type) {
-        return type == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
-                || type == net.minecraft.world.item.ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
     }
 
     /** GeckoLib 4.8.4 的 getRenderLayers() 是 default 方法，重写即可挂上流光层 */

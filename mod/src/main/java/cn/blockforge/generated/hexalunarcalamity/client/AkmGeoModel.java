@@ -70,6 +70,7 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
      * 推的 +0.15）和任何角度都会让枪和双手一起上下点头。
      */
     private static final float KICK_BACK = 1.35F;
+    // ★ r84：KICK_BACK 已不再使用（后坐改成只推镜头，见 ClientEvents.applyRecoilKick）
 
     /**
      * 当前这一遍渲染的枪上装了哪个瞄具（由 {@link AkmGeoRenderer} 从被渲染的 ItemStack 读 NBT 设入）。
@@ -199,7 +200,7 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
      *
      * <p>举枪（ADS）只做平移：一旦叠加角度，「照门—准星」那条线就会离开屏幕中心。
      */
-    private static void computeMovePose(float[] out, int sight) {
+    static void computeMovePose(float[] out, int sight) {
         float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F);
         float px = 0.0F;
         float py = 0.0F;
@@ -212,8 +213,8 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             py = WeaponMount.akmAimDy(sight) * aim;
             pz = WeaponMount.AKM_AIM_DZ * aim;
         }
-        // 后坐：只沿枪管向后拖（举枪时收掉大半，别把瞄准线顶跑）
-        pz += KICK_BACK * WeaponAnim.of(WeaponAnim.Kind.AKM).recoil * (1.0F - 0.7F * aim);
+        // ★ r84：后坐力**不再推枪/手臂**（用户要求「后坐力仅视角晃动，不是手臂和 akm 上下晃动」）
+        //   —— 枪与双手稳住不动，后座改由 ClientEvents.applyRecoilKick 推镜头。
         out[0] = px;
         out[1] = py;
         out[2] = pz;
@@ -382,9 +383,11 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
             boltPoint(p, TMP_B);
             return lerp(TMP_A, TMP_B, ease((p - 0.82F) / 0.08F), out);
         }
-        if (p < 0.97F) return boltPoint(p, out);  // 拉栓
+        if (p < 0.93F) return boltPoint(p, out);  // 拉栓
+        // ★ r84：回护木用**更长**的窗口（0.93~1.00，约 3 tick）—— 原先只在最后 3%（~1 tick）里
+        //   从拉机柄甩回护木，看着就是「换弹完成手臂向下晃一下」；现在平滑滑回、稳稳停在平行位置。
         boltPoint(p, TMP_B);                   // 回护木
-        return lerp(TMP_B, ARM_HANDGUARD, ease((p - 0.97F) / 0.03F), out);
+        return lerp(TMP_B, ARM_HANDGUARD, ease((p - 0.93F) / 0.07F), out);
     }
 
     /** 弹匣上的握点（跟着弹匣一起下移 + 前倾） */

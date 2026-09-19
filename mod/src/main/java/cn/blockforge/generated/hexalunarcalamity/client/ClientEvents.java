@@ -52,13 +52,18 @@ public final class ClientEvents {
         if (!player.isUsingItem()) return;
         if (AmmoUtil.weaponAmmoType(player.getUseItem()) == null) return;
         if (scoping(player)) {
-            // 十字弩 4 倍镜 / AWP 8 倍镜：视野缩到 1/N
-            boolean awp = player.getUseItem().getItem() instanceof cn.blockforge.generated
-                    .hexalunarcalamity.weapon.AwpRifleItem;
-            event.setNewFovModifier(awp
-                    ? 1.0F / cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem.SCOPE_ZOOM
-                    : 1.0F / cn.blockforge.generated
-                    .hexalunarcalamity.weapon.CrossbowWeaponItem.SCOPE_ZOOM);
+            // 十字弩：整屏镜筒遮罩 + 枪与手都藏掉 ⇒ 可以给强变焦（1/4）
+            if (player.getUseItem().getItem() instanceof cn.blockforge.generated
+                    .hexalunarcalamity.weapon.CrossbowWeaponItem) {
+                event.setNewFovModifier(1.0F / cn.blockforge.generated
+                        .hexalunarcalamity.weapon.CrossbowWeaponItem.SCOPE_ZOOM);
+                return;
+            }
+            // ★ r84：AWP 8 倍镜 / AKM 4 倍镜**不再藏枪**，所以变焦只能给「轻微」的 ——
+            //   原版第一人称手持渲染用的是**同一个投影**（ItemInHandRenderer 里没有自己的 perspective），
+            //   强变焦（1/8、1/4）会把枪本体一起放大 4~8 倍（vanilla 望远镜正因此藏手），实测会糊满全屏。
+            //   这里跟 AKM 机械瞄具用同一个 0.72（≈1.4 倍）：枪只稍微放大，镜环照旧在屏幕中心。
+            event.setNewFovModifier(event.getNewFovModifier() * 0.72F);
             return;
         }
         // AKM 装了红点：只轻微拉近（仍然看得见枪本体）
@@ -101,6 +106,20 @@ public final class ClientEvents {
                 .AkmRifleItem
                 && cn.blockforge.generated.hexalunarcalamity.weapon.Sights.sight(using)
                 == cn.blockforge.generated.hexalunarcalamity.weapon.Sights.SCOPE;
+    }
+
+    /**
+     * ★ r84：需要「整屏镜筒遮罩」的开镜状态 —— 现在只剩**十字弩**。
+     *
+     * <p>AWP / AKM 4 倍镜已改成「枪与手臂一起抬起来瞄准、看得见镜环」（用户要求），
+     * 只叠一层分划（见 {@link #drawScopeReticle}），变焦只能给轻微的（见 FOV 那一段）。
+     */
+    private static boolean maskScoping(Player player) {
+        return player != null && player.isUsingItem()
+                && player.getUseItem().getItem() instanceof cn.blockforge.generated
+                .hexalunarcalamity.weapon.CrossbowWeaponItem
+                && cn.blockforge.generated.hexalunarcalamity.weapon.CrossbowWeaponItem
+                .isScoping(player);
     }
 
     /**
@@ -195,6 +214,7 @@ public final class ClientEvents {
         if (mc.player == null || mc.level == null) return;
         applyBowCamera(event);
         applyAkmCamera(event);
+        applyRecoilKick(event);
         float amp = stunStrength(mc.player);
         if (amp <= 0.0F) return;
         float t = mc.level.getGameTime() + (float) event.getPartialTick();
@@ -222,6 +242,32 @@ public final class ClientEvents {
         event.setPitch(event.getPitch() - bone.getRotX() * Mth.RAD_TO_DEG);
         event.setYaw(event.getYaw() + bone.getRotY() * Mth.RAD_TO_DEG);
         event.setRoll(event.getRoll() + bone.getRotZ() * Mth.RAD_TO_DEG);
+    }
+
+    /**
+     * ★ r84：**后坐力只推视角** —— 枪与双手不再跟着前后上下动（用户要求「后坐力仅视角晃动」）。
+     *
+     * <p>冲量来自 {@link WeaponAnim} 的 {@code recoil / recoilYaw}（开火那一下最大，之后每 tick ×0.55
+     * 衰减 ⇒ 天生平滑），这里每帧叠到镜头 pitch / yaw 上：枪口上跳 + 随机偏航；举枪（aim）时收掉一半。
+     */
+    private static void applyRecoilKick(ViewportEvent.ComputeCameraAngles event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        ItemStack held = mc.player.getMainHandItem();
+        WeaponAnim.State st;
+        if (held.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AkmRifleItem) {
+            st = WeaponAnim.of(WeaponAnim.Kind.AKM);
+        } else if (held.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .AwpRifleItem) {
+            st = WeaponAnim.of(WeaponAnim.Kind.AWP);
+        } else {
+            return;
+        }
+        if (st.recoil < 0.002F && Math.abs(st.recoilYaw) < 0.002F) return;
+        float scale = 1.0F - 0.5F * Mth.clamp(st.aim, 0.0F, 1.0F);
+        event.setPitch(event.getPitch() - st.recoil * 2.2F * scale);
+        event.setYaw(event.getYaw() + st.recoilYaw * 0.9F * scale);
     }
 
     /**
@@ -265,16 +311,20 @@ public final class ClientEvents {
     }
 
     /**
-     * 开镜（十字弩 / AKM+4 倍镜）时隐藏第一人称的手与武器（像原版望远镜那样只看镜内）。
+     * 第一人称补画手臂；**只有十字弩的整屏开镜**会把手与武器一起藏掉（像原版望远镜那样）。
      *
-     * <p>非开镜时，主手拿 AKM / 十字弩再把玩家自己的**两条手臂**补上（见 {@link WeaponArms}）——
+     * <p>★ r83：AWP / AKM+4 倍镜开镜时**不藏** —— 枪本体与手臂照旧渲染（用户要的「变焦但看得见枪」）。
+     * 但原版手持渲染用的是已经缩小的投影，模型会跟着放大 4~8 倍，所以在眼睛处乘一个
+     * 反向缩放 {@link #scopeCounterScale()}（手臂在这里缩，枪在各自渲染器的 renderByItem 里缩）。
+     *
+     * <p>非开镜时，主手拿 AKM / 十字弩 / AWP 再把玩家自己的**两条手臂**补上（见 {@link WeaponArms}）——
      * 原版对非空物品只画物品不画手；左手还会按换弹进度做事：AKM 托护木 / 抽弹匣 / 拉机柄，
-     * 十字弩拉弦 / 递箭上槽。
+     * AWP 托护木 / 拆装弹匣，十字弩拉弦 / 递箭上槽。
      */
     @SubscribeEvent
     public static void onRenderHand(net.minecraftforge.client.event.RenderHandEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null && scoping(mc.player)) {
+        if (mc.player != null && maskScoping(mc.player)) {
             event.setCanceled(true);
             return;
         }
@@ -292,14 +342,15 @@ public final class ClientEvents {
             // AWP：右手握把 + 左手托枪管（换弹时去抓弹匣）
             WeaponArms.renderAwp(mc, event.getPoseStack(), event.getMultiBufferSource(),
                     event.getPackedLight());
-        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.item.GrenadeItem) {
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.item
+                .GrenadeItem) {
             // 手雷 / 震爆弹：右手握雷；左手只在拔销 / 插销时伸进来抓拉环
             WeaponArms.renderGrenade(mc, event.getPoseStack(), event.getMultiBufferSource(),
                     event.getPackedLight());
         }
     }
 
-    /** 开镜时绘制倍镜遮罩：圆形视野 + 镜缘暗角 + 对称十字分划 */
+    /** 十字弩的整屏镜筒遮罩：圆形视野 + 镜缘暗角 + 分划（AWP / AKM+4 倍镜改用 {@link #drawScopeReticle}） */
     private static void drawScopeOverlay(GuiGraphics g) {
         int w = g.guiWidth();
         int h = g.guiHeight();
@@ -333,7 +384,18 @@ public final class ClientEvents {
             g.fill(cx - outer, y, cx - outer + 2, y + 1, 0x33FFFFFF);
             g.fill(cx + outer - 2, y, cx + outer, y + 1, 0x33FFFFFF);
         }
-        // 分划：AWP 用十字分划（粗外柱 + 细交叉 + 密位点），十字弩保留原来的细十字
+        drawScopeReticle(g);
+    }
+
+    /**
+     * 只叠分划、不铺遮罩：**AWP 8 倍镜 / AKM 4 倍镜（r83 起）** 用这套 ——
+     * 视野照样缩到 1/倍率，但枪本体与手臂照旧渲染，所以看得到枪与镜环（用户要的样式）。
+     * AWP 用 duplex 十字（粗外柱 + 细交叉 + 密位点），十字弩 / AKM 沿用原来的细十字。
+     */
+    private static void drawScopeReticle(GuiGraphics g) {
+        int cx = g.guiWidth() / 2;
+        int cy = g.guiHeight() / 2;
+        int r = (int) (Math.min(g.guiWidth(), g.guiHeight()) * 0.44F);
         if (awpScoping()) {
             drawCrossReticle(g, cx, cy, r);
             return;
@@ -435,14 +497,16 @@ public final class ClientEvents {
         }
 
         if (!mc.options.hideGui) {
-            boolean zoom = scoping(mc.player);
-            if (zoom) {
-                drawScopeOverlay(g);
-            } else {
-                drawAmmoHud(mc, g);
-                GrenadeHud.render(mc, g);
-                drawRedDot(mc, g);
+            if (scoping(mc.player)) {
+                if (maskScoping(mc.player)) {
+                    drawScopeOverlay(g);        // 十字弩：整屏镜筒遮罩 + 分划
+                } else {
+                    drawScopeReticle(g);        // AWP 8 倍 / AKM 4 倍镜：只叠分划，枪本体照旧渲染
+                }
             }
+            drawAmmoHud(mc, g);
+            GrenadeHud.render(mc, g);
+            drawRedDot(mc, g);
             drawHitMarker(g);
         }
 

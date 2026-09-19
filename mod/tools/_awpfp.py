@@ -8,12 +8,12 @@
 
 用法:
   python tools\\_awpfp.py <geo.json> <tex.png> <out.png> [选项]
-    --tx/-ty/--tz    display.firstperson_righthand.translation（默认取 AWP 的 -2.6/4.22/0.5）
+    --tx/-ty/--tz    display.firstperson_righthand.translation（默认取 AWP 的 -2.6/1.575/0.5）
     --rot rx,ry,rz   display 旋转（默认 0,0,0）
     --fov 70         竖直视场角
     --h 816 --aspect 1.79   输出高度 / 画幅比（默认就是 1462x816 那一档）
     --aim            叠加举枪（ADS）平移；--kick 0..1 开火后坐；--bp 0..1 拉栓进度
-    --pitch -12.5    move 骨骼下压角（度，负 = 枪口下压）——对应 AwpGeoModel.HIP_PITCH
+    --pitch -12.5    move 骨骼下压角（度，负 = 枪口下压）——默认 0（= 现在 Java 的做法：无额外旋转）
     --hands          把两只手臂画成方块（校核手有没有连在枪上）
     --svg            额外输出一张线框图（看枪管轴线在屏幕上的斜率）
 """
@@ -32,9 +32,9 @@ import geo_texview as gv                                    # noqa: E402  复用
 # ---------------------------------------------------------------- 与原版一致的手部基准
 ARM_X, ARM_Y, ARM_Z = 0.56, -0.52, -0.72
 # AWP 的 display（models/item/awp.json → firstperson_righthand）
-AWP_T = (-2.6, 4.22, 0.5)
-# 举枪增量（WeaponMount.AWP_AIM_*）
-AWP_AIM = (-6.36, 0.95, 1.4)
+AWP_T = (-2.6, 1.575, 0.5)
+# 举枪增量（WeaponMount.AWP_AIM_*；DY 随 AWP_TY 变：8.32 − 3.15 − TY）
+AWP_AIM = (-6.36, 3.595, 1.4)
 # 后坐 / move 骨骼 pivot
 KICK_BACK = 1.9
 MOVE_P = (0.0, -1.0725, 1.305)

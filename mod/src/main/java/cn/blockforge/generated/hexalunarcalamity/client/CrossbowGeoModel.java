@@ -280,9 +280,11 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             boltPoint(TMP_A);
             return lerp(ARM_FETCH, TMP_A, ease((p - 0.70F) / 0.14F), out);
         }
-        if (p < 0.97F) return boltPoint(out);            // 扶着箭，等上弦完成
+        if (p < 0.92F) return boltPoint(out);            // 扶着箭，等上弦完成
+        // ★ r84：回护木用更长的窗口（0.92~1.00，约 3~4 tick）—— 原先最后 3% 里从箭槽甩回护木，
+        //   看着就是「上弦完成手臂向下晃一下」；现在平滑滑回。
         boltPoint(TMP_B);                                // 回护木
-        return lerp(TMP_B, ARM_SUPPORT, ease((p - 0.97F) / 0.03F), out);
+        return lerp(TMP_B, ARM_SUPPORT, ease((p - 0.92F) / 0.08F), out);
     }
 
     /** 弦心上的握点（弦心 z = NOCK_Z0 + nockTravel(lastFlex, draw)，手抓在它后面一点、弦面下方） */

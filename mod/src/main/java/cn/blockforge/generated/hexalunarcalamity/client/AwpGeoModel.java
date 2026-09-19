@@ -47,11 +47,8 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      */
     static boolean handPass = false;
 
-    /** 是不是第一人称（腰射下压角只加在第一人称；第三人称枪得端平） */
-    static boolean firstPerson = false;
-
-    /** 开火后坐（模型像素）：**只沿枪管方向后拖**，不给角度也不给上下 */
-    private static final float KICK_BACK = 1.9F;
+    /** 开火后坐：**r84 起不再推枪**（改成只推镜头，见 ClientEvents.applyRecoilKick） */
+    private static final float KICK_BACK_UNUSED = 1.9F;
 
     /** move 骨骼 pivot（geo 里的值）—— 第一人称手臂靠它把骨骼位移换算成相机空间 */
     private static final float MOVE_PX = 0.0F;
@@ -69,10 +66,14 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     /** move 姿态临时缓冲（骨骼与手臂共用；客户端渲染单线程，不会并发） */
     private static final float[] MOVE_POSE = new float[6];
 
-    /** 拉栓：拉机柄上抬角（与 animation.awp.bolt 的 62° 一致） */
-    private static final float BOLT_LIFT = 62.0F;
-    /** 拉栓：枪机后退量（模型像素） */
-    private static final float BOLT_BACK = 1.9F;
+    /**
+     * 拉栓：拉机柄上抬角（度）—— r84 由 62° 提到 **88°**（几乎竖直），抡柄的动作一眼能看见；
+     * 88° 时柄头到 Y≈2.14，仍在 8 倍镜筒（底面 2.75）之下，不会穿模。
+     * 与 {@code animation.awp.bolt}、{@code tools/_awp_arms.py} 里的值保持一致。
+     */
+    private static final float BOLT_LIFT = 88.0F;
+    /** 拉栓：枪机后退量（模型像素）—— r84 由 1.9 提到 **3.4**，看得出「拉到底」 */
+    private static final float BOLT_BACK = 3.4F;
     /** {@code bolt} 骨骼 pivot（geo 里的值）—— 拉机柄绕它抬起来 */
     private static final float BOLT_PX = 0.615F;
     private static final float BOLT_PY = 1.50F;
@@ -80,33 +81,35 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     /** 拉机柄握点相对 pivot 的偏移（模型像素）：柄头 x[0.87,1.2525]，手再往外一点正好包住 */
     private static final float BOLT_GRIP_DX = 0.685F;
     private static final float BOLT_GRIP_DY = -0.05F;
-    /** 右手「从握把摸到拉机柄」与「拉完回到握把」在拉栓进度里的区间 */
+    /**
+     * 右手「从握把摸到拉机柄」（{@code BOLT_HAND_IN} 之前）与「拉完立即回握把」的区间。
+     * r84：枪机一拉到底（0.60）就松手，在 {@code BOLT_HAND_SNAP}（约 1.8 tick）里**快速**回到握把，
+     * 不再一路跟着枪机慢慢滑回去。
+     */
     private static final float BOLT_HAND_IN = 0.18F;
-    private static final float BOLT_HAND_OUT = 0.88F;
+    private static final float BOLT_HAND_OUT = 0.60F;
+    /** 回握把用多少进度（r84：0.08 → 0.18，约 4 tick；太快就是「手向下甩一下」） */
+    private static final float BOLT_HAND_SNAP = 0.18F;
     /** 击发：扣扳机（绕顶部销轴向后转 11°，与 animation.awp.fire 一致） */
     private static final float TRIGGER_PULL = 11.0F;
-
-    /**
-     * ★ 腰射下压角（度，负 = 枪口下压）：枪就画在眼睛右下方，枪管轴线**平行于视线**，
-     * 透視下它的投影恰好收敛到屏幕中心 —— 看起来就是「枪斜着往上翘、枪托掉下去」。
-     * 压这么多度以后轴线在屏幕上就是水平的（离线推算见 {@code tools/_awpscan.py}）。
-     * 举枪时自动归零（不开镜看不到枪，也就不用管透视），第三人称也不加。
-     */
-    private static final float HIP_PITCH = -14.0F;
 
     /** 换弹：弹匣掉落距离 / 前倾角 */
     private static final float MAG_DROP = 2.6F;
     private static final float MAG_TILT = 26.0F;
 
     // ------------------------------------------------------------------ 抛壳轨迹
-    /** 抛壳窗口在拉栓进度里的位置：抽壳结束才被抛壳挺顶出去 */
+    /** 抛壳窗口在拉栓进度里的位置：抽壳结束才被抛壳挺顶出去（r84 窗口延长到 0.80，飞行看得更清楚） */
     private static final float CASE_T0 = 0.12F;
-    private static final float CASE_T1 = 0.62F;
-    /** 被枪机抽出的距离 / 抛出的初速（模型像素） */
-    private static final float CASE_BACK = 1.5F;
-    private static final float CASE_VX = 3.4F;
-    private static final float CASE_VY = 1.7F;
-    private static final float CASE_G = 0.9F;
+    private static final float CASE_T1 = 0.80F;
+    /**
+     * 被枪机抽出的距离 / 抛出的初速（模型像素）—— r84 整条弧线加大：
+     * 抽出 1.5 → **3.0**（跟得上 3.4 的枪机行程），抛向 +X 3.4 → **5.0**、向上初速 1.7 → 2.2，
+     * 让弹壳从抛壳口翻出去时**离开枪身与右臂**，能看清它三轴翻滚地飞走。
+     */
+    private static final float CASE_BACK = 3.0F;
+    private static final float CASE_VX = 5.0F;
+    private static final float CASE_VY = 2.2F;
+    private static final float CASE_G = 0.8F;
     /** 三轴翻滚（度） */
     private static final float CASE_SPIN_Z = 240.0F;
     private static final float CASE_SPIN_X = 150.0F;
@@ -138,9 +141,9 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
         long now = AwpAnimState.now();
 
         // ---------------------------------------------------------- 举枪（ADS）
-        // ★ 举枪只做平移：叠任何角度都会让「8 倍镜光轴」离开屏幕中心；
-        //   腰射时的下压角在 aim=1 时正好归零（见 computeMovePose）
-        computeMovePose(MOVE_POSE, firstPerson);
+        // ★ 举枪只做平移：叠任何角度都会让「8 倍镜光轴」离开屏幕中心。
+        //   腰射同样不给任何角度 —— 与 AKM 完全同一套持枪规则（见 computeMovePose）
+        computeMovePose(MOVE_POSE);
         CoreGeoBone move = getAnimationProcessor().getBone("move");
         if (move != null) {
             move.setRotX(MOVE_POSE[3]);
@@ -209,9 +212,11 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * <p>骨骼与手臂**共用这一份**：{@link #captureNow()} 也调它，所以枪和手不会差一帧。
      * 举枪只做平移（叠角度会把 8 倍镜光轴推离屏幕中心）；后坐只沿枪管后拖。
      *
-     * @param fp 第一人称：加腰射下压角（见 {@link #HIP_PITCH}）；第三人称端平枪
+     * <p>★ 三个角度**恒为 0** —— 与 AKM 完全同一套持枪规则：枪管轴线始终平行于视线。
+     * r82 曾给过第一人称 −14° 的腰射下压角，那等于让枪在世界里真的朝下 14°（看着就是「枪口下垂」），
+     * 已按用户要求去掉。将来若还要调屏幕上的倾斜感，请改 display 旋转并同步 {@link WeaponMount}。
      */
-    static void computeMovePose(float[] out, boolean fp) {
+    static void computeMovePose(float[] out) {
         float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AWP).aim, 0.0F, 1.0F);
         float px = 0.0F;
         float py = 0.0F;
@@ -222,12 +227,11 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
             py = WeaponMount.AWP_AIM_DY * aim;
             pz = WeaponMount.AWP_AIM_DZ * aim;
         }
-        pz += KICK_BACK * WeaponAnim.of(WeaponAnim.Kind.AWP).recoil * (1.0F - 0.7F * aim);
+        // ★ r84：后坐力**不再推枪/手臂**（用户要求「只晃视角」）—— 后座交给 ClientEvents.applyRecoilKick
         out[0] = px;
         out[1] = py;
         out[2] = pz;
-        // 腰射下压：枪管轴线在屏幕上要看起来「跟地平线平行」（举枪时归零）
-        out[3] = (fp ? HIP_PITCH * (1.0F - aim) : 0.0F) * Mth.DEG_TO_RAD;
+        out[3] = 0.0F;      // 不做任何额外旋转（与 AKM 同一套规则）
         out[4] = 0.0F;
         out[5] = 0.0F;
     }
@@ -239,7 +243,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * 所以手臂拿到的手位和物品渲染出来位置完全一致。
      */
     static void captureNow() {
-        computeMovePose(MOVE_POSE, true);
+        computeMovePose(MOVE_POSE);
         frame.capture(WeaponMount.AWP_TX, WeaponMount.AWP_TY, WeaponMount.AWP_TZ, 1.0F,
                 MOVE_PX, MOVE_PY, MOVE_PZ,
                 MOVE_POSE[0], MOVE_POSE[1], MOVE_POSE[2],
@@ -260,11 +264,16 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     /** 左手目标：换弹时伸手去抓弹匣（跟着它一起下坠），其余时间托在枪管下方 */
     static float[] leftHandPx(float[] out) {
         float rp = localReloadProgress();
-        if (rp < 0.0F) return copy(ARM_SUPPORT, out);
-        magPoint(rp, TMP_A);
-        if (rp < 0.12F) return lerp(ARM_SUPPORT, TMP_A, ease(rp / 0.12F), out);
-        if (rp < 0.82F) return copy(TMP_A, out);
-        return lerp(TMP_A, ARM_SUPPORT, ease((rp - 0.82F) / 0.18F), out);
+        if (rp < 0.0F) {
+            copy(ARM_SUPPORT, out);
+        } else {
+            magPoint(rp, TMP_A);
+            if (rp < 0.12F) lerp(ARM_SUPPORT, TMP_A, ease(rp / 0.12F), out);
+            else if (rp < 0.82F) copy(TMP_A, out);
+            else lerp(TMP_A, ARM_SUPPORT, ease((rp - 0.82F) / 0.18F), out);
+        }
+        out[1] += 0.8F * WeaponAnim.of(WeaponAnim.Kind.AWP).recoil;   // ★ r84 开火时微微上抬
+        return out;
     }
 
     /** 弹匣上的握点（跟着弹匣下移 + 前倾） */
@@ -340,11 +349,22 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      */
     static float[] rightHandPx(float[] out) {
         float bp = localBoltProgress();
-        if (bp < 0.0F) return copy(ARM_GRIP, out);
-        boltHandlePoint(bp, TMP_B);
-        if (bp < BOLT_HAND_IN) return lerp(ARM_GRIP, TMP_B, ease(bp / BOLT_HAND_IN), out);
-        if (bp < BOLT_HAND_OUT) return copy(TMP_B, out);
-        return lerp(TMP_B, ARM_GRIP, ease((bp - BOLT_HAND_OUT) / (1.0F - BOLT_HAND_OUT)), out);
+        if (bp < 0.0F) {
+            copy(ARM_GRIP, out);
+        } else {
+            boltHandlePoint(bp, TMP_B);
+            if (bp < BOLT_HAND_IN) {
+                lerp(ARM_GRIP, TMP_B, ease(bp / BOLT_HAND_IN), out);
+            } else if (bp < BOLT_HAND_OUT) {
+                copy(TMP_B, out);
+            } else {
+                lerp(TMP_B, ARM_GRIP,
+                        ease(Mth.clamp((bp - BOLT_HAND_OUT) / BOLT_HAND_SNAP, 0.0F, 1.0F)), out);
+            }
+        }
+        // ★ r84：开火时手臂**微微上抬**（用户要求）—— 用后坐冲量抬，衰减与枪口一致
+        out[1] += 0.8F * WeaponAnim.of(WeaponAnim.Kind.AWP).recoil;
+        return out;
     }
 
     /** 拉机柄握点（模型空间的绝对点）：绕 bolt pivot 抬起 LIFT 角，再随枪机后退 */

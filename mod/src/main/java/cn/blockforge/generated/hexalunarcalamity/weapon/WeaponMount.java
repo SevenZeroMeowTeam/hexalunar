@@ -136,12 +136,19 @@ public final class WeaponMount {
     /**
      * {@code models/item/awp.json → display.firstperson_righthand.translation}。
      *
-     * <p>AWP 的模型原点是**机匣中心**、握把（move 骨骼 pivot）在 {@code (0, -1.07, 1.31)}，
-     * 而 AKM 的原点就是握把 {@code (0, 1.75, 0)}。所以这里 = AKM 的平移 + 两个握把之差，
-     * 让「握把握在手里」的手感和 AKM 完全一致（离线推算，见 README 的坐标约定）。
+     * <p>★ 目标是「和 AKM 一样的持枪方式」：屏幕上两把枪的**枪管轴线重合**。
+     * 枪管轴线平行于视线时，它在屏幕上必然是**过屏幕中心的一条直线**，斜率只由
+     * 「轴线到眼睛的横向偏移」决定 —— AKM 的轴线在模型 Y=1.75（它的握把也在 1.75），
+     * AWP 的轴线在 Y=1.575，所以 {@code TY = AKM_TY + (1.75 − 1.575) = 1.575} 时两条线完全重合
+     * （离线实测：屏幕倾角 39.1°，与 AKM 的 39.1° 一致）。
+     *
+     * <p>⚠️ 副作用（模型原点不同带来的必然结果）：AWP 的握把（{@code move} 骨骼 pivot）
+     * 比它的枪管轴线低 2.65，所以这样摆以后**双手会比 AKM 的手位低 0.165 格**。
+     * 手臂走 {@code GunFrame}、跟着枪走，不会脱手；举枪（ADS）只做平移，
+     * 镜筒光轴照样顶到屏幕中心（见 {@link #AWP_AIM_DY}）。
      */
     public static final float AWP_TX = -2.6F;
-    public static final float AWP_TY = 4.22F;
+    public static final float AWP_TY = 1.575F;
     public static final float AWP_TZ = 0.50F;
     /** 8 倍镜光轴（模型 Y；对应 awp_gen.py 打印的 SCOPE_AXIS = 3.15） */
     public static final double AWP_SCOPE_Y = 3.15D;
@@ -153,28 +160,12 @@ public final class WeaponMount {
     /** 抛壳口（模型像素）：机匣右侧（弹壳从这儿翻出去） */
     public static final double[] AWP_EJECT = {0.90D, 1.39D, -0.60D};
     /**
-     * 腰射下压角（度，负 = 枪口下压）：和 {@code AwpGeoModel.HIP_PITCH} 是同一个数。
+     * ★ AWP 与 AKM 是**同一套持枪规则**：不做任何额外旋转（{@code AwpGeoModel.computeMovePose}
+     * 的三个角度恒为 0），所以枪口 / 抛壳点的模型坐标可以直接用，不需要按角度补偿。
      *
-     * <p>枪在屏幕上看着「斜着往上翘、枪托掉下去」是透视造成的（枪管轴线平行于视线，
-     * 它的投影必然收敛到屏幕中心），压这么多度以后轴线在屏幕上就水平了。
-     * 举枪（开镜）时骨骼里这个角归零，所以下面两个取点函数也只在 {@code !aiming} 时转。
+     * <p>r82 曾加过 {@code AWP_HIP_PITCH = -14°} 把枪管在屏幕上压成水平，但那等于让枪在世界里
+     * 真的朝下 14°（用户反馈「枪口下垂」）—— 已去掉。要调屏幕上的倾斜感请改 display 旋转。
      */
-    public static final float AWP_HIP_PITCH = -14.0F;
-    /** move 骨骼 pivot（模型像素）：整把枪绕它下压 */
-    private static final double[] AWP_MOVE_PIVOT = {0.0D, -1.0725D, 1.305D};
-
-    /** 把模型点按腰射下压角转一下（举枪时原样返回）——与骨骼旋转同一套数学 */
-    public static double[] awpHipPitch(double[] p, boolean aiming) {
-        if (aiming || AWP_HIP_PITCH == 0.0F) return p;
-        double a = Math.toRadians(AWP_HIP_PITCH);
-        double c = Math.cos(a);
-        double s = Math.sin(a);
-        double dy = p[1] - AWP_MOVE_PIVOT[1];
-        double dz = p[2] - AWP_MOVE_PIVOT[2];
-        return new double[]{p[0],
-                AWP_MOVE_PIVOT[1] + dy * c - dz * s,
-                AWP_MOVE_PIVOT[2] + dy * s + dz * c};
-    }
 
     /** 举枪时的 display X 增量（左撇子走另一侧） */
     public static float awpAimDx(LivingEntity entity) {
@@ -187,7 +178,7 @@ public final class WeaponMount {
                 AWP_TX + (aiming ? awpAimDx(entity) : 0.0F),
                 AWP_TY + (aiming ? AWP_AIM_DY : 0.0F),
                 AWP_TZ + (aiming ? AWP_AIM_DZ : 0.0F),
-                1.0F, awpHipPitch(modelPoint, aiming));   // awp.json 的 display scale = 1
+                1.0F, modelPoint);          // awp.json 的 display scale = 1；无额外旋转，模型点直接用
     }
     // ------------------------------------------------------------------ 复合弓
     /** models/item/compound_bow.json → display.firstperson_righthand（平移 0、scale 0.75） */
