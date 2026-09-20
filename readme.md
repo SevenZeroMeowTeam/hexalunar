@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r104`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r110`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r94.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r110.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -68,6 +68,9 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 > 由 `tools/crossbow_vox.py` **表面体素化**成 824 个方块（逐格从原 512² 贴图采样 UV）。
 > 骨骼名 / 握把原点 / 显示缩放都保持原样，所以武器动画、手部锚点不用重写。
 | **AWP 栓动狙击枪** | .338 狙击弹 | **单发 24 点伤害**（12 颗心，一枪基本带走）· **5 发弹匣 + 膛内 1 发**· 栓动（必须膛内有弹才能击发）· **每发后自动拉栓抛壳**（拉机柄抬 **88°**、枪机后退 **3.4px**、弹壳翻滚抛出，约 1.4 s 一发）· **8 倍镜**（右键抵肩）· 腰射散布大、抵肩几乎指哪打哪 · **有效射程 96 格**（射程内重力 0.004，比步枪弹更平）· 第一人称**双手：右手握把/拉栓、左手托护木** |
+| **Kar98k 栓动步枪**（r105 新增，r107 改装填/弹药/伤害） | **7.62×59mm**（`ammo_762_59`，与莫辛-纳甘**共用同一发**；与 7.62×39、.338 都不通用） | **独立模型**：木托长枪 + 下弯拉机柄 + 自带 **4 倍镜筒**（`tools/kar98k_gen.py` 生成）· **单发 50 点伤害**（25 颗心，**爆头 ×1.85**）· 初速 5.7 · **5 发内置弹仓 + 膛内 1 发** · **一次击发一发**：每发后自动拉栓**带出弹壳抛掉**（拉机柄抬 **64°**——下弯柄再大就捅进镜筒、枪机后退 2.6px）· **`R` = 用手一发一发压进弹仓**（开栓 15 tick → 每发 12 tick → 关栓上膛 16 tick；模型里那一发从机匣上方落进弹仓、左手跟着往下按；被打断的那一发 30% 概率掉地）· **4 倍镜**：抵肩走 **AWP 那套整屏镜筒遮罩**（世界变焦 1/4）· 目前**只能创造页签取用**（还没进探险箱掉落/配方） |
+| **莫辛-纳甘 M91/30 栓动步枪**（r106 新增） | **7.62×59mm**（`ammo_762_59`，与 7.62×39、.338 **都不通用**） | 右键抵肩（自带 4 倍镜）/ 左键击发 / `R` 逐发压弹 · **有效射程 84 格**（射程内重力 0.005）· **单发 26 点伤害**（13 颗心，**爆头 ×1.85**）· 初速 5.4 · **5 发固定弹仓**（无弹匣）：`R` = 开栓 15 tick → **每发 12 tick 一发一发压进弹仓** → 关栓上膛 16 tick；被打断的那一发有 30% 概率掉地（TaCZ `bullet_lost = 0.3`）· **拉栓自动「抽壳 → 抛壳 → 推下一发上膛」**（18 tick ≈ 0.85 s）· **出厂自带 4 倍镜**（整屏镜筒遮罩 + 世界变焦 1/4；拆掉镜筒就是**机瞄 ×2**）· 木托 + 发蓝钢 + 顶部导轨，**枪管加长**（整枪 22.4 模型像素 = 1.40 格）· **独立模型** `tools/mosin_gen.py` → 14 骨骼 / 97 方块 · **数值整套套用 TaCZ 的 Kar98k 配置** |
+| **M1 加兰德半自动步枪**（r108 新增） | **7.62×61mm**（`ammo_762_61`，与 7.62×39 / 7.62×59 / .338 **都不通用**） | **连射**（按住左键每 10 tick 一发，`tools/m1_garand_gen.py` 生成整木托 + 上下护木 + 右侧长导气杆）· **单发 22 点伤害**（11 颗心，**爆头 ×1.5**）· 初速 5.15 · **8 发漏夹 + 膛内 1 发**（`R` = 右手把漏夹压进机匣 → 枪机释放一次上膛，**一个漏夹只拉一次栓**）· **每发自动「枪机后退 → 带出弹壳抛向右上 → 复进顶下一发」**（8 tick，不用自己拉栓）· 打空最后一发**整只漏夹弹出「叮」一声** · **只有机瞄**（抵肩走 AKM 那套轻机瞄，视野 1/3）· 有效射程 72 格（射程内重力 0.0055）· **持枪参数照 TaCZ 步枪**（`zoom_model_fov = 45` / `iron_zoom = 1.33`） |
 | **复合弓** | 复合弓箭 / 尸毒箭 | 右键蓄力（20 tick 满蓄），**三段拉弦动画**（0.65 / 0.9 蓄力切换模型）· 蓄力越高穿透与伤害越强 · 没普通箭时自动改用尸毒箭 · **有效射程 34 格** |
 
 > **十字弩的弦（r60）**：上弦（已装填）后弦**不往后拉**，直接贴回两弓臂之间 ——
@@ -111,6 +114,25 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 > 整屏镜筒遮罩现在只剩十字弩在用。
 > 光轴参照点 = 模型 Y 3.15（`WeaponMount.AWP_SCOPE_Y`，必须与 `tools/awp_gen.py` 打印的 `SCOPE_AXIS` 一致）。
 
+> **Kar98k 的 4 倍镜（r105）**：与 AWP 同一套「整屏镜筒遮罩」开镜（`ClientEvents.scoping` 对
+> `Kar98kItem` 直接返回 true ⇒ 走 `maskScoping`，把枪与手臂一起藏掉、只留镜筒 + 分划 + 蓝圈），
+> 区别只有倍率：`Kar98kItem.SCOPE_ZOOM = 4.0`（世界变焦 1/4；AWP 现在也是 4 倍）。
+> 光轴参照点 = 模型 Y **4.40**（`WeaponMount.KAR98K_SCOPE_Y` = 镜筒方块 y 3.95…4.85 的中心
+> = geo 里 `scope` 骨骼 pivot 的 y，**必须与 `tools/kar98k_gen.py` 一致**）；
+> 枪模投影 FOV 是 `GunPose.MODEL_FOV_AIM_KAR98K = 40`（AKM 45 / AWP 25）。
+> 注意它和 AWP 不同的一点：**抵肩时枪本体不画**（整屏遮罩），所以那些举枪位移数只影响
+> 「开镜射击时枪口/抛壳点的世界坐标」，画面上看不到枪抬起来的过程。
+
+> **莫辛-纳甘的 4 倍镜 / 机瞄（r106）**：镜筒**出厂就拧在顶部导轨上**（`MosinRifleItem.SCOPE_ZOOM = 4.0`），
+> 抵肩走 **AWP / Kar98k 那套整屏镜筒遮罩**（`ClientEvents.scoping` 只在
+> `MosinRifleItem.sight(stack) == Sights.SCOPE` 时返回 true ⇒ 枪与手臂一起藏掉、只留镜筒 + 分划 + 蓝圈）；
+> **潜行 + 右键把镜拆下来就换机瞄** —— 视野放大 **2 倍**
+> （`MosinRifleItem.IRON_ZOOM = 2.0`，对齐 TaCZ `kar98_display.json` 的 `iron_zoom = 2`；AKM 是 1.33），
+> 这时 `scoping()` 为 false ⇒ **枪身照旧渲染**、看得见木托与枪管。
+> 光轴参照点 = 镜筒中心 **3.44**（`WeaponMount.MOSIN_SCOPE_Y`）/ 机瞄 **2.72**（`MOSIN_IRON_Y`），
+> **必须与 `tools/mosin_gen.py` 的 `SCOPE_Y` / `IRON_Y` 一致**；
+> 枪模投影 FOV = `GunPose.MODEL_FOV_AIM_MOSIN = 25`（TaCZ `zoom_model_fov = 25`）。
+
 ### 双手持枪（第一人称）
 
 原版对**非空物品**只画物品、不画手臂（`renderArmWithItem` 里只有空手才走 `renderPlayerArm`），
@@ -122,6 +144,9 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | **AKM** | 托护木 → 抓住弹匣抽出来（跟着弹匣下坠/前倾）→ 满弹匣升上来时扶着往上推 → 换到拉机柄拉栓上膛 → 回护木 |
 | **十字弩** | 托护木 → 抓住弩弦往后拉（跟着弦心）→ 松手下去取箭 → 把箭推上箭槽 → 回护木 |
 | **AWP** | 托护木（**拉栓时不动**，栓动步枪的支撑手就该留在原地）→ 换弹时伸手抓弹匣、跟着它下坠/前倾 → 回护木 |
+| **Kar98k** | 托护木（拉栓时不动，同上）→ **逐发压弹时抬到机匣上方，跟着每一发往下按**（它没有可拆弹匣，弹仓底板不动；位置量着几何挑：y 3.60→3.05 在机匣顶与 4 倍镜筒之间）→ 回护木；右手平时握把，**拉栓 / 开栓关栓时抓下弯拉机柄**跟着枪机抬起/后退 |
+| **莫辛-纳甘** | **左手全程扶枪**（托前托把枪端稳，不参与装填）；**逐发压弹改由右手**：手从拉机柄移到机匣上方（x +0.50，避开 4 倍镜筒），一发一发往下按（弹仓式，没有可拆弹匣）。右手平时握**腕部**，**拉栓 / 开栓 / 关栓时抓下弯拉机柄**跟着枪机抬起（90°）/ 后退（2.3px） |
+| **M1 加兰德** | **左手全程扶枪**（加兰德换弹本来就是单手压漏夹）；**右手**平时握托颈、**射击时不动**（枪机是导气杆自己动的），换弹时抬到机匣上方把 **8 发漏夹**压下去、再抓住拉机柄跟着枪机复进（「拉一次栓」那一下） |
 
 - 手的目标点写在各自 GeoModel 里（模型像素），经 `client/GunFrame.java` 换成相机空间；
   `GunFrame` 记的是 `move` 骨骼（含**举枪位移**与**开火后坐**），所以手臂自动跟着枪一起动，
@@ -189,7 +214,7 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
   （Z-buffer + 透视正确 UV），渲染结果与游戏截图逐像素级对得上，调手持姿态再也不必开游戏；
   `--hands` 会把两条手臂画成方块，校核「手有没有连在枪上」。扫角度用 `mod/tools/_awpscan.py`
 
-> **获取途径**：四把武器本体可在原版探险箱里按概率开出（附赠一份对应弹药）—— 常见箱 6%（地牢 / 矿井 / 神庙 / 前哨 / 村庄武器商…）、稀有箱 16%（古城 / 林宅 / 末地城 / 宝藏 / 堡垒…），权重 复合弓 6 : 十字弩 3 : AKM 1 : **AWP 1**（稀有箱 3 : 4 : 3 : **2**）；也可在创造模式「六相月灾」页签直接取用。
+> **获取途径**：六把武器本体可在原版探险箱里按概率开出（附赠一份对应弹药）—— 常见箱 6%（地牢 / 矿井 / 神庙 / 前哨 / 村庄武器商…）、稀有箱 16%（古城 / 林宅 / 末地城 / 宝藏 / 堡垒…），权重 复合弓 6 : 十字弩 3 : AKM 1 : **AWP 1** : **莫辛-纳甘 2** : **M1 加兰德 2**（稀有箱 3 : 4 : 3 : **2** : **4** : **4**，莫辛配 10 / 15 发 7.62×59mm、M1 配 10 / 15 发 7.62×61mm）；也可在创造模式「六相月灾」页签直接取用（**Kar98k 目前只能这样拿**）。
 
 ### 弹药与弹药盒
 
@@ -199,10 +224,14 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 | 复合弓箭 | — | 木棍 + 燧石 + 线 ×4 |
 | 尸毒箭 | — | 复合弓箭 + 尸毒萃取剂 ×2 |
 | 7.62×39mm | — | 火药 + 铁粒 ×6 |
-| **.338 狙击弹** | — | 火药 + 铁锭 ×4（AWP 专用，与 7.62 **不通用**）|
+| **.338 狙击弹** | — | 火药 + 铁锭 ×4（**AWP 专用**，与 7.62 都不通用）|
+| **7.62×59mm** (`ammo_762_59`) | — | 火药 + 铁锭 ×4（无序，**莫辛-纳甘 / Kar98k 共用**，与 7.62×39、.338 **都不通用**）|
+| **7.62×61mm** (`ammo_762_61`) | — | 火药 + 铁锭 ×4（无序，**M1 加兰德专用**，与 7.62×39 / 7.62×59 / .338 **都不通用**）|
 | 弩箭 / 箭矢 / 步枪弹药盒 | 64 / 96 / 300 | 同一形状 `ppp/p■p/iii`，**中心槽放对应弹药**（三个配方靠中心材料区分，不会互相冲突） |
 | **.338 弹药盒** | 120 | 同上形状，**中心槽放 .338 狙击弹**；快捷栏 HUD 占第 4 格 |
-| 创造弹药箱 | ∞ | 创造页；**放在物品栏（快捷栏 / 背包 / 副手）里就生效**：四把武器无限供弹，不用手持、不用切弹种 |
+| **7.62×59mm 弹药盒** | **150** | 同上形状（`ppp/p■p/iii`，与 `ammo_box_sniper` 同款），**中心槽放 7.62×59mm 子弹**；快捷栏 HUD 占第 5 格 |
+| **7.62×61mm 弹药盒** | **128** | 同上形状，**中心槽放 7.62×61mm 子弹**（钢蓝灰标签带，与 7.62×39 无带 / 7.62×59 红棕带区分）；快捷栏 HUD 占第 6 格 |
+| 创造弹药箱 | ∞ | 创造页；**放在物品栏（快捷栏 / 背包 / 副手）里就生效**：六把武器无限供弹，不用手持、不用切弹种 |
 
 ### 投掷物
 
@@ -467,6 +496,9 @@ tools/  开发辅助脚本（见第五节）
 | `_awpscan.py` | 扫描「俯仰角 ↦ 枪管轴线屏幕倾角」（display 旋转 / `move` 骨骼旋转两套都算），用来定腰射下压角 |
 | `_awp_arms.py` | AWP 双手**可达性校核**：把手部落点换算到相机空间，检查肩距是否在 `drawArm` 的 (0.1, 3.0) 格内、拉伸倍率多少、在画面哪个位置 |
 | `_awpanim.py` | 把某段动画按时间点烘成静态 geo 再出图（拉栓 / 抛壳 / 换弹 / 开镜的**故事板**）|
+| `kar98k_gen.py` | **Kar98k 模型生成器**（r105，r107 加弹）：程序化画木托长枪 + 下弯拉机柄 + 自带 4 倍镜筒 + 机匣里的黄铜弹壳（`casing` 骨骼）+ **压弹时那一发**（`round_in` 骨骼，7.62×59 弹壳/弹肩/弹头三段，弹头朝 −Z），一次输出 `geo/kar98k.geo.json`（11 骨骼 / 29 方块）+ `textures/models/kar98k_geo.png` + `textures/models/kar98k_geo_glowmask.png`（流光遮罩只留钢 / 镜筒 / 镜片 / 黄铜四条色带，木托不发光）。末尾打印骨骼表与包围盒 —— **`WeaponMount.KAR98K_*` 与 `Kar98kGeoModel` 的模型点都要照着这份打印量** |
+| `m1_garand_gen.py` | **M1 加兰德模型生成器**（r108）：整木托（胡桃木）+ 上下两片木护木包住枪管 + 机匣 + **右侧长导气杆** + 大觇孔照门 + 机瞄 + 扳机护圈环 + 黄铜弹壳 + **8 发漏夹**（`clip_in` 骨骼），输出 `geo/m1_garand.geo.json`（10 骨骼 / 29 方块）+ 贴图 + 流光遮罩；末尾打印**关键模型点**（枪口 / 瞄准线 3.10 / 抛壳口 / 握把 / 压漏夹手位）——**这些数要原样抄进 `WeaponMount.M1_*` 与 `M1GarandGeoModel`**。用法同 kar98k：跑完再 `geo2bbmodel` 导 `.bbmodel` |
+| `gen_ammo762_61_icons.py` | 画 **7.62×61mm（M1 加兰德）** 子弹与弹药盒的 16×16 图标（细长瓶颈弹壳 + 铜被甲尖弹头；弹盒 = 军绿铁盒 + **钢蓝灰标签带**）|
 | `_oggdur.py` | 不装第三方库读 Ogg 时长（解析 page 的 granule / 采样率）—— 配音效前先量长度，再用 `playSound` 的 pitch 对齐动作时长 |
 | `fp_preview.py` | 第一人称 / GUI / 第三人称离线预览：读模型 JSON 的 `display` + OBJ，按游戏同样的矩阵光栅化出 PNG，并打印屏幕像素包围盒。<br>调手持姿态用它：`python fp_preview.py --json akm.json --obj akm.obj --ctx firstperson_righthand --rot 0,0,0 --trans=-5,-3,4.5 --scale=0.5 --out t.png` |
 | `obj_normalize.py` | OBJ 顶点 ÷16（单位修复），自动留 `.unit16bak` 备份 |
@@ -490,6 +522,8 @@ tools/  开发辅助脚本（见第五节）
 | **AWP 腰射姿态 / 屏幕斜不斜** | `client/AwpGeoModel.java` 的 `HIP_PITCH`（**-14°**，举枪时 ×(1-aim) 归零、第三人称不加）+ `weapon/WeaponMount.java` 的 `AWP_HIP_PITCH` / `awpHipPitch()`（**两处必须一致**，后者给枪口/抛壳取点用）；离线扫角 `tools/_awpscan.py`、看效果 `tools/_awpfp.py --pitch -14` |
 | **AWP 数值（弹匣 / 时序 / 弹道）** | `weapon/AwpRifleItem.java`（`MAG_SIZE` 5 · `RELOAD_TICKS` 44 · `BOLT_TICKS` 22 · `BOLT_DELAY` 6 · `CYCLE_TICKS` 28 · `BULLET_SPEED` 6.2 · `SCOPE_ZOOM` 8）+ `Ballistics.AWP_RANGE` / `AWP_IN_RANGE_GRAVITY` + `BulletEntity.SNIPER_DAMAGE`（24；用初速 >5.5 识别狙击弹）|
 | **AWP 栓动 / 抛壳 / 扳机 / 手** | `client/AwpGeoModel.java`：`boltLiftAt` / `boltBackAt`（**骨骼与右手共用**）、`BOLT_LIFT` 62° / `BOLT_BACK` 1.9px、抛壳轨迹常数（`CASE_T0/T1` / `CASE_VX/Y/G` / 三轴翻滚）、`triggerPullAt`（按 `fireWindow` 推扳机）；左手目标 `ARM_SUPPORT`（**不要放到 z<-4.2**，那儿是露出的枪管 + 折叠两脚架）|
+| **Kar98k 数值 / 模型点** | `weapon/Kar98kItem.java`（`MAG_SIZE` 5 · `BOLT_TICKS` 20 · `BOLT_DELAY` 6 · `BULLET_SPEED` **5.7** ⇒ 伤害 **50**（`BulletEntity.KAR98K_DAMAGE`，爆头 ×1.85）· `SCOPE_ZOOM` 4.0 · 逐发压弹 `BOLT_OPEN_TICKS` 15 / `LOAD_TICKS` 12 / `BOLT_CLOSE_TICKS` 16 / `BULLET_LOST_CHANCE` 0.30）+ `weapon/WeaponMount.java` 的 `KAR98K_*`（枪口 {0, 2.25, −13.60} / 抛壳口 / 镜筒光轴 **4.40** / 举枪平移 −8.96 & +3.92 & −3.00）+ `client/Kar98kGeoModel.java`（`BOLT_LIFT` **64°**（下弯柄，θ>71° 会捅进镜筒）· `BOLT_BACK` 2.6 · 抛壳轨迹 · 压弹 `LOAD_DROP` 1.70 / `FEED_T0` 0.55 · 手臂落点 `ARM_GRIP` / `ARM_SUPPORT` / `ARM_LOAD` + `ARM_PRESS`）、`WeaponHandGrip.KAR98K_FIRE_PITCH` 5.5；**改模型必跑 `tools/kar98k_gen.py`，再照打印值同步这几处** |
+| **M1 加兰德数值 / 模型点** | `weapon/M1GarandItem.java`（`MAG_SIZE` **8** · `FIRE_INTERVAL` 10（连射）· `BOLT_TICKS` 8（自动枪机循环）· `BULLET_SPEED` **5.15** ⇒ 伤害 **22**（`BulletEntity.M1_DAMAGE`，爆头 ×1.5）· 换弹 `CLIP_PUSH_TICKS` 22 + `CLIP_CLOSE_TICKS` 10）+ `weapon/WeaponMount.java` 的 `M1_*`（枪口 {0, 2.30, −13.60} / 抛壳口 / **瞄准线 3.10** / 举枪平移 −8.96 & +5.22 & +2.30）+ `client/M1GarandGeoModel.java`（`BOLT_BACK` 2.4 · `CLIP_DROP` 2.25 · 抛壳轨迹 · 手臂落点 `ARM_GRIP` / `ARM_SUPPORT` / `ARM_CLIP` + `ARM_PRESS`）、`WeaponHandGrip.M1_FIRE_PITCH` 3.5、`Ballistics.M1_RANGE` 72；持枪参数 `GunPose.MODEL_FOV_AIM_M1` 45（TaCZ AK47）。**改模型必跑 `tools/m1_garand_gen.py`，再照打印值同步这几处** |
 | **瞄具挂点高度 / 举枪对心** | `weapon/WeaponMount.java`（`SIGHT_Y` = 照门顶/准星顶/**导轨齿顶** = 3.44、`AKM_DOT_Y` / `AKM_SCOPE_Y` / `akmAimDy`）—— **必须**与生成器 `akm_v3.py` 里的 `SIGHT_Y` / `RAIL_LIFT` 及 `build_dot_sight` / `build_scope_4x` 的注释值一致 |
 | **红点 / 倍镜显示逻辑** | `client/AkmGeoModel.java`（`sightNow` 隐藏骨骼 + 举枪位移）+ `client/ClientEvents.java`（`scoping` / `drawRedDot` / `drawScopeOverlay`） |
 | **枪口/抛壳位置、射击方向** | `weapon/WeaponMount.java`（`AKM_MUZZLE` / `AKM_EJECT`）+ `AkmRifleItem.fire()`；子弹从模型点出发、朝准星收敛点飞（收敛上限 = **归零距离**：举枪 16 / 腰射 24 格，`tools/_akm_ballistic.py` 验算） |
@@ -517,6 +551,204 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r110`
+
+- ★ **据 `mod/logs` 的现场日志修掉三处问题**。日志是 **GBK** 编码的（`latest.log` / `debug.log`
+  + 三个 `.gz` 归档），按 UTF-8 读会全是乱码；筛掉诊断行之后，属于本模组的其实只有 **8 行**。
+  1. ★ **补回两个缺失的物品模型** —— 日志里唯一的资源级报错：
+     `Unable to load model: 'hexalunar_calamity:ammo_762_61#inventory' … FileNotFoundException:
+     hexalunar_calamity:models/item/ammo_762_61.json`（`ammo_box_762_61` 同）。
+     r108 加 M1 加兰德时这两个物品的**注册、配方、战利品表、语言、贴图全齐了**，唯独漏了
+     `models/item/*.json` ⇒ 背包与手里会渲染成紫黑「缺模型」方块。已照同族 7.62x59 补齐
+     （`ammo_762_61.json` / `ammo_box_762_61.json`），现在 **28 个注册物品 0 缺模型**。
+  2. ★ **`[HLCDIAG]` 诊断刷屏改成默认关闭**（`client/WeaponDiag`）：它是当初查「枪飘在手右上方、
+     和手臂分离」时加的现场记录器，注释自己写着「正常玩可以无视」，但 `ClientEvents` 里是
+     **无条件调用**的 —— 每秒往日志写一行，同时往游戏目录 `hexalunar_diag.txt` 追加一行
+     （渲染线程上的阻塞文件 IO），而那个文件还会跨启动无限增长。现在只有加
+     **`-Dhexalunar.diag=true`** 才记录；关闭时顺手复位累加器
+     （`WeaponArms.externalPoseDelta` 用 `Math.max` 累加，没人复位会一路涨到 `Float.MAX`），
+     开启时每次会话首次写入前先清空诊断文件。
+  3. ★ **删掉「包装了 0 个武器模型」那层死代码**（`client/ModClient`）：`AnimatedWeaponModel`
+     包装的认领函数 `kindOfModel()` **每一个分支都 `return null`**（AKM / AWP / Kar98k / 莫辛 /
+     M1 / 十字弩 / 复合弓 / 手雷后来全改成了 GeckoLib 骨骼渲染）⇒ 循环一次都没进过、`wrapped`
+     恒为 0，那行日志会把人往「这里坏了」带偏。已删掉死循环与误报日志，保留必须的
+     `CrossbowPartModels.capture`，并清掉因此不再使用的 import 与 logger。
+- **日志里还有、但不属于本仓库所以没动的**：`hcdservercore` 缺 `fake_ore` / `broken_fake_ore`
+  模型、以及 20×20 非 2 的幂贴图（那是另一个模组 *Hallzmine's Crafting Dead Server Core*）；
+  `Shader rendertype_entity_translucent_emissive could not find sampler named Sampler2`
+  （本模组**没有任何 core shader 资源**，来自别的模组 / 资源包覆盖）；
+  `Registry minecraft:item: Object did not get ID it asked for` 是**往已有存档新增物品**造成的
+  Forge 注册表 ID 漂移 —— 被点名的正好是每一轮新加的物品（r106 是 kar98k / mosin /
+  ammo_762_59、r108 是 m1_garand / ammo_762_61 / ammo_box_762_61），Forge 按名字重映射，
+  **不是代码缺陷**；`Can't keep up! … 243 ticks behind` 是整合包进世界时的卡顿。
+- **验证**：`gradlew compileJava --offline` 与 `gradlew build --offline` 均 **BUILD SUCCESSFUL**，
+  产物 `hexalunar_calamity-1.0.0-r110.jar`（已确认 jar 内含两个新模型 JSON）。
+
+> 版本 `1.0.0-r109`
+
+- ★ **Q 弹版构建开关**：`gradlew build -Pqmode=true` ⇒ mod id **`hexalunar_calamity_q`**、
+  显示名「六相月灾 · Q弹版」，与普通版**可以同时安装**（id 不同互不冲突）。代码只有一份，
+  差别全在 `build.gradle`（`BuildInfo.Q_MODE`，javac 常量折叠 ⇒ 非 Q 版里 Q 分支的字节码
+  直接消失）+ `src/qresources` 覆盖层；`prepareQResources` 会把基础命名空间的
+  `assets/` `data/` 整体搬到 Q 命名空间，再叠 Q 版文件。
+- **Q 版资源**：Q 版 AKM 骨骼模型
+  （`qresources/assets/hexalunar_calamity_q/geo/akm.geo.json` + 贴图 + 流光遮罩，
+  `tools/q_akm_gen.py` 生成）、Q 版僵尸贴图（`tools/q_chibi_zombie_tex.py`）、
+  Q 版自爆尸模型层（`client/QChibiZombieModel` / `QChibiZombieRenderer`，
+  配 `client/Jelly` 的果冻晃动）。Q 版自爆尸的渲染分支由 `BuildInfo.Q_MODE` 选择
+  （见 `client/ModClient#onRegisterRenderers`）。
+
+> 版本 `1.0.0-r108`
+
+- ★★ **新武器：M1 加兰德（M1 Garand）半自动步枪**（`m1_garand`，`weapon/M1GarandItem.java`
+  + `client/M1GarandGeoModel.java` + `tools/m1_garand_gen.py`）——按用户给的照片做的。
+  - **模型**：`tools/m1_garand_gen.py` 程序化生成木托长枪（胡桃木托 + **上下两片木护木把枪管包住**，
+    这是它与 Kar98k 最大的外观差别）+ 机匣 + **右侧长导气杆（op-rod）** + 大觇孔照门 + 机瞄 + 扳机护圈环。
+    `geo/m1_garand.geo.json`（**10 骨骼 / 29 方块** / 128² 分带贴图 + 流光遮罩）、
+    贴图 `textures/models/m1_garand_geo.png`。整枪 **20.9 模型像素 = 1.306 格**（枪口 z=−13.60、托底 z=+7.30）。
+    ★ **同时导出 Blockbench 工程** `模型/hexalunar_m1_garand.bbmodel`（内嵌贴图，打开即改），
+    顺手也把上一轮的 Kar98k 导成了 `模型/hexalunar_kar98k.bbmodel`。
+  - ★ **连射（半自动）**：按住左键每 `FIRE_INTERVAL = 10` tick 一发（不用自己拉栓）——
+    每发都由**导气杆自动完成「枪机后退 → 带出空弹壳抛向右上 → 复进闭锁、顶下一发上膛」**
+    （`BOLT_TICKS = 8`）。用户要的「**拉一次栓即可**」= 一个漏夹只拉一次栓（换弹最后那一下），
+    之后 8 发全靠自动循环。空仓时枪机**停在后位**（M1 打空的样子）。
+  - ★ **换弹：右手把 8 发漏夹压进机匣**（与 Kar98k 一样是「手动压弹」，不是换弹匣）：
+    `CLIP_PUSH_TICKS = 22`（右手把漏夹从机匣上方压下去，模型里漏夹抬高 2.25 px 跟着手落进弹仓）
+    → `CLIP_CLOSE_TICKS = 10`（**枪机释放、复进闭锁上膛**，右手抓拉机柄跟着复进）。
+    收尾一次性吃掉 **8 发** 7.62x61：**弹仓 7 + 膛内 1**。
+    漏夹**只能打空后**整体压入（真枪如此），打空最后一发时整只漏夹弹出、响一声 M1 标志性的「叮」
+    （`clipPing`，用拉栓音效调高音调代替 —— 公用音频里没有专门的 ping）。
+  - ★ **新增独立弹种 7.62x61mm**（`ammo_762_61` + `ammo_box_762_61`，`AmmoType.GARAND`
+    / 别名 `RIFLE_762_61`，弹盒容量 **128**、HUD 第 6 格）：与 7.62x39、7.62x59、.338 **都不通用**。
+    配方与其它弹药一致（子弹 = 火药 + 铁锭无序 ×4；弹盒 = `ppp/pRp/iii`），
+    图标 `tools/gen_ammo762_61_icons.py`（细长瓶颈弹壳 + 铜被甲尖弹头；弹盒是**钢蓝灰标签带**，
+    与 7.62x39 无带、7.62x59 红棕带区分开）。
+  - **伤害 22 / 爆头 ×1.5**（`BulletEntity.M1_DAMAGE` / `SEMI_HEADSHOT_MULTIPLIER`）：
+    初速 **5.15** ⇒ 分档表新增 **M1 档**（`>5.08 && ≤5.30`）；半自动连射所以单发刻意低于栓动枪
+    （AKM 10 / **M1 22** / 莫辛 26 / Kar98k 50 / AWP 75）。弹道另起一组
+    `Ballistics.M1_RANGE = 72` 格、`M1_IN_RANGE_GRAVITY = 0.0055`。
+  - ★★ **「套用 TaCZ 步枪持枪」怎么落地的**（用户问能不能套 TaCZ 的持枪动画）：
+    扒了 `tacz-1.20.1-1.1.8-hotfix.jar` 里 `tacz_default_gun` 的 AK47/M4A1 配置
+    （见 `build/tacz_rifle/`，`tools/_tacz_probe.py` 可读）：TaCZ 的枪**display 只给缩放**，
+    持枪姿态全靠模型内定位组 + `iron_zoom` + `zoom_model_fov`，而**这两套参数我们本来就在用**。
+    所以 M1 直接取 **TaCZ 步枪那一档：`zoom_model_fov = 45`（AK47 的值，M4A1 是 55）、
+    `iron_zoom = 1.33`**（`GunPose.MODEL_FOV_AIM_M1` / 走 `ClientEvents.IRON_ZOOM`），
+    举枪位移照 TaCZ 的 `iron_view`（`idle_view z 13.75 → iron_view z 10.156`，收 3.59 单位、
+    **无任何旋转**）按枪长比例取 `M1_AIM_DZ = 1.8`。★ 但 TaCZ 的**逐帧动画文件搬不过来**：
+    `ak47.animation.json` 虽然是 bedrock 格式，键的却是它自己的骨骼
+    （`righthand` / `lefthand` / `constraint` / `mag_and_bullet` / `bullet_in_barrel` / `safety3` …），
+    我们的枪是 `root / move / body / bolt / casing / …` ⇒ 硬套等于一段动画一根骨骼都找不到（= 没播）。
+    能复用的是**持枪参数与节奏**，M1 的可见动作全部程序化（枪机循环 / 抛壳 / 压漏夹 / 双手）。
+  - **瞄具**：只有机瞄（无镜）⇒ 抵肩走 AKM 那一套「轻机瞄」（视野 1/3、看得见枪身），
+    ★ 瞄准线 = **准星片顶 = 照门觇孔中心 = 模型 Y 3.10**（`WeaponMount.M1_IRON_Y`），
+    举枪对心实测 **X 0.00% / Y 0.00%**；腰射时枪管轴的相机空间偏移与 AKM **完全相同**（同一构图）。
+  - **第一人称双手**（`client/WeaponArms.renderM1Garand` + `M1GarandGeoModel`）：
+    平时右手握托颈、左手托前托；**射击时右手不跟着枪机跑**（枪机是导气杆自己动的）；
+    换弹时右手抬到机匣上方压漏夹、再抓拉机柄复进；**左手全程扶枪**。
+  - **战利品**：普通武器箱权重 **2**（配 10 发）、稀有武器箱权重 **4**（配 15 发）。
+  - **音效**：枪声复用 AWP 枪声（音调更高）、枪机循环 / 漏夹到位 / 释放闭锁复用拉栓上膛、
+    漏夹弹出的「叮」用同一音频调高音调；**没有**拷贝 TaCZ 的音频资源。
+
+> 版本 `1.0.0-r107`
+
+- ★★ **Kar98k 按用户要求重做装填 / 弹药 / 伤害**（`weapon/Kar98kItem.java` + `client/Kar98kGeoModel.java`
+  + `tools/kar98k_gen.py` + `entity/BulletEntity.java`）：
+  - **弹种换成 7.62×59mm**（`AmmoType.RIFLE_762_59`，就是莫辛那发 `ammo_762_59` 的**别名常量** ——
+   不是新枚举项，所以 `values()`、快捷栏 HUD 格位、弹药盒全都不受影响）。.338 现在只有 AWP 用。
+  - **装填 = 用手一发一发压进弹仓**（原来是一次性 40 tick 的「压桥夹」）：与莫辛同一套逐发时间轴
+    `开栓 15 tick → 每发 12 tick × 需要几发 → 关栓上膛 16 tick`；每一发到点消耗 1 发弹药、弹仓 +1、
+    响一声轻「咔」；**正在压的那一发被打断时有 30% 概率掉地**（TaCZ `bullet_lost = 0.3` 规则），
+    已经压进去的留在弹仓里；压弹途中再按一次 `R` = 停下。
+  - **模型新增 `round_in` 骨骼**（`kar98k_gen.py`，7.62×59 弹壳 / 弹肩 / 弹头三段、弹头朝 −Z）：
+    压弹时那一发**从机匣上方（y≈3.40，正好在机匣顶 3.00 与 4 倍镜筒底 3.95 之间）落进弹仓**，
+    关栓时再被枪机顶进弹膛；`z=−1.75` 是特意挑的 —— 弹尾要留在桥夹槽（z −1.2…0.9）**前面**，
+    否则抬起来时弹壳尾部会被桥夹槽挡掉一截。
+  - **装填全程枪机敞开**：`Kar98kGeoModel` 的 `bolt` 骨骼改由 `loadBoltTurn/loadBoltBack` 驱动
+    （与击发后的拉栓循环共用同一根骨骼），**右手全程握着拉机柄**、**左手抬到机匣上方
+    跟着每一发往下按**（`ARM_LOAD` y 3.60→3.05 + `ARM_PRESS`，位置是量着几何挑的，不穿镜筒也不穿机匣）。
+  - **伤害 50**（用户指定）：初速 6.0 → **5.7** ⇒ `BulletEntity` 新增一档
+    `kar98k()`（`>5.55 && ≤5.9`）= `KAR98K_DAMAGE` **50**、爆头 **×1.85**、弹道走 7.62×59 那一组
+    （`MOSIN_RANGE` 84 格 / 0.005）；分档线相应改成 5.25 / 5.55 / 5.9（AKM ≤5.0 / 莫辛 5.4 /
+    Kar98k 5.7 / AWP 6.2）。**一次击发一发 + 自动拉栓带出弹壳抛掉**不变（`CYCLE_TICKS` 26）。
+  - 语言键与 tooltip 同步：`kar98k_controls` 现在写「一次一发 / 每发自动拉栓带出弹壳 / `R` 逐发压弹
+    （7.62×59，弹仓 5 发）」，`range_hint` 取 84 格；`ClientWeaponInput.weaponBusy` 跟着改用
+    `Kar98kItem.loading(...)`。
+  - ⚠️ 顺带记一笔：`kar98k_gen.py` 的 `bone()` 已按 bedrock 规范**省略根骨骼的 `parent` 键**
+    （写成 `"parent": null` 会让 GeckoLib 报 "parent to be a string, was null" 并崩客户端）。
+
+> 版本 `1.0.0-r106`
+
+- ★ **新武器：莫辛-纳甘 M91/30 栓动步枪**（`mosin_nagant`，`weapon/MosinRifleItem.java`）。
+  - **模型**由 `tools/mosin_gen.py` 程序化生成：`geo/mosin.geo.json`（**14 骨骼 / 97 方块**）、
+    `textures/models/mosin_geo.png`（**512² 逐面 UV**）、`animations/mosin.animation.json`。
+    木托 + 发蓝钢 + 顶部导轨 + **出厂自带 4 倍镜**（镜筒就架在导轨上，拆掉后可用机瞄）；**枪管加长**：
+    枪口 z = **−16.78**，整枪 **22.4 模型像素 = 1.40 格**（露出枪管 3.0 单位）。
+    骨骼：`root / move / body / barrel / handguard / bolt / magazine / round_in / trigger /
+    scope / scope_elev / scope_wind / casing / camera` —— ★ 与 AWP / Kar98k **不是同一套**
+    （多了 `handguard` 与专门放「正在压的那一发」的 `round_in`，少了 `bipod` / `scope_adjust`）
+    ⇒ `animations/mosin.animation.json` 必须独一份，**不能复用 `awp.animation.json`**。
+  - **数值整套套用 TaCZ 的 Kar98k 配置**（从 `tacz-1.20.1-1.1.8-hotfix.jar` 导出，见
+    `mod/build/tacz_kar98/` 与 `tools/_tacz_probe.py`）：`kar98_display.json` 的
+    `zoom_model_fov = 25`（→ `GunPose.MODEL_FOV_AIM_MOSIN`）、`iron_zoom = 2`（→ `IRON_ZOOM`，
+    **机瞄视野 1/2**，AKM 是 1.33）、`scope_98k_data.json` 的 `zoom = 4.25`（→ 我们挂 4 倍镜
+    `SCOPE_ZOOM`）、`kar98_data.json` 的 `bolt_action_time 0.85s`（→ `BOLT_TICKS = 18`）、
+    弹伤 26 / 爆头 1.85（→ `BulletEntity.MOSIN_DAMAGE` / `BOLT_HEADSHOT_MULTIPLIER`）、
+    `bullet_lost = 0.3`；后坐俯仰取 `recoil.pitch` 峰值 3.8° 的上整
+    （`WeaponHandGrip.MOSIN_FIRE_PITCH = 4.0`）。
+  - ★ **新增独立弹种 7.62x59mm**（`ammo_762_59` + `ammo_box_762_59`，`AmmoType.MOSIN`，
+    弹盒容量 **150**、HUD 第 5 格）：与 AKM 的 7.62x39、AWP 的 .338 **都不通用**。
+    配方与其它弹药一致 —— 子弹 = 火药 + 铁锭（无序）×4；弹盒 = 木板围框 + **中心放该弹** + 三铁锭
+    （`ppp/pRp/iii`，与 `ammo_box_sniper` 同款）；图标 `tools/gen_ammo_762_59_icons.py`。
+  - ★★ **伤害分三档**（`BulletEntity`，全部按「首个 tick 捕获的出膛速度」判，主客两侧一致、不多加同步字段）：
+    AKM **≤5.0 → 10 点**；**莫辛 5.4 → 26 点、爆头 ×1.85**；AWP **>5.9 → 75 点、爆头 ×2.0**。
+    弹道另起一组：`Ballistics.MOSIN_RANGE = 84` 格、`MOSIN_IN_RANGE_GRAVITY = 0.005`
+    （AKM 60 / 0.006，AWP 96 / 0.004）。
+  - ★★ **装填 = 用手一发一发压进弹仓**（弹仓式，没有可拆弹匣）：按 `R` 后时间轴 =
+    开栓 **15 tick** → **每发 12 tick × 需要几发** → 关栓上膛 **16 tick**。每一发到点都会
+    消耗 1 发弹药、弹仓 +1、响一声轻「咔」，模型里那一发（`round_in` 骨骼）**从机匣上方落进弹仓**；
+    关栓那一刻再从弹仓推一发进弹膛。中断规则照 TaCZ 的 `bullet_lost = 0.3`：正在压的那一发
+    超过 **35%** 进度被打断时有 **30%** 概率掉在地上（**已经压进去的留在弹仓里**）；
+    丢下枪换物品会自动停，装填中再按一次 `R` 也停。
+  - ★★ **拉栓循环 = 抽壳 → 抛壳 → 再上膛**：击发后自动抬柄转栓 **90°**（莫辛是下弯柄，柄头最高 Y≈2.77，
+    而镜筒底面在 3.08 ⇒ 比 Kar98k 的 64° 能抬得更足）→ 枪机后退 **2.3 px** 把空弹壳抽出来 →
+    弹壳往机匣**右侧（+X，抛壳口那一侧）**翻滚抛出（`casing` 骨骼，`CASE_VX 4.6` / 三轴翻滚）→
+    枪机推回闭锁并把弹仓里下一发顶进弹膛（`finishBolt`：弹仓 −1、膛内 +1）。
+  - **开镜**：装了 4 倍镜 = **整屏镜筒遮罩**（与 AWP / 十字弩同一套）+ 世界变焦 1/4；
+    **潜行 + 右键拆掉镜子就是机瞄**（视野放大 2 倍、看得见枪身）。举枪时隐藏原版准星。
+  - **第一人称双手**（`client/WeaponArms.renderMosin` + `MosinGeoModel`）：右手握**腕部**
+    （拉栓 / 开栓时抓下弯拉机柄），左手托前托（**逐发压弹时抬到机匣正上方跟着那一发往下压**）；
+    第三人称走双端枪 / 举枪姿势（`WeaponArmPose.MOSIN`）。
+  - **音效**：枪声复用 AWP 枪声（音调略高）、拉栓 / 关栓复用 `拉栓上膛.ogg`、每发压弹一声轻「咔」；
+    **没有**拷贝 TaCZ 的音频资源。
+  - **战利品箱子**：普通武器箱权重 **2**（配 10 发）、稀有武器箱权重 **4**（配 15 发）。
+  - 版本号 `1.0.0-r106`（`mod/build.gradle`），产物 `hexalunar_calamity-1.0.0-r106.jar`。
+
+> 版本 `1.0.0-r105`
+
+- ★ **新武器：Kar98k 栓动步枪**（`kar98k`，`weapon/Kar98kItem.java` + `client/Kar98kGeoModel.java`）。
+  - **模型**由 `tools/kar98k_gen.py` 程序化生成（木托长枪 + 下弯拉机柄 + **自带 4 倍镜筒**）：
+    `geo/kar98k.geo.json`（**10 骨骼** / 128² 分带贴图）+ `textures/models/kar98k_geo.png`。
+    骨骼名为 `body / barrel / bolt / magazine / trigger / casing / scope / bipod / move / root`，
+    **沿用 AWP 那一套** ⇒ 动画**直接复用 `animations/awp.animation.json`**，六段一条都不用重写。
+  - **与 AWP 的三个差别**（都由 `kar98k.geo.json` 量出来）：
+    · 拉机柄是**下弯柄**，抬升角只给 **64°**（`Kar98kGeoModel.BOLT_LIFT`）—— 柄头挂在 x≈1.25 / y≈1.75，
+      绕 bolt pivot（y=2.95）抬起来很快顶到 4 倍镜筒底面（y=3.95），算下来 θ>71° 就穿模，取 64° 留 7° 余量；
+    · 枪机后退 **2.6 px**（AWP 4.2）：机匣短（z −2.4…1.2）、枪机本体 3.0 长，退 2.6 正好把枪机抽出机匣；
+    · 右手握点取**下弯柄的柄头**（`BOLT_GRIP_DX/DY`），抬柄时手跟着一起抬高。
+  - **数值**：初速 **6.0**（AWP 6.2）⇒ 与 AWP 同属「狙击弹」那一档（`>5.9`），
+    **伤害 / 弹道按 .338 算**；`MAG_SIZE = 5`、`RELOAD_TICKS = 40`、`BOLT_TICKS = 20`、
+    `BOLT_DELAY = 6`、`CYCLE_TICKS = 26`。
+  - **4 倍镜**：`Kar98kItem.SCOPE_ZOOM = 4.0`，抵肩即走 **AWP 那套整屏镜筒遮罩**
+    （`ClientEvents.scoping` 对 `Kar98kItem` 直接返回 true ⇒ 枪与手臂一起藏掉）；
+    光轴参照点 = 模型 Y **4.40**（`WeaponMount.KAR98K_SCOPE_Y` = 镜筒方块 y 3.95…4.85 的中心
+    = geo 里 `scope` 骨骼 pivot 的 y）；枪模投影 FOV = `GunPose.MODEL_FOV_AIM_KAR98K = 40`。
+  - ★★ **换弹 = 压桥夹**（没有可拆弹匣）：`animations/awp.animation.json` 的 `reload` 只 key 了
+    `magazine` 一根骨骼（那是 AWP「抽弹匣」的键帧），所以换弹期间把该骨骼**显式归零**压掉那段键帧
+    ⇒ 弹仓底板不动；换弹的手部动作改由 `Kar98kGeoModel.leftHandPx` 驱动 ——
+    左手从护木抬到机匣左侧上方「压桥夹」（`ARM_CLIP`）。
+  - ★ **`WeaponAnim.Kind` 追加 `KAR98K`**（★ 这个枚举**只能往后加**，中间插值会打乱所有武器的动画状态）。
+  - 目前**只能在创造模式「六相月灾」页签取用**（还没进探险箱掉落与配方）。
 
 > 版本 `1.0.0-r104`
 

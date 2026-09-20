@@ -18,11 +18,13 @@ PAIRS = [
     ('bow_v3', 'compound_bow.geo.json', 'compound_bow_geo.png'),
     ('crossbow_v4', 'crossbow_geo.geo.json', 'crossbow_geo.png'),
     ('awp_v1', 'awp.geo.json', 'awp_geo.png'),
+    ('mosin_v1', 'mosin.geo.json', 'mosin_geo.png'),
 ]
 
 # (build 里的动画, 目标名)
 ANIMS = [
     ('awp_v1.animation.json', 'awp.animation.json'),
+    ('mosin_v1.animation.json', 'mosin.animation.json'),
 ]
 
 # (build 里的流光遮罩, 目标名) —— AWP 的遮罩由 awp_gen.py 自产（参考图纯白太多，分位法失效）

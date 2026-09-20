@@ -33,12 +33,29 @@ import java.util.Locale;
  * </ul>
  *
  * <p>输出落在 <b>游戏目录下的 {@code hexalunar_diag.txt}</b>（同时进日志 INFO）。
+ *
+ * <p>★★ r110：<b>默认关闭</b>。以前这里是无条件常开的，于是每秒往 {@code latest.log}
+ * 和游戏目录的 {@code hexalunar_diag.txt} 各写一行 —— 日志被 {@code [HLCDIAG]} 刷满
+ * （一次启动上万行），而且每秒一次的文件写入落在渲染线程上。现场数据只在排查
+ * 「枪 / 手臂错位」时才需要，所以改成显式开关：
+ *
+ * <pre>启动参数加 -Dhexalunar.diag=true</pre>
+ *
+ * 不开这个开关时 {@link #tick} 直接返回，不写日志也不碰文件。
  */
 public final class WeaponDiag {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HexaLunarCalamity.MOD_ID);
     /** 每秒最多一行（20 tick） */
     private static final int PERIOD = 20;
+
+    /**
+     * 是否记录现场数据。默认 <b>false</b>（见类注释）：用 {@code -Dhexalunar.diag=true} 打开。
+     */
+    public static final boolean ENABLED = Boolean.getBoolean("hexalunar.diag");
+
+    /** 本次会话是否已经清空过诊断文件（避免它跨启动无限增长） */
+    private static boolean truncated;
 
     /** 这一帧 {@code WeaponHandGrip.apply} 有没有被调用（= 我们的手持变换真的生效了） */
     public static volatile boolean applyCalled;
@@ -63,6 +80,14 @@ public final class WeaponDiag {
 
     /** 每客户端 tick 调用（{@code ClientEvents#onClientTick} 末尾） */
     public static void tick(Minecraft mc) {
+        if (!ENABLED) {
+            // ★ r110 诊断关闭时也要把这一秒累积的现场量清掉：
+            //   WeaponArms 用 Math.max 累加 externalPoseDelta，没人复位就会一路涨到 Float.MAX。
+            applyCalled = false;
+            armsCalled = false;
+            WeaponArms.externalPoseDelta = 0.0F;
+            return;
+        }
         if (mc.player == null || mc.level == null) return;
         if (++ticks < PERIOD) return;
         ticks = 0;
@@ -197,7 +222,10 @@ public final class WeaponDiag {
 
     private static void append(Minecraft mc, String line) {
         File file = new File(mc.gameDirectory, "hexalunar_diag.txt");
-        try (FileWriter w = new FileWriter(file, true)) {
+        // ★ r110：本次会话第一次写之前先清空，否则这个文件会跨启动无限增长
+        boolean appendMode = truncated;
+        truncated = true;
+        try (FileWriter w = new FileWriter(file, appendMode)) {
             w.write(line);
             w.write(System.lineSeparator());
         } catch (IOException ignored) {

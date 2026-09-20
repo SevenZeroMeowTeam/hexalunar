@@ -11,7 +11,7 @@ def baseNs = 'hexalunar_calamity'
 def modId = qmode ? 'hexalunar_calamity_q' : baseNs
 def modName = qmode ? '六相月灾 · Q弹版' : '六相月灾'
 
-version = qmode ? '1.0.0-q1' : '1.0.0-r109'
+version = qmode ? '1.0.0-q1' : '1.0.0-r110'
 group = 'cn.blockforge.generated.hexalunarcalamity'
 base { archivesName = modId }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)

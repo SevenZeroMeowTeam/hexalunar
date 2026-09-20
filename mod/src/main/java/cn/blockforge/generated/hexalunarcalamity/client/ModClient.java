@@ -19,73 +19,30 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import java.util.ArrayList;
-import java.util.Map;
-
 /** 实体渲染器注册：投射物与六只特殊感染者 */
 @Mod.EventBusSubscriber(modid = HexaLunarCalamity.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ModClient {
 
-    private static final org.slf4j.Logger LOGGER =
-            org.slf4j.LoggerFactory.getLogger(HexaLunarCalamity.MOD_ID);
-
     /**
-     * 给武器模型套上会动的一层（见 {@link AnimatedWeaponModel}）：
-     * 模型键是 {@code hexalunar_calamity:akm#inventory} 这种，拉弦变体是
-     * {@code hexalunar_calamity:item/compound_bow_pulling_0#inventory}，按路径前缀认领。
+     * 烘焙阶段收尾：只做十字弩分件的抓取（见 {@link CrossbowPartModels}）。
+     *
+     * <p>★ r110：这里原来还挂着一层 {@link AnimatedWeaponModel} 的 display 包装，用来给
+     * OBJ 枪模套「会动的一层」。但 AKM / AWP / Kar98k / 莫辛 / M1 加兰德 / 十字弩 / 复合弓 /
+     * 手雷后来**全部改成了 GeckoLib 骨骼渲染**，认领函数 {@code kindOfModel} 的每一个分支
+     * 都返回 null —— 包装循环一次都没进过，日志却一直在报「包装了 0 个武器模型」，
+     * 把人往「这里坏了」的方向带。既然没有任何模型会被认领，死代码直接删掉；
+     * item 模型现在只负责背包图标与手持兜底，动作全部由骨骼动画驱动。
      */
     @SubscribeEvent
     public static void onModifyBakingResult(ModelEvent.ModifyBakingResult event) {
-        Map<net.minecraft.resources.ResourceLocation, net.minecraft.client.resources.model.BakedModel> models =
-                event.getModels();
-        int wrapped = 0;
-        for (net.minecraft.resources.ResourceLocation id : new ArrayList<>(models.keySet())) {
-            if (!HexaLunarCalamity.MOD_ID.equals(id.getNamespace())) continue;
-            WeaponAnim.Kind kind = kindOfModel(id.getPath());
-            if (kind == null) continue;
-            net.minecraft.client.resources.model.BakedModel baked = models.get(id);
-            if (baked == null || baked instanceof AnimatedWeaponModel) continue;
-            models.put(id, new AnimatedWeaponModel(baked, kind));
-            wrapped++;
-        }
         // 十字弩的弩箭 / 左手分件（上弦动画，见 CrossbowPartAnim）
-        CrossbowPartModels.capture(models);
-        LOGGER.info("手持动作动画已启用：包装了 {} 个武器模型", wrapped);
+        CrossbowPartModels.capture(event.getModels());
     }
 
     /** 登记不会被任何物品引用的分件模型，否则烘焙阶段不会加载它们 */
     @SubscribeEvent
     public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
         CrossbowPartModels.registerAdditional(event);
-    }
-
-    /** 模型路径 → 动作种类；返回 null 表示该模型不需要动（弹药、分件、图标等） */
-    private static WeaponAnim.Kind kindOfModel(String path) {
-        // 分件由 AnimatedWeaponModel 在渲染时合成，不能自己再包一层，否则会被重复施加变换
-        if (path.contains("akm_mag") || path.contains("akm_bolt")) return null;
-        if (path.contains("crossbow_bolt")) return null;
-        // AKM 用 GeckoLib 骨骼渲染（AkmGeoRenderer），不再需要 OBJ 分件包装
-        if (path.startsWith("akm")) return null;
-        // AWP 同样用 GeckoLib 骨骼渲染（AwpGeoRenderer + geo/awp.geo.json）
-        if (path.startsWith("awp")) return null;
-        // ★ r105 Kar98k 也用 GeckoLib 骨骼渲染（Kar98kGeoRenderer + geo/kar98k.geo.json）
-        if (path.startsWith("kar98k")) return null;
-        // ★ r106 莫辛-纳甘（MosinGeoRenderer + geo/mosin.geo.json）
-        if (path.startsWith("mosin")) return null;
-        // ★ r108 M1 加兰德（M1GarandGeoRenderer + geo/m1_garand.geo.json）
-        if (path.startsWith("m1_garand")) return null;
-        // 十字弩也改 GeckoLib 骨骼渲染（CrossbowGeoRenderer + geo/crossbow_geo.geo.json），
-        // 拉弦装弹由 CrossbowGeoModel 程序化驱动，不再走 OBJ 分件/display 包装
-        if (path.startsWith("crossbow") || path.contains("crossbow_pulling")) return null;
-        // 复合弓也用 GeckoLib 骨骼渲染（BowGeoRenderer + geo/compound_bow.geo.json），
-        // 拉弦/换弹由骨骼动画驱动，不再需要 OBJ 分件包装
-        if (path.contains("compound_bow")) return null;
-        // 碎片手雷用手 GeckoLib 骨骼渲染（GrenadeGeoRenderer + geo/mud.geo.json），
-        // 拔销/压把由 GrenadeGeoModel 程序化驱动，不再需要 OBJ display 包装
-        if (path.startsWith("mud") || path.contains("frag_grenade")) return null;
-        // 震爆弹同样改 GeckoLib 骨骼渲染（FlashbangGeoRenderer + geo/flashbang.geo.json）
-        if (path.startsWith("mtx") || path.contains("flashbang")) return null;
-        return null;
     }
 
     /**

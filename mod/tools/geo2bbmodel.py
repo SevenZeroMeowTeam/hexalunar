@@ -23,6 +23,7 @@ JOBS = [
     ('bow_v3', 'hexalunar_compound_bow'),
     ('crossbow_v3', 'hexalunar_crossbow'),
     ('awp_v1', 'hexalunar_awp'),
+    ('mosin_v1', 'hexalunar_mosin_nagant'),
 ]
 
 

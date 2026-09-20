@@ -18,7 +18,7 @@ TEXDIR = os.path.join(ROOT, 'src', 'main', 'resources', 'assets', 'hexalunar_cal
                       'textures', 'models')
 # ★ AWP 不在这里：它的遮罩由 awp_gen.py 自己产出（参考图有大面积纯白，分位法会顶到 255）
 BASES = ['akm_geo.png', 'mud_geo.png', 'flashbang_geo.png', 'compound_bow_geo.png',
-         'crossbow_geo.png']
+         'crossbow_geo.png', 'mosin_geo.png']
 
 
 def dilate(m, k=1):

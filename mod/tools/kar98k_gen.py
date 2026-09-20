@@ -25,8 +25,10 @@ Kar98k（独立新武器，保留原 AWP）—— 模型/贴图生成器
 
 骨骼名（**必须**与 ``awp.animation.json`` 一致，才能直接复用现有动画）
 --------------------------------------------------------------------
-``root -> move -> body -> {barrel, stock, scope, bolt, casing, magazine, trigger, bipod}``
+``root -> move -> body -> {barrel, stock, scope, bolt, casing, round_in, magazine, trigger, bipod}``
 动画里被 key 的通道：``move``（后坐/拉栓整枪位移）、``bolt``（拉机柄）、``casing``（抛壳）
+★ ``round_in`` 是 r107 新增的第 11 根骨骼（压弹时那一发），由 ``Kar98kGeoModel`` **程序化**驱动
+（``awp.animation.json`` 里没有它，所以不影响动画复用）。
 
 接线清单（r105 已逐条接完，落地位置记在括号里）
 ----------------------------------------------
@@ -156,6 +158,18 @@ def build_bones():
     case = [box(0.18, 0.42, 2.80, 3.04, -1.55, -0.85, 'brass')]
     B.append(bone('casing', (0.30, 3.00, -1.20), 'body', case))
 
+    # ---------------- round_in：逐发压弹时那一发（7.62x59）
+    # 静止位在机匣**内部**（y≈1.7，机匣 z −2.4…1.2 里的装填口那一段），装填时由 Kar98kGeoModel
+    # 把它抬到机匣上方（LOAD_DROP 1.7 ⇒ y≈3.4：在机匣顶 3.00 之上、4 倍镜筒底 3.95 之下），
+    # 再跟着左手一发一发按进弹仓。
+    # ★ z 取 −1.75（不是 −1.55）：桥夹槽方块占 z −1.2…0.9、y 3.00…3.42，弹尾要留在它**前面**，
+    #   否则抬起来时弹壳尾部会被桥夹槽挡掉一截。
+    # 弹头朝 −Z（枪口方向）——与「上了膛的那一发」同向。
+    rin = [box(-0.10, 0.10, 1.60, 1.80, -1.81, -1.25, 'brass'),      # 弹壳
+           box(-0.08, 0.08, 1.62, 1.78, -1.95, -1.81, 'brass'),      # 弹肩
+           box(-0.07, 0.07, 1.63, 1.77, -2.25, -1.95, 'steel')]      # 弹头
+    B.append(bone('round_in', (0.0, 1.70, -1.75), 'body', rin))
+
     # ---------------- scope：自带 4 倍镜筒（镜身 + 前后镜片 + 两个镜环）
     scope = []
     scope.append(box(-0.42, 0.42, 3.95, 4.85, -4.20, 2.00, 'scope'))          # 镜筒
@@ -257,7 +271,9 @@ def main():
     print('tex  ->', os.path.normpath(TEX_OUT))
     print('glow ->', os.path.normpath(GLOW_OUT))
     for b in geo['minecraft:geometry'][0]['bones']:
-        print('  %-9s parent=%-7s cubes=%d pivot=%s' % (b['name'], b['parent'], len(b['cubes']), b['pivot']))
+        # ★ 根骨骼按 bedrock 规范**省略** parent 键（见 bone() 的说明），所以这里用 get
+        print('  %-9s parent=%-7s cubes=%d pivot=%s'
+              % (b['name'], b.get('parent'), len(b['cubes']), b['pivot']))
 
 
 if __name__ == '__main__':

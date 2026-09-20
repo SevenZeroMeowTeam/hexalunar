@@ -772,7 +772,8 @@ public final class ClientEvents {
         Minecraft mc = Minecraft.getInstance();
         // 手持动作（后坐 / 举枪 / 换弹 / 拔销…）每 tick 推进一次
         WeaponAnim.tick(mc);
-        // 诊断：每秒一行「枪 / 手臂」现场数据（写 hexalunar_diag.txt，正常玩可无视）
+        // 诊断：每秒一行「枪 / 手臂」现场数据（写 hexalunar_diag.txt）。
+        // ★ r110 默认关闭 —— 只有加了 -Dhexalunar.diag=true 才会记录，见 WeaponDiag
         WeaponDiag.tick(mc);
         Level level = mc.level;
         if (level != null) GrenadeItem.clientGameTime = level.getGameTime();
