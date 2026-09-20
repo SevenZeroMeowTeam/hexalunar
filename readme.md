@@ -598,6 +598,35 @@ tools/  开发辅助脚本（见第五节）
   Q 版自爆尸模型层（`client/QChibiZombieModel` / `QChibiZombieRenderer`，
   配 `client/Jelly` 的果冻晃动）。Q 版自爆尸的渲染分支由 `BuildInfo.Q_MODE` 选择
   （见 `client/ModClient#onRegisterRenderers`）。
+- **这一轮做到哪一步（样板先行）**：只做了 **1 把枪 + 1 只怪**当样板 —— Q 版 AKM（`tools/q_akm_gen.py`）
+  与 Q 版自爆尸（`client/QChibiZombieModel` / `QChibiZombieRenderer` + `tools/q_chibi_zombie_tex.py`），
+  先把「Q 版造型」与「Q 弹晃动」两套机制跑通、上手看手感；确认后再把剩下 7 把枪 / 2 种投掷物 /
+  6 种特殊感染者 / 图标与 HUD 整体铺开。**Q 版 AKM 保留了原 AKM 的全部锚点**
+  （膛线 Y=1.75、枪口 z=−11.60、准星 3.44、光点 4.07、镜 4.28、抛壳口 (0.95,2.62,−2.30)、
+  握把 (0,0.55,−0.15)、护木 (0,2.05,−6.30)、弹匣轴 (0,1.45,−3.78)、枪机 (0.70,2.64,−3.54)），
+  所以**武器侧一行 Java 都没改** —— 同一套 `AkmGeoModel` / `WeaponMount` / `WeaponArms` /
+  `AkmRifleItem` 直接驱动这个矮胖模型（`q_akm_gen.py` 结尾会把这些锚点逐条打印出来自检）。
+- **Q 弹手感来自哪**（两处都只在 Q 版生效；普通版的 Q 分支被 javac 常量折叠掉，字节码里不存在）：
+  - **枪**：`client/Jelly` 弹簧（开火给冲量 `punch`，每 tick 按 0.82 衰减、1.15 刚度回位）
+    → `GunPose.matrix` 绕握把做**挤压拉伸** `1+0.05j / 1−0.16j / 1+0.10j`，
+    再叠 `0.055·j` 的 Y 向弹跳（`client/WeaponHandGrip#pushAds`）。开镜冲量 0.55、腰射 0.85。
+    ★ 缩放只作用于**枪身矩阵**，手部摆位与弹道（`GunPose#transform`）不受影响
+    ⇒ 不会出现「手被压扁」或弹道跟着偏。
+  - **怪**：`QChibiZombieRenderer` 用走路相位做**无状态**的挤压拉伸
+    （走路 0.11 / 待机 0.045 / 受击 0.16）与蹦跳（0.085），不依赖任何实体 NBT
+    ⇒ 老存档里已有的僵尸也会一起变 Q。
+- **怎么装 / 怎么切**：两个 jar **同名内容、不同 mod id**，实战里**建议一次只放一个**
+  （同时装会出现两套创造模式页签与两批怪）：
+  - 普通版：`gradlew build --offline` ⇒ `build/libs/hexalunar_calamity-1.0.0-rXXX.jar`
+  - Q 弹版：`gradlew build --offline -Pqmode=true` ⇒ `build/libs/hexalunar_calamity_q-1.0.0-q1.jar`
+  - 两个都丢进 `.minecraft/mods/` 也能起来（id 不同、属性修饰符 UUID 已错开），
+    想切回普通版就把 Q 版 jar 移出 `mods/`。
+- **要改名 / 改版号**：只动 `build.gradle` 里 qmode 分支的 `modId` / `modName` / `version`
+  三个字面量 + `src/qresources` 下的目录名；Java 侧全部走 `HexaLunarCalamity.MOD_ID` 与
+  `BuildInfo.Q_MODE`，**没有任何硬编码命名空间**（`SimpleArrowRenderer` / `StunEffect` /
+  `CorpsePoisonEffect` 里的旧字面量也已换成 `MOD_ID`）。
+  ★ 普通版那行 `version = '1.0.0-rXXX'` 必须留在**行首**（发版 CI 用 sed 读它），
+  qmode 的覆盖写在它后面。
 
 > 版本 `1.0.0-r108`
 

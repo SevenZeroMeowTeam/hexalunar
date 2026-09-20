@@ -11,7 +11,16 @@ def baseNs = 'hexalunar_calamity'
 def modId = qmode ? 'hexalunar_calamity_q' : baseNs
 def modName = qmode ? '六相月灾 · Q弹版' : '六相月灾'
 
-version = qmode ? '1.0.0-q1' : '1.0.0-r110'
+// ★★ 这一行必须保持「行首 + version = '单引号'」的写法，**不要**改成
+//    `version = qmode ? '…' : '…'`：CI 的 release 作业是用
+//    `sed -n "s/^version = '\(.*\)'/\1/p" mod/build.gradle` 读版本号来打 tag 的
+//    （见 .github/workflows/build.yml）。写成三目之后 sed 匹配不到，VERSION 为空，
+//    release 作业会直接 `exit 1` 失败（jar 照样构建成功，但不会打 tag / 发 Release）。
+//    Q 弹版的版本号在这行之后覆盖，两种构建的产物名与以前完全一致。
+version = '1.0.0-r110'
+if (qmode) {
+    version = '1.0.0-q1'
+}
 group = 'cn.blockforge.generated.hexalunarcalamity'
 base { archivesName = modId }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -67,6 +76,10 @@ tasks.register('generateBuildInfo') {
     def theId = modId
     def q = qmode
     outputs.dir(outDir)
+    // ★ 必须声明成输入：否则 -Pqmode 切换时 Gradle 会以为「没变」而跳过重生成，
+    //   jar 里的 mod id 就会和 mods.toml 对不上
+    inputs.property('modId', modId)
+    inputs.property('qmode', qmode)
     doLast {
         def pkg = new File(outDir, 'cn/blockforge/generated/hexalunarcalamity')
         pkg.mkdirs()
@@ -146,9 +159,10 @@ processResources {
     filesMatching('META-INF/mods.toml') { expand props }
     if (qmode) {
         dependsOn tasks.named('prepareQResources')
-        // 默认那份资源整体不要（它的命名空间已被 prepareQResources 搬进 qresDir）
-        exclude 'assets/**', 'data/**', 'META-INF/**', 'pack.mcmeta'
-        from(qresDir)
+        // ★ 直接用 Q 资源树**替换**默认资源目录。
+        //   注意别用 `exclude 'assets/**'`：CopySpec 的 exclude 会把 `from()` 加进来的内容
+        //   一起排掉 ⇒ processResources 变成 NO-SOURCE、jar 里一个资源都没有。
+        sourceSets.main.resources.setSrcDirs([qresDir])
     }
 }
 jar.finalizedBy('reobfJar')
