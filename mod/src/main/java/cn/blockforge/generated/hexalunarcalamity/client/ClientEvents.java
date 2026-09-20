@@ -50,7 +50,7 @@ public final class ClientEvents {
     /** 4 倍镜 */
     private static final float SCOPE_4X_ZOOM = 4.0F;
     /** AWP 的 8 倍镜 */
-    private static final float SCOPE_8X_ZOOM = 8.0F;
+    private static final float SCOPE_8X_ZOOM = 4.0F;   // r103: 4x (was 8x)
 
     /** 右键持枪瞄准时收紧视野：十字弩 4 倍 / AKM 4 倍镜 / AWP 8 倍镜 / 机瞄 1.33 倍 */
     @SubscribeEvent

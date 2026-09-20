@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r102`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r103`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -517,6 +517,22 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r103`
+
+- **AWP（.338）伤害 24/40 → 75 点**（`weapon/AwpRifleItem`：`WeaponMount.fireDir(..., 75.0D)`）：
+  按用户要求固定 **75 点**（37.5 颗心），不再区分抵肩/腰射。
+- **倍镜 8 倍 → 4 倍**（`client/ClientEvents`：`SCOPE_8X_ZOOM = 4.0F`）。
+- **枪模 FOV 套用 TaCZ kar98k**：`GunPose.MODEL_FOV_AIM_AWP` 35 → **25**
+  （TaCZ 对照：AK47 = 45、ai_awp = 35、kar98 = **25** ⇒ 开镜时枪身放大更多）。
+  参考数据（TaCZ `tacz_default_gun`，实测）：`kar98_display.json` 的 `iron_zoom = 2`、
+  `zoom_model_fov = 25`；`kar98_geo.json`（57 骨骼 / 128² 贴图）定位组
+  `idle_view = (2, 9.8125, 17)`、`iron_view = (0, 8.75, 17.5)`
+  ⇒ 机瞄时枪左移 2、上抬 1.06、朝射手收 0.5（与 AK47/M4A1 同一规律）。
+- **待办（下一轮）**：按用户照片在 Blockbench 里做 **Kar98k 模型**（木质枪托/护木 + 拉栓 + 4 倍镜筒）
+  并替换 `geo/awp.geo.json`；新模型必须沿用现有骨骼名（root/move/body/barrel/scope/bolt/casing/
+  magazine/trigger/bipod）才能继续吃现有动画，同时要重调手臂/枪口/弹道的模型参照点。
+
 
 > 版本 `1.0.0-r102`
 

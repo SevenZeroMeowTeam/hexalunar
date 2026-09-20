@@ -44,7 +44,7 @@ public final class GunPose {
      * {@code scope_standard_8x_display.json}：{@code zoom = [5, 10]}、{@code views_fov = 20}、
      * {@code "scope": true} ⇒ 看镜时枪模用 20°，但那时整把枪被镜筒遮住，所以这里用不上。）
      */
-    public static final float MODEL_FOV_AIM_AWP = 35.0F;
+    public static final float MODEL_FOV_AIM_AWP = 25.0F;
     /**
      * 腰射时的枪模 FOV。原版手持那一遍本来就用 70°（{@code GameRenderer.renderItemInHand} 里
      * {@code getFov(camera, partial, false)} —— 那个 {@code false} 表示"不套 fov 设置与各种修正"）。
