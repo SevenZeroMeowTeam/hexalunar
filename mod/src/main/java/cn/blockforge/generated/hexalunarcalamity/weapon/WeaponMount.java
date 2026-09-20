@@ -5,6 +5,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 /**
@@ -254,7 +255,7 @@ public final class WeaponMount {
     public static final float AWP_AIM_DX = (float) (-HAND_X_PX - AWP_TX);              // -6.36
     public static final float AWP_AIM_DY = (float) (-ARM_Y * 16.0D - AWP_SCOPE_Y - AWP_TY);
     /** 枪口（模型像素）：枪管轴线 Y=1.575、最前端 z=-16.275 */
-    public static final double[] AWP_MUZZLE = {0.0D, 1.575D, -16.275D};
+    public static final double[] AWP_MUZZLE = {0.0D, 1.575D, -18.00D};
     /**
      * ★★ r88：**往前走**（负值 = 远离眼睛）。
      *
@@ -281,12 +282,115 @@ public final class WeaponMount {
         return side(entity) > 0 ? AWP_AIM_DX : (float) (HAND_X_PX - AWP_TX);
     }
 
-    /** AWP 的某个模型点 → 世界坐标（aiming = 正抵肩瞄准） */
+    // -------------------------------------------------- AWP 的持枪姿态（TaCZ 步枪那一套）
+    /**
+     * ★★ r114（用户：「**套用 TaCZ 步枪的持枪动画**」；TaCZ 里没有 AWP，用精密国际
+     * {@code ai_awp} 那套 —— 它的 {@code ai_awp_display.json} 写的是
+     * {@code use_default_animation: "rifle"}，也就是**与 M1 / AK47 同一份**
+     * {@code assets/tacz/animations/rifle_default.animation.json}）。
+     *
+     * <p>所以这里与 {@link #m1HoldPose} 取同一组 TaCZ 数值（角度与枪长无关，直接沿用；
+     * 位移按枪长折算：TaCZ 那把 38 单位 → 我们 24 单位，×0.63，而 M1 是 ×0.55）：
+     * <pre>
+     *   idle         7.2667s 循环  root rot X −0.70..0.83  Y −0.97..0.07  Z −0.27..1.41
+     *   walk_aiming  1.0s   循环  root rot ≤ 0.7°    pos ≤ 0.11 单位
+     *   run          0.8s   循环  root rot X −43..−28.3  Y −53.6..−35.7  Z 24.6..38.2
+     *                              ⇒ 跑动时**枪压低并转到射手右侧**（TaCZ 的冲刺持枪）
+     * </pre>
+     *
+     * <p>★ 为什么放在 {@link WeaponMount} 而不是 GeoModel：**枪口 / 抛壳点的世界坐标必须用
+     * 同一份姿态**（见 {@link #awpHoldPoint}），否则跑动时枪口焰与弹道会与枪身脱开
+     * （r82 的 AWP 腰射下压角就踩过这个坑）。
+     */
+    public static final float AWP_RUN_PITCH = -35.6F;
+    public static final float AWP_RUN_YAW = -44.6F;
+    public static final float AWP_RUN_ROLL = 31.4F;
+    public static final float AWP_RUN_DX = -0.80F;
+    public static final float AWP_RUN_DY = -3.50F;
+    public static final float AWP_RUN_DZ = -0.40F;
+    /** idle 呼吸（TaCZ rifle_default idle 的幅度） */
+    public static final float AWP_BREATH_ROT_X = 0.80F;
+    public static final float AWP_BREATH_ROT_Y = 0.50F;
+    public static final float AWP_BREATH_ROT_Z = 0.90F;
+    public static final float AWP_BREATH_PY = 0.10F;
+    /** {@code move} 骨骼 pivot（geo 里的值，改模型要同步；{@code tools/awp_v2.py} 打印过） */
+    public static final float AWP_MOVE_PX = 0.0F;
+    public static final float AWP_MOVE_PY = -1.0725F;
+    public static final float AWP_MOVE_PZ = 1.305F;
+
+    /**
+     * AWP 的持枪姿态（TaCZ 通用步枪 {@code rifle_default}）——写进 {@code out}：
+     * {@code out[0..2]} = {@code move} 骨骼位移（模型像素），{@code out[3..5]} = 三个欧拉角（弧度）。
+     *
+     * @param aim 举枪比例 0..1（**抵肩时姿态全部收掉**：镜筒光轴必须精确落在屏幕中心）
+     * @param run 冲刺量 0..1（客户端给平滑值，服务端给 0/1）
+     */
+    public static void awpHoldPose(LivingEntity entity, float aim, float run, float[] out) {
+        float damp = 1.0F - clamp01(aim);
+        float t = entity == null ? 0.0F : (float) entity.tickCount;
+        float r = clamp01(run);
+
+        // ---- idle 呼吸（TaCZ rifle_default idle）
+        float brx = (float) Math.sin(t * 0.050F) * AWP_BREATH_ROT_X;
+        float bry = -0.45F + (float) Math.sin(t * 0.041F + 2.0F) * AWP_BREATH_ROT_Y;
+        float brz = 0.57F + (float) Math.sin(t * 0.031F + 1.2F) * AWP_BREATH_ROT_Z;
+        float bpx = (float) Math.sin(t * 0.043F) * 0.02F;
+        float bpy = -0.08F + (float) Math.sin(t * 0.050F + 0.6F) * AWP_BREATH_PY;
+
+        // ---- walk_aiming：很轻的走路摆动（跑起来就不叠了，TaCZ 的 run 另有一整套）
+        float speed = entity == null ? 0.0F
+                : clamp01((float) entity.getDeltaMovement().horizontalDistance() * 3.6F);
+        float w = speed * (1.0F - r);
+        float wrx = (float) Math.sin(t * 0.55F) * 0.70F * w;
+        float wpy = -(float) Math.abs(Math.cos(t * 0.55F)) * 0.11F * w;
+
+        out[0] = (bpx + AWP_RUN_DX * r) * damp;
+        out[1] = (bpy + wpy + AWP_RUN_DY * r) * damp;
+        out[2] = (AWP_RUN_DZ * r) * damp;
+        out[3] = (float) Math.toRadians(brx + wrx + AWP_RUN_PITCH * r) * damp;
+        out[4] = (float) Math.toRadians(bry + AWP_RUN_YAW * r) * damp;
+        out[5] = (float) Math.toRadians(brz + AWP_RUN_ROLL * r) * damp;
+    }
+
+    /** 服务端 / 弹药侧用的便捷版：冲刺量直接取实体状态 */
+    public static void awpHoldPose(LivingEntity entity, float aim, float[] out) {
+        awpHoldPose(entity, aim, awpRun(entity), out);
+    }
+
+    /** 冲刺量（0/1）：站着 / 空中 / 非冲刺都算 0（与 {@code AwpAnimState.sprinting()} 同判据） */
+    public static float awpRun(LivingEntity entity) {
+        return entity != null && entity.isSprinting() && entity.onGround() ? 1.0F : 0.0F;
+    }
+
+    /**
+     * 把 {@code move} 骨骼的姿态作用到一个**模型像素点**上（口径与 {@link #m1HoldPoint} 完全一致）：
+     * {@code p' = pivot + pos + R·(p − pivot)}，旋转用 {@code new Quaternionf().rotationXYZ(...)}
+     * —— 与 GeckoLib 渲染器内部构造四元数的方式逐字相同，所以这里的点与屏幕上看到的枪是同一个位置。
+     */
+    public static void awpHoldPoint(float[] pose, double[] p, double[] out) {
+        Vector3f v = new Vector3f((float) (p[0] - AWP_MOVE_PX), (float) (p[1] - AWP_MOVE_PY),
+                (float) (p[2] - AWP_MOVE_PZ));
+        new Quaternionf().rotationXYZ(pose[3], pose[4], pose[5]).transform(v);
+        out[0] = AWP_MOVE_PX + pose[0] + v.x;
+        out[1] = AWP_MOVE_PY + pose[1] + v.y;
+        out[2] = AWP_MOVE_PZ + pose[2] + v.z;
+    }
+
+    /**
+     * AWP 的某个模型点 → 世界坐标（aiming = 正抵肩瞄准）。
+     *
+     * <p>★ r114：先过一遍 {@code move} 骨骼的持枪姿态（呼吸 / 走动 / 冲刺压低），再过 display + 举枪姿态
+     * —— 与 {@code AwpGeoModel.computeMovePose} 取的是同一份数（見 {@link #awpHoldPose}）。
+     */
     public static Vec3 awp(LivingEntity entity, boolean aiming, double[] modelPoint) {
         float[] ads = new float[4];
         awpAds(entity, ads);
         float aim = aiming ? 1.0F : 0.0F;
-        return toWorld(entity, AWP_TX, AWP_TY, AWP_TZ, 1.0F, modelPoint, aim,
+        float[] hold = new float[6];
+        double[] p = new double[3];
+        awpHoldPose(entity, aim, hold);
+        awpHoldPoint(hold, modelPoint, p);
+        return toWorld(entity, AWP_TX, AWP_TY, AWP_TZ, 1.0F, p, aim,
                 ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
     }
 
@@ -358,11 +462,11 @@ public final class WeaponMount {
     public static final float MOSIN_TZ = 1.8F;
     /**
      * 机瞄瞮准线（模型 Y）：照门缺口两耳顶 = 准星柱顶 = **2.72**
-     * （与 {@code tools/mosin_gen.py} 的 {@code IRON_Y} 必须一致）。
+     * （与 {@code tools/mosin_m9130_v3.py} 的 {@code IRON_Y} 必须一致）。
      */
     public static final double MOSIN_IRON_Y = 2.72D;
-    /** 4 倍镜光轴（模型 Y）：镜筒中心 = **3.44**（{@code mosin_gen.py} 的 {@code SCOPE_Y}） */
-    public static final double MOSIN_SCOPE_Y = 3.44D;
+    /** 4 倍镜光轴（模型 Y）：镜筒中心 = **3.34**（{@code mosin_m9130_v3.py} 的 {@code SCOPE_Y}） */
+    public static final double MOSIN_SCOPE_Y = 3.34D;
     public static final float MOSIN_AIM_DX = (float) (-HAND_X_PX - MOSIN_TX);
     /** 机瞄举枪的 Y 增量（把「照门顶—准星顶」那条线顶到屏幕中心） */
     public static final float MOSIN_IRON_AIM_DY =
@@ -378,8 +482,8 @@ public final class WeaponMount {
      * 取 1.2 只是让举枪后的构图稍微紧凑一点（抵肩时眼睛离机匣不会太远）。
      */
     public static final float MOSIN_AIM_DZ = 1.2F;
-    /** 枪口（模型像素）：枪管轴线 Y=1.75、最前端 z=−16.78（长枪管） */
-    public static final double[] MOSIN_MUZZLE = {0.0D, 1.75D, -16.78D};
+    /** 枪口（模型像素）：枪管轴线 Y=1.75、最前端 z=−17.35（长枪管） */
+    public static final double[] MOSIN_MUZZLE = {0.0D, 1.75D, -17.35D};
     /** 抛壳口（模型像素）：机匣右侧、正对拉机柄（{@code casing} 骨骼 pivot 0.62 / 2.10 / −1.95） */
     public static final double[] MOSIN_EJECT = {0.62D, 2.10D, -1.95D};
 
@@ -421,28 +525,135 @@ public final class WeaponMount {
      *
      * <p>与 AKM / AWP / Kar98k / 莫辛同一个定法：<b>枪管轴线在屏幕上与 AKM 重合</b>。
      * AKM 的枪管轴线在模型 Y=1.75，M1 的枪管轴线在 Y=2.30
-     * （{@code m1_garand_gen.py} 的枪管方块 y 2.06…2.54 的中心）
+     * （{@code m1_garand_v2.py} 的 {@code BORE}，r108 起就是 2.30，v2 重建后没变）
      * ⇒ {@code TY = AKM_TY + (1.75 − 2.30) = −1.15}；TX / TZ 沿用 −5.0 / 0.50。
      */
     public static final float M1_TX = -5.0F;
     public static final float M1_TY = -1.15F;
     public static final float M1_TZ = 0.50F;
-    /** 机瞄瞄准线（模型 Y）：**准星片顶 = 照门觇孔中心 = 3.10**（改模型要同步这个数） */
-    public static final double M1_IRON_Y = 3.10D;
+    /**
+     * 机瞄瞄准线（模型 Y）：**觇孔（八棱空心环）圆心 = 准星片顶**。
+     *
+     * <p>★ r111：觇孔做成**真空心圆环 + 透明镜片**之后直径从「一块方片」变成 1.16 单位，
+     * 圆心抬到 **3.44**（与 AKM / AWP / Kar98k / 莫辛同一高度）。改模型必须同步这个数。
+     */
+    public static final double M1_IRON_Y = 3.44D;
     public static final float M1_AIM_DX = (float) (-HAND_X_PX - M1_TX);                         // -3.96
-    public static final float M1_AIM_DY = (float) (-ARM_Y * 16.0D - M1_IRON_Y - M1_TY);         // +6.37
+    public static final float M1_AIM_DY = (float) (-ARM_Y * 16.0D - M1_IRON_Y - M1_TY);         // +6.03
     /**
      * 举枪时「把后照门拉到你眼前」的量（模型像素）。
      *
      * <p>照 TaCZ 的 {@code ak47_display.json} 规律（{@code idle_view z = 13.75} →
      * {@code iron_view z = 10.156}，收 3.59 单位且**没有任何旋转**）：它那把枪 38 单位长，
-     * 我们这把 20.9 ⇒ 按比例 3.59 × 0.5 ≈ **1.8**（与 AKM 的 {@code AKM_AIM_DZ} 同值）。
+     * 我们这把 20.96 ⇒ 按比例 3.59 × 0.55 ≈ **1.9**（与 AKM 的 {@code AKM_AIM_DZ} 同量级）。
      */
-    public static final float M1_AIM_DZ = 1.8F;
-    /** 枪口（模型像素）：枪管轴线 Y=2.30、最前端 z=−13.60 */
+    public static final float M1_AIM_DZ = 1.9F;
+    /** 枪口（模型像素）：枪管轴线 Y=2.30、最前端 z=−13.60（`m1_garand_v2.py` 的 MUZZLE_Z） */
     public static final double[] M1_MUZZLE = {0.0D, 2.30D, -13.60D};
-    /** 抛壳口（模型像素）：机匣右侧抛壳窗（{@code casing} 骨骼 pivot 0.42 / 2.90 / −1.05） */
-    public static final double[] M1_EJECT = {0.42D, 2.90D, -1.05D};
+    /** 抛壳口（模型像素）：机匣右侧抛壳窗（收窄后 x 0.20…0.46、y 2.78…3.00、z −1.75…−0.45） */
+    public static final double[] M1_EJECT = {0.33D, 2.88D, -1.05D};
+
+    // ------------------------------------------------ ★ M1 的「持枪动画」= TaCZ 通用步枪 rifle_default
+    /**
+     * TaCZ 的 {@code assets/tacz/animations/rifle_default.animation.json} 是**所有没自带动画的步枪**
+     * 共用的那一套（TaCZ 里没有 M1）。用户要求「套用 TaCZ 步枪的持枪动画」，取它的三个状态：
+     * <pre>
+     *   idle         7.2667s 循环  root rot  X −0.70..0.83  Y −0.97..0.07  Z −0.27..1.41
+     *                              root pos  X −0.05..0     Y −0.17..0.01
+     *   walk_aiming  1.0s   循环  root rot  X/Y/Z ≤ 0.7°    pos ≤ 0.11 单位
+     *   run          0.8s   循环  root rot  X −43..−28.3    Y −53.6..−35.7  Z 24.6..38.2
+     *                              root pos  X −3.27..0.64  Y −7.24..−3.88
+     *                              ⇒ 跑动时**枪压低并转到射手右侧**（TaCZ 的冲刺持枪）
+     * </pre>
+     * 取三段的**均值**当姿态，位置按枪长折算（TaCZ 那把 38 单位 → 我们 20.96，×0.55）。
+     *
+     * <p>★ 为什么这些数要放在 {@link WeaponMount} 而不是 GeoModel：**枪口 / 抛壳点的世界坐标必须
+     * 用同一份姿态**（见 {@link #m1HoldPoint}），否则跑动时枪口焰与弹道会与枪身脱开
+     * （r82 的 AWP 腰射下压角就踩过：改了模型姿态忘了同步弹道）。
+     */
+    public static final float M1_RUN_PITCH = -35.6F;
+    public static final float M1_RUN_YAW = -44.6F;
+    public static final float M1_RUN_ROLL = 31.4F;
+    public static final float M1_RUN_DX = -0.70F;
+    public static final float M1_RUN_DY = -3.05F;
+    public static final float M1_RUN_DZ = -0.35F;
+    /** idle 呼吸（TaCZ rifle_default idle 的幅度） */
+    public static final float M1_BREATH_ROT_X = 0.80F;
+    public static final float M1_BREATH_ROT_Y = 0.50F;
+    public static final float M1_BREATH_ROT_Z = 0.90F;
+    public static final float M1_BREATH_PY = 0.10F;
+    /** {@code move} 骨骼 pivot（geo 里的值，改模型要同步） */
+    public static final float M1_MOVE_PX = 0.0F;
+    public static final float M1_MOVE_PY = 1.30F;
+    public static final float M1_MOVE_PZ = 1.60F;
+
+    /**
+     * M1 的持枪姿态（TaCZ 通用步枪 {@code rifle_default}）：写进 {@code out}
+     * <pre>
+     *   out[0..2] = move 骨骼的位移（模型像素）   out[3..5] = 三个欧拉角（弧度）
+     * </pre>
+     * 顺序与 GeckoLib 的骨骼变换一致：{@code p' = pivot + pos + R(rot)·(p − pivot)}。
+     *
+     * @param aim 举枪比例 0..1（**举枪时姿态全部收掉**：瞄准线必须精确落在屏幕中心）
+     * @param run 冲刺量 0..1（客户端给平滑值，服务端给 0/1 —— 与 ADS 同一套取舍）
+     */
+    public static void m1HoldPose(LivingEntity entity, float aim, float run, float[] out) {
+        float damp = 1.0F - clamp01(aim);
+        float t = entity == null ? 0.0F : (float) entity.tickCount;
+        float r = clamp01(run);
+
+        // ---- idle 呼吸（TaCZ rifle_default idle）
+        float brx = (float) Math.sin(t * 0.050F) * M1_BREATH_ROT_X;
+        float bry = -0.45F + (float) Math.sin(t * 0.041F + 2.0F) * M1_BREATH_ROT_Y;
+        float brz = 0.57F + (float) Math.sin(t * 0.031F + 1.2F) * M1_BREATH_ROT_Z;
+        float bpx = (float) Math.sin(t * 0.043F) * 0.02F;
+        float bpy = -0.08F + (float) Math.sin(t * 0.050F + 0.6F) * M1_BREATH_PY;
+
+        // ---- walk_aiming：很轻的走路摆动（跑起来就不叠了，TaCZ 的 run 另有一整套）
+        float speed = entity == null ? 0.0F
+                : clamp01((float) entity.getDeltaMovement().horizontalDistance() * 3.6F);
+        float w = speed * (1.0F - r);
+        float wrx = (float) Math.sin(t * 0.55F) * 0.70F * w;
+        float wpy = -(float) Math.abs(Math.cos(t * 0.55F)) * 0.11F * w;
+
+        out[0] = (bpx + M1_RUN_DX * r) * damp;
+        out[1] = (bpy + wpy + M1_RUN_DY * r) * damp;
+        out[2] = (M1_RUN_DZ * r) * damp;
+        out[3] = (float) Math.toRadians(brx + wrx + M1_RUN_PITCH * r) * damp;
+        out[4] = (float) Math.toRadians(bry + M1_RUN_YAW * r) * damp;
+        out[5] = (float) Math.toRadians(brz + M1_RUN_ROLL * r) * damp;
+    }
+
+    /** 服务端 / 弹药侧用的便捷版：冲刺量直接取实体状态（与客户端稳态完全一致） */
+    public static void m1HoldPose(LivingEntity entity, float aim, float[] out) {
+        m1HoldPose(entity, aim, m1Run(entity), out);
+    }
+
+    /** 冲刺量（0/1）：站着 / 空中 / 非冲刺都算 0（与 {@code M1GarandAnimState.sprinting()} 同判据） */
+    public static float m1Run(LivingEntity entity) {
+        return entity != null && entity.isSprinting() && entity.onGround() ? 1.0F : 0.0F;
+    }
+
+    /**
+     * 把 {@code move} 骨骼的姿态作用到一个**模型像素点**上：
+     * {@code p' = pivot + pos + R·(p − pivot)}（S = 1）。
+     *
+     * <p>旋转用 {@code new Quaternionf().rotationXYZ(rx, ry, rz)} —— **与 GeckoLib 渲染器
+     * 内部（{@code RenderUtils}）构造四元数的方式逐字相同**，所以这里的点与屏幕上看到的
+     * 枪是同一个位置（自定义欧拉角顺序会偏，别自己拼矩阵）。
+     */
+    public static void m1HoldPoint(float[] pose, double[] p, double[] out) {
+        Vector3f v = new Vector3f((float) (p[0] - M1_MOVE_PX), (float) (p[1] - M1_MOVE_PY),
+                (float) (p[2] - M1_MOVE_PZ));
+        new Quaternionf().rotationXYZ(pose[3], pose[4], pose[5]).transform(v);
+        out[0] = M1_MOVE_PX + pose[0] + v.x;
+        out[1] = M1_MOVE_PY + pose[1] + v.y;
+        out[2] = M1_MOVE_PZ + pose[2] + v.z;
+    }
+
+    private static float clamp01(float v) {
+        return v < 0.0F ? 0.0F : (v > 1.0F ? 1.0F : v);
+    }
 
     /** 举枪时的 display X 增量（左撇子走另一侧） */
     public static float m1GarandAimDx(LivingEntity entity) {
@@ -457,12 +668,20 @@ public final class WeaponMount {
         if (out.length > 3) out[3] = 0.0F;
     }
 
-    /** M1 加兰德的某个模型点 → 世界坐标（aiming = 正抵肩瞄准） */
+    /**
+     * M1 加兰德的某个模型点 → 世界坐标（aiming = 正抵肩瞄准）。
+     *
+     * <p>★ r111：先过一遍 {@code move} 骨骼的持枪姿态（呼吸 / 跑动压低），再过 display + 举枪姿态。
+     */
     public static Vec3 m1Garand(LivingEntity entity, boolean aiming, double[] modelPoint) {
         float[] ads = new float[4];
         m1GarandAds(entity, ads);
         float aim = aiming ? 1.0F : 0.0F;
-        return toWorld(entity, M1_TX, M1_TY, M1_TZ, 1.0F, modelPoint, aim,
+        float[] hold = new float[6];
+        double[] p = new double[3];
+        m1HoldPose(entity, aim, hold);
+        m1HoldPoint(hold, modelPoint, p);
+        return toWorld(entity, M1_TX, M1_TY, M1_TZ, 1.0F, p, aim,
                 ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
     }
 

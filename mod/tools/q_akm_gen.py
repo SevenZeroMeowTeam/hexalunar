@@ -75,6 +75,18 @@ HANDGUARD = (0.00, 2.05, -6.30)
 MAG_PIVOT = (0.0, 1.45, -3.78)
 BOLT = (0.70, 2.64, -3.54)
 
+# ★ 倍镜前后位置（用户反馈 #1：Q 版第一版把 4 倍镜摆到了护木上方 ⇒ 太靠前）
+#   原版 AKM 的 4 倍镜是**骑在机匣盖后段**的（镜筒 z −4.98..−3.50，底座 −5.30..−3.30），
+#   第一版 Q 版却放在 z −7.10..−4.10（护木正上方、红点前面）⇒ 游戏里看就是"倍镜飞在前面"。
+#   下面这个数值把**整根镜筒连同镜座**沿枪身后移（+z 为向后 / 朝射手）：
+#     SCOPE_SETBACK = 2.70 ⇒ 镜筒 z[−4.40, −1.40]、物镜座 [−4.60, −4.20]、目镜座 [−1.60, −1.20]
+#   移动后的自检目标（生成器结尾会打印）：
+#     * 前端让开红点：镜筒前端 −4.40 在红点外壳后端（−5.05）之后 ✓
+#     * 后端停在照门塔（z −1.30..−0.30）之前 ✓
+#     * 光轴仍为 SCOPE_Y = 4.28（**Java 只认 Y**，`WeaponMount.AKM_SCOPE_Y`；z 没有任何 Java 依赖）
+#   想再挪就只改这一个数：变大 = 更靠后，变小 = 更靠前（1.0 = 1 模型像素 = 1/16 格）。
+SCOPE_SETBACK = 2.70
+
 
 def uv_for(name):
     u, v, w, h = PAT[name]
@@ -166,17 +178,19 @@ def build_bones():
     # ---------------- 瞄具（按档位显隐；圆心/光轴必须落在 DOT_Y / SCOPE_Y 上）
     dot = [
         box(-0.26, 0.26, 3.44, 4.30, -5.95, -5.05, 'scope'),             # 红点外壳
-        box(-0.20, 0.20, 3.95, 4.20, -5.85, -5.15, 'lens'),              # 镜片（圆心 4.07）
+        box(-0.20, 0.20, 3.945, 4.195, -5.85, -5.15, 'lens'),            # 镜片（圆心**恰好** 4.07）
     ]
     B.append(bone('dot_sight', (0.0, DOT_Y, -5.50), 'body', dot))
+    # ★ 倍镜整体后移 SCOPE_SETBACK（见文件顶部该常数的说明）—— 光轴 Y 不变，只动 z
+    sz = lambda v: v + SCOPE_SETBACK
     scope = [
-        box(-0.30, 0.30, 3.98, 4.58, -7.10, -4.10, 'scope'),             # 镜筒（光轴 4.28）
-        box(-0.36, 0.36, 3.90, 4.66, -7.30, -6.90, 'scope'),             # 物镜座
-        box(-0.36, 0.36, 3.90, 4.66, -4.30, -3.90, 'scope'),             # 目镜座
-        box(-0.34, 0.34, 3.85, 3.98, -6.60, -6.20, 'steel_d'),           # 前镜环
-        box(-0.34, 0.34, 3.85, 3.98, -5.30, -4.90, 'steel_d'),           # 后镜环
+        box(-0.30, 0.30, 3.98, 4.58, sz(-7.10), sz(-4.10), 'scope'),     # 镜筒（光轴 4.28）
+        box(-0.36, 0.36, 3.90, 4.66, sz(-7.30), sz(-6.90), 'scope'),     # 物镜座
+        box(-0.36, 0.36, 3.90, 4.66, sz(-4.30), sz(-3.90), 'scope'),     # 目镜座
+        box(-0.34, 0.34, 3.85, 3.98, sz(-6.60), sz(-6.20), 'steel_d'),   # 前镜环
+        box(-0.34, 0.34, 3.85, 3.98, sz(-5.30), sz(-4.90), 'steel_d'),   # 后镜环
     ]
-    B.append(bone('scope_4x', (0.0, SCOPE_Y, -5.60), 'body', scope))
+    B.append(bone('scope_4x', (0.0, SCOPE_Y, sz(-5.60)), 'body', scope))
 
     # ---------------- casing_0..3：抛壳（锚点 0.95,2.62,-2.30；只给 casing_0 一个方块，
     #                  其余三根留空骨骼 —— AkmGeoModel 对 null 有判空，空骨骼也不会渲染）
@@ -288,6 +302,21 @@ def main():
     print('  拉机柄 %s 在 bolt 内：%s' % (BOLT, _inside(bones['bolt']['cubes'], BOLT)))
     print('  红点圆心 y=%.2f / 4 倍镜光轴 y=%.2f（镜筒中心 %.2f）'
           % (DOT_Y, SCOPE_Y, 3.98 + (4.58 - 3.98) / 2))
+
+    def zr(name):
+        cs = bones[name]['cubes']
+        return (min(c['origin'][2] for c in cs),
+                max(c['origin'][2] + c['size'][2] for c in cs))
+
+    dz0, dz1 = zr('dot_sight')
+    sz0, sz1 = zr('scope_4x')
+    stock_front = min(c['origin'][2] for c in bones['stock']['cubes'])   # 枪托前端面 = 机匣后端
+    print('  瞄具前后位置（z 越小越靠枪口）：红点 [%.2f, %.2f] / 4 倍镜 [%.2f, %.2f]（后移 %.2f）'
+          % (dz0, dz1, sz0, sz1, SCOPE_SETBACK))
+    print('    · 倍镜前端让开红点：%s（%.2f > %.2f）'
+          % ('OK' if sz0 > dz1 else '*** 与红点重叠 ***', sz0, dz1))
+    print('    · 倍镜后端仍在机匣上（没压到枪托 %.2f）：%s（%.2f < %.2f）'
+          % (stock_front, 'OK' if sz1 < stock_front else '*** 压到枪托 ***', sz1, stock_front))
     print()
     print('geo  ->', os.path.normpath(GEO_OUT))
     print('tex  ->', os.path.normpath(TEX_OUT))

@@ -17,14 +17,39 @@ import software.bernie.geckolib.model.GeoModel;
  *
  * <h2>资源</h2>
  * <ul>
- *   <li>几何 {@code geo/awp.geo.json}：13 骨骼 / 58 方块 / 512² 逐面 UV</li>
+ *   <li>几何 {@code geo/awp.geo.json}：**18 骨骼 / 180 方块 / 512² 逐面 UV**
+ *       （v2 几何，由 {@code tools/awp_v2.py} 生成：空心圆管枪管 + 空心镜筒 + 5 发可见子弹）</li>
  *   <li>贴图 {@code textures/models/awp_geo.png}（+ {@code _glowmask} 供流光层）</li>
- *   <li>动画 {@code animations/awp.animation.json}（控制器 {@code main}）</li>
+ *   <li>动画 {@code animations/awp.animation.json}（控制器 {@code main}，**全部空通道**）</li>
  * </ul>
  *
- * <h2>骨骼</h2>
- * {@code root → move → body → barrel → bipod / scope → scope_adjust / scope_elev / scope_wind /
- * magazine / bolt / trigger / casing}。朝向：枪口 = -Z、上 = +Y、原点 = 机匣中心。
+ * <h2>骨骼（18 根，v2）</h2>
+ * {@code root → move → body →{ barrel → bipod, scope →{ scope_adjust / scope_elev / scope_wind }}}
+ * + {@code magazine → mag_r1..mag_r4}、{@code round_in}、{@code bolt}、{@code trigger}、{@code casing}}。
+ * 朝向：枪口 = -Z、上 = +Y、原点 = 机匣中心。
+ * <ul>
+ *   <li>{@code magazine} = 弹匣盒（换弹时整盒掉下去/升上来）</li>
+ *   <li>{@code mag_r1..mag_r4} = 弹匣里往下第 2..5 发；{@code round_in} = 最上一发（要上膛那发）</li>
+ *   <li>{@code bolt} = 整个枪机（八棱机体 + 右侧下弯拉机柄 + 球头）</li>
+ *   <li>{@code casing} = 弹膛里那枚空弹壳（只在拉栓窗口里显示，抛完自动藏）</li>
+ * </ul>
+ *
+ * <h2>★★ 持枪与动作数值来源（r114：照 TaCZ 的 {@code ai_awp}）</h2>
+ * TaCZ 里没有单独的 {@code awp}，只有**精密国际 {@code ai_awp}**（AWP / AWM 同枪族），
+ * 它的 {@code ai_awp_display.json} 写着 {@code use_default_animation: "rifle"}
+ * （= 通用步枪持枪那一套）+ {@code iron_zoom 1.5} / {@code zoom_model_fov 35} /
+ * {@code state_machine: manual_action}（栓动）+ {@code bolt_shell_ejecting_time 0.4}；
+ * 逐帧动作在 {@code animations/ai_awp.animation.json}（已导出到 {@code build/ai_awp/}，
+ * 用 {@code tools/_ai_awp_times.py} 看）。本类取的是：
+ * <ul>
+ *   <li>{@code bolt}：拉机柄转 **60°**（→ {@link #BOLT_LIFT} 62°）、整枪侧倾 **11.87°**
+ *       （→ {@link #BOLT_ROLL}）、微抬 **4.59°**（→ {@link #BOLT_PITCH}）、下沉 −0.80
+ *       （按枪长比例折半 → {@link #BOLT_SINK}）</li>
+ *   <li>{@code shoot}：枪口上抬 **7.94°** → {@link WeaponHandGrip#AWP_FIRE_PITCH} 6.0
+ *       （另有一路镜头后坐，所以不取满）</li>
+ *   <li>{@code reload_tactical} / {@code reload_empty}：弹匣**翻转着**脱出
+ *       （它的 rotation Z 到 −131°）→ {@link #MAG_TILT} 45°</li>
+ * </ul>
  *
  * <h2>为什么换弹/拉栓/抛壳要程序化推骨骼</h2>
  * 动画 JSON 是「固定秒数」，而实际时长由物品 NBT 的 {@code RELOAD_TICKS / BOLT_TICKS} 决定。
@@ -67,20 +92,45 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     private static final float[] MOVE_POSE = new float[6];
 
     /**
-     * 拉栓：拉机柄上抬角（度）—— r84 由 62° 提到 **88°**（几乎竖直），抡柄的动作一眼能看见；
-     * 88° 时柄头到 Y≈2.14，仍在 8 倍镜筒（底面 2.75）之下，不会穿模。
-     * 与 {@code animation.awp.bolt}、{@code tools/_awp_arms.py} 里的值保持一致。
+     * 拉栓：拉机柄上抬角（度）。
+     *
+     * <p>★★ r114：**改成 TaCZ 的 {@code ai_awp} 数值** —— `bolt` 段里 {@code bolt_rotate} 的
+     * rotation Z 从 0 匀速转到 **60°**（0.25s→0.50s，占整段 1.2667s 的 20%），
+     * 我们用 **62°**（同一档，取整到与 {@code tools/awp_v2.py} 自检打印的 "Java LIFT 62°" 一致）。
+     * 这次 v2 几何把整个枪机（八棱柱 + 下弯柄 + 球头）都挂在 {@code bolt} 骨骼上，
+     * 62° 时柄头还在镜筒底面之下，不会穿模。
      */
-    private static final float BOLT_LIFT = 88.0F;
-    /** 拉栓：枪机后退量（模型像素）—— r87 由 3.4 提到 **4.2**（≈26cm，比真实栓动略长但看得清抽壳行程） */
-    private static final float BOLT_BACK = 4.2F;
+    private static final float BOLT_LIFT = 62.0F;
+    /**
+     * 拉栓：枪机后退量（模型像素）。
+     *
+     * <p>★★ r114：**改成 v2 几何的实测值 1.90** —— {@code tools/awp_v2.py} 的自检会扫
+     * 「抛壳口 z −2.90…−2.10 闭锁被枪机体盖住、后拉 1.90 后让开」，这个数就是几何要求的最小行程。
+     * （TaCZ {@code ai_awp} 的 {@code bolt_group} 后退 4.60 是它自己那把更长的枪的行程，不能照搬。）
+     */
+    private static final float BOLT_BACK = 1.90F;
+    /**
+     * ★★ r114（照 TaCZ {@code ai_awp} 的 `bolt` 段）：拉栓时**整把枪侧倾**（roll，度）。
+     *
+     * <p>TaCZ 的 {@code root} 骨骼在拉栓时 rotation Z 一路升到 **11.87°**、rotation X 到 **4.59°**
+     * （= 枪身向右滚 + 枪口微抬），配合右侧拉机柄抡起来 —— 这就是「栓动枪拉栓」那个标志性动作，
+     * 它把"拉机柄在右侧"这件事表现出来了（我们原来整枪一动不动，只有一根柄在转，看着像在"拨开关"）。
+     */
+    private static final float BOLT_ROLL = 11.9F;
+    /** ★★ r114：拉栓时整枪的俯仰（度）—— TaCZ {@code bolt} 的 {@code root} rotation X 峰值 4.59° */
+    private static final float BOLT_PITCH = 4.6F;
+    /**
+     * ★★ r114：拉栓时枪身**下沉**（模型像素）—— TaCZ {@code bolt} 的 {@code root} position Y 走到
+     * **−0.80**。TaCZ 那把枪比我们长（它整枪约 38 单位，我们 24），按比例折一半取 0.40。
+     */
+    private static final float BOLT_SINK = 0.40F;
     /** {@code bolt} 骨骼 pivot（geo 里的值）—— 拉机柄绕它抬起来 */
     private static final float BOLT_PX = 0.615F;
     private static final float BOLT_PY = 1.50F;
     private static final float BOLT_PZ = 0.375F;
-    /** 拉机柄握点相对 pivot 的偏移（模型像素）：柄头 x[0.87,1.2525]，手再往外一点正好包住 */
-    private static final float BOLT_GRIP_DX = 0.685F;
-    private static final float BOLT_GRIP_DY = -0.05F;
+    /** 拉机柄握点相对 pivot 的偏移（模型像素）：v2 几何的球头中心 (1.31, 1.365, −0.045) 减 pivot */
+    private static final float BOLT_GRIP_DX = 0.70F;
+    private static final float BOLT_GRIP_DY = -0.135F;
     /**
      * 右手「从握把摸到拉机柄」（{@code BOLT_HAND_IN} 之前）与「拉完立即回握把」的区间。
      * r84：枪机一拉到底（0.60）就松手，在 {@code BOLT_HAND_SNAP}（约 1.8 tick）里**快速**回到握把，
@@ -93,9 +143,16 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     /** 击发：扣扳机（绕顶部销轴向后转 11°，与 animation.awp.fire 一致） */
     private static final float TRIGGER_PULL = 11.0F;
 
-    /** 换弹：弹匣掉落距离 / 前倾角 */
+    /**
+     * 换弹：弹匣掉落距离 / 前倾角。
+     *
+     * <p>★★ r114（照 TaCZ {@code ai_awp}）：TaCZ 换弹时 {@code magzine_and_bullet} /
+     * {@code mag_and_lefthand} 的 rotation Z 一路转到 **−131°**、position Y 压到 **−22.6** ——
+     * 它的弹匣是**翻着甩出去**的，不是直上直下。我们取 **45°**（够明显地"倾出去"，
+     * 又不会让弹匣盒穿进拇指孔枪托）。
+     */
     private static final float MAG_DROP = 2.6F;
-    private static final float MAG_TILT = 26.0F;
+    private static final float MAG_TILT = 45.0F;
 
     // ------------------------------------------------------------------ 抛壳轨迹
     /** 抛壳窗口在拉栓进度里的位置：抽壳结束才被抛壳挺顶出去（r84 窗口延长到 0.80，飞行看得更清楚） */
@@ -105,8 +162,11 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * 被枪机抽出的距离 / 抛出的初速（模型像素）—— r84 整条弧线加大：
      * 抽出 1.5 → **3.0**（跟得上 3.4 的枪机行程），抛向 +X 3.4 → **5.0**、向上初速 1.7 → 2.2，
      * 让弹壳从抛壳口翻出去时**离开枪身与右臂**，能看清它三轴翻滚地飞走。
+     *
+     * <p>★ r114：抽出距离跟着 v2 几何的枪机行程收到 **1.90**（= {@link #BOLT_BACK}）——
+     * 弹壳是被枪机带出来的，抽出量不能超过枪机后退量。
      */
-    private static final float CASE_BACK = 3.0F;
+    private static final float CASE_BACK = 1.90F;
     private static final float CASE_VX = 5.0F;    // ★ r107：右抛壳（+X），原来是 -5 往左飞
     private static final float CASE_VY = 2.2F;
     private static final float CASE_G = 0.8F;
@@ -114,6 +174,18 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     private static final float CASE_SPIN_Z = -240.0F;   // ★ r107：自转方向跟着镜像
     private static final float CASE_SPIN_X = 150.0F;
     private static final float CASE_SPIN_Y = 90.0F;
+
+    // ------------------------------------------------------------------ 弹匣子弹（★ r114）
+    /** 拉栓进度超过它，枪机就把装填口重新盖住 ⇒ 弹匣里又看不见了（用户要的「拉完栓看不见」） */
+    private static final float BOLT_SHUT = 0.95F;
+    /** 托弹板把最上一发顶到弹匣口的高度（模型像素）：`round_in` 静止位 y 0.30 → 1.30 */
+    private static final float FEED_LIFT = 1.00F;
+    /** 枪机推弹入膛的位移：z −2.51 → −3.46（弹膛） */
+    private static final float FEED_Z = 0.95F;
+    /** 推弹入膛时把它抬到膛轴：1.30 → 1.575（= `BORE`，`WeaponMount.AWP_MUZZLE` 的 y） */
+    private static final float FEED_Y = 0.275F;
+    /** 入膛时枪弹微抬（度）—— 膛口导斜面把它顶上膛轴 */
+    private static final float FEED_PITCH = 6.0F;
 
     @Override
     public ResourceLocation getModelResource(AwpRifleItem animatable) {
@@ -205,6 +277,61 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
             mag.setPosZ(-0.5F * drop);
             mag.setRotX(MAG_TILT * drop * Mth.DEG_TO_RAD);
         }
+
+        // ---------------------------------------------------------- 弹匣里的子弹（★ r114 重做）
+        applyMagRounds(bp, rp, stack);
+    }
+
+    /**
+     * 弹匣里的 5 发子弹 —— 用户（2026-09-20）：「**弹匣可以看见子弹**，
+     * **拉完栓看不见弹匣里面子弹**」。
+     *
+     * <p>v2 几何把这 5 发做成了 5 根独立骨骼：{@code round_in}（最上一发 = 即将上膛那发）
+     * 与 {@code mag_r1..mag_r4}（往下第 2..5 发），全都挂在 {@code magazine} 下面
+     * （所以弹匣往下掉 / 翻转时子弹跟着走，不用额外处理）。
+     *
+     * <h2>为什么要「按余弹一根根藏」</h2>
+     * 弹匣是**封闭的盒子**（只有上口敞开，插在机匣底的弹匣井里），所以：
+     * <ul>
+     *   <li><b>闭锁时</b>：机匣顶的抛壳/装填口被枪机体盖住（自检：「闭锁被枪机体盖住 OK」）
+     *       ⇒ 从外面**什么都看不见** ⇒ 全部隐藏（这也正是用户要的「拉完栓看不见弹匣里面子弹」）</li>
+     *   <li><b>拉栓时</b>：枪机后退让开装填口（自检：「后拉 1.90 后让开 OK」）
+     *       ⇒ 看得见弹匣里的子弹 —— 而且**托弹板会把最上一发顶到弹匣口**
+     *       （{@link #FEED_LIFT}），一眼就是「枪在等一发子弹上膛」</li>
+     *   <li><b>枪机回位</b>：最上一发被推进弹膛（{@link #FEED_Z} / {@link #FEED_Y}），
+     *       推到底就从弹匣里消失 ⇒ 「拉栓把新子弹推入发射」</li>
+     * </ul>
+     * 打一发少一发：显示的发数 = NBT 里的 {@link AwpRifleItem#mag}（拉栓结束才 −1，
+     * 所以拉栓过程中看得见的那一发正好是「马上要进膛的那发」）。
+     */
+    private void applyMagRounds(float bp, float rp, ItemStack stack) {
+        int mag = stack == null ? 0 : AwpRifleItem.mag(stack);
+        // 只有「枪机让开装填口」这段看得见；换弹时弹匣整盒掉出去，里面更看不见
+        boolean open = bp >= 0.0F && bp < BOLT_SHUT && rp < 0.0F && mag > 0;
+
+        CoreGeoBone roundIn = getAnimationProcessor().getBone("round_in");
+        if (roundIn != null) {
+            if (!open) {
+                roundIn.setHidden(true);
+                roundIn.setPosX(0.0F);
+                roundIn.setPosY(0.0F);
+                roundIn.setPosZ(0.0F);
+                roundIn.setRotX(0.0F);
+            } else {
+                float lift = ease(Mth.clamp(bp / 0.55F, 0.0F, 1.0F));      // 托弹板顶到弹匣口
+                float push = ease(Mth.clamp((bp - 0.62F) / 0.33F, 0.0F, 1.0F));  // 枪机把它推进膛
+                roundIn.setHidden(push >= 0.995F);                          // 进膛了就看不见了
+                roundIn.setPosX(0.0F);
+                roundIn.setPosY(FEED_LIFT * lift + FEED_Y * push);
+                roundIn.setPosZ(-FEED_Z * push);
+                roundIn.setRotX(FEED_PITCH * push * Mth.DEG_TO_RAD);
+            }
+        }
+        // 下面第 2..5 发：显示到「弹匣里还剩几发」为止（最上一发由 round_in 演）
+        for (int i = 1; i <= 4; i++) {
+            CoreGeoBone bone = getAnimationProcessor().getBone("mag_r" + i);
+            if (bone != null) bone.setHidden(!open || i > mag - 1);
+        }
     }
 
     /**
@@ -213,23 +340,61 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * <p>骨骼与手臂**共用这一份**：{@link #captureNow()} 也调它，所以枪和手不会差一帧。
      * 举枪只做平移（叠角度会把 8 倍镜光轴推离屏幕中心）；后坐只沿枪管后拖。
      *
-     * <p>★ 三个角度**恒为 0** —— 与 AKM 完全同一套持枪规则：枪管轴线始终平行于视线。
+     * <p>★ 静止/举枪时三个角度**恒为 0** —— 与 AKM 同一套持枪规则：枪管轴线始终平行于视线。
      * r82 曾给过第一人称 −14° 的腰射下压角，那等于让枪在世界里真的朝下 14°（看着就是「枪口下垂」），
      * 已按用户要求去掉。将来若还要调屏幕上的倾斜感，请改 display 旋转并同步 {@link WeaponMount}。
+     *
+     * <p>★★ r114（用户：「套用 TaCZ 的持枪动画」，TaCZ 里没有 AWP，用精密国际 {@code ai_awp} 那套）：
+     * 拉栓时**整把枪**按 TaCZ {@code ai_awp} 的 `bolt` 段动作 —— 它的 {@code root} 骨骼在这里
+     * rotation Z 升到 **11.87°**、rotation X 到 **4.59°**、position Y 沉 **−0.80**（那把枪比我们长，
+     * 位移按枪长比例折半）。所以拉栓时枪会**向右侧倾 + 枪口微抬 + 整体下沉**，把「右手在右侧抡柄」
+     * 这件事演出来；拉完（{@code boltSwayAt} 回落）自动归零。
      */
     static void computeMovePose(float[] out) {
-        // ★★ r85：举枪位移**不再推 move 骨骼**（改由 GunPose 在 pose 层施加，见
-        //   {@link WeaponHandGrip#pushAds}）；骨骼一律零位移、零角度：
+        // ★★ r85：举枪位移**不在 move 骨骼**（改由 GunPose 在 pose 层施加，见
+        //   {@link WeaponHandGrip#pushAds}）：
         //   · 举枪（ADS）：pose 层平移 —— 把眼睛贴到目镜上、镜筒光轴顶到屏幕中心
         //   · 开火后坐（★ r93）：pose 层的 **firePitch 绕手俯仰** —— 枪管微抬 + 枪托微沉
         //     （以前是整枪 lift 平抬，枪托会跟着往上走，不符合「枪托下沉」的手感）
         //   · 后坐：同时推镜头（{@code ClientEvents.applyRecoilKick}）
-        out[0] = 0.0F;
-        out[1] = 0.0F;
-        out[2] = 0.0F;
-        out[3] = 0.0F;
-        out[4] = 0.0F;
-        out[5] = 0.0F;
+        // ★★ r114：**拉栓**这一路留在骨骼上（它必须是「枪 + 手」一起动，见 captureNow）
+        Player player = Minecraft.getInstance().player;
+        WeaponMount.awpHoldPose(player, aimNow(), holdRun(player), out);
+        float sway = boltSwayAt(localBoltProgress());
+        out[1] -= BOLT_SINK * sway;
+        out[3] += BOLT_PITCH * sway * Mth.DEG_TO_RAD;
+        out[5] += BOLT_ROLL * sway * Mth.DEG_TO_RAD;
+    }
+
+    /** 当前举枪比例（抵肩时持枪姿态全部收掉：镜筒光轴必须精确落在屏幕中心） */
+    private static float aimNow() {
+        return Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AWP).aim, 0.0F, 1.0F);
+    }
+
+    /** 上一游戏刻 + 平滑后的冲刺量（渲染一帧可能调好几次，同一刻只推进一步） */
+    private static long holdTick = Long.MIN_VALUE;
+    private static float holdRun = 0.0F;
+
+    /** 冲刺量的平滑（0 → 1 约 6 tick）：台阶式切换会让「枪压下去」是一下子跳过去的 */
+    private static float holdRun(Player player) {
+        Minecraft mc = Minecraft.getInstance();
+        long now = mc.level == null ? 0L : mc.level.getGameTime();
+        if (now != holdTick) {
+            holdTick = now;
+            float target = player != null && player.isSprinting() && player.onGround() ? 1.0F : 0.0F;
+            holdRun += Mth.clamp(target - holdRun, -0.18F, 0.18F);
+        }
+        return holdRun;
+    }
+
+    /**
+     * 拉栓时「整枪摆动量」0..1（照 TaCZ {@code ai_awp} 的 `bolt`：0.02s 就起势、中段到峰、
+     * 末段随枪机回位一起归零）。骨骼与手臂共用这一份 ⇒ 枪歪的时候手跟着歪，不会脱手。
+     */
+    private static float boltSwayAt(float bp) {
+        if (bp < 0.0F) return 0.0F;
+        return ease(Mth.clamp(bp / 0.30F, 0.0F, 1.0F))
+                * (1.0F - ease(Mth.clamp((bp - 0.68F) / 0.30F, 0.0F, 1.0F)));
     }
 
     /**
@@ -444,6 +609,14 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
         CoreGeoBone casing = getAnimationProcessor().getBone("casing");
         if (casing != null) {
             casing.setHidden(true);                 // 静止时弹壳收在机匣里，本来也看不见
+        }
+        // ★ r114：弹匣里那 5 发（`round_in` / `mag_r1..mag_r4`）在闭锁姿态下被枪机体与弹匣壁挡着，
+        //   物品栏图标 / 掉落物 / 展示框里一律藏掉（既省渲染，也避免斜看穿帮）
+        CoreGeoBone roundIn = getAnimationProcessor().getBone("round_in");
+        if (roundIn != null) roundIn.setHidden(true);
+        for (int i = 1; i <= 4; i++) {
+            CoreGeoBone bone = getAnimationProcessor().getBone("mag_r" + i);
+            if (bone != null) bone.setHidden(true);
         }
     }
 }

@@ -45,6 +45,14 @@ public class QChibiZombieModel<T extends Zombie> extends HumanoidModel<T> {
     public static final ModelLayerLocation LAYER = new ModelLayerLocation(
             new ResourceLocation(HexaLunarCalamity.MOD_ID, "q_chibi_zombie"), "main");
 
+    /**
+     * ★ Q 版骷髅也复用**同一套 chibi 几何**（同一张 UV 表 ⇒ 换一张骨头皮肤就行）：
+     * 行为由原版 {@code SkeletonModel} 提供（拉弓瞄准/走路摆手），几何用这一层。
+     * 单独一个层 id 只是为了让骷髅能自己 bake 一份、不被僵尸的染色影响。
+     */
+    public static final ModelLayerLocation SKELETON_LAYER = new ModelLayerLocation(
+            new ResourceLocation(HexaLunarCalamity.MOD_ID, "q_chibi_skeleton"), "main");
+
     public QChibiZombieModel(ModelPart root) {
         super(root);
     }

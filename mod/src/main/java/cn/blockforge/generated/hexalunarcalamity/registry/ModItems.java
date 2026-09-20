@@ -40,7 +40,7 @@ public final class ModItems {
     public static final RegistryObject<Item> MOSIN_NAGANT =
             ITEMS.register("mosin_nagant", () -> new cn.blockforge.generated.hexalunarcalamity.weapon
                     .MosinRifleItem(new Item.Properties().stacksTo(1)));
-    /** ★ r108 M1 加兰德：**连射**（半自动，枪机自动循环）+ 8 发漏夹（右手压弹）+ 机瞄，用 7.62x61 弹 */
+    /** ★ r108 M1 加兰德：**半自动**（每扣一次扳机一发，按住不连发；枪机自动循环）+ 8 发漏夹（右手压弹）+ 机瞄，用 7.62x61 弹 */
     public static final RegistryObject<Item> M1_GARAND =
             ITEMS.register("m1_garand", () -> new cn.blockforge.generated.hexalunarcalamity.weapon
                     .M1GarandItem(new Item.Properties().stacksTo(1)));

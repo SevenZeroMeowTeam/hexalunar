@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r110`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r113`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -18,7 +18,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r110.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r113.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -67,10 +67,10 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 > **十字弩外形（r61）**：换成参考网格 `模型/十字弩_v2.bbmodel` 那把**现代复合弩**（窄弓臂 + 高导轨 + 枪式握把 + 镜筒 + 线缆），
 > 由 `tools/crossbow_vox.py` **表面体素化**成 824 个方块（逐格从原 512² 贴图采样 UV）。
 > 骨骼名 / 握把原点 / 显示缩放都保持原样，所以武器动画、手部锚点不用重写。
-| **AWP 栓动狙击枪** | .338 狙击弹 | **单发 24 点伤害**（12 颗心，一枪基本带走）· **5 发弹匣 + 膛内 1 发**· 栓动（必须膛内有弹才能击发）· **每发后自动拉栓抛壳**（拉机柄抬 **88°**、枪机后退 **3.4px**、弹壳翻滚抛出，约 1.4 s 一发）· **8 倍镜**（右键抵肩）· 腰射散布大、抵肩几乎指哪打哪 · **有效射程 96 格**（射程内重力 0.004，比步枪弹更平）· 第一人称**双手：右手握把/拉栓、左手托护木** |
+| **AWP 栓动狙击枪**（r79 新增，**r114 用 `tools/awp_v2.py` 重建模型 + 动作照 TaCZ `ai_awp`**） | .338 狙击弹 | **单发 24 点伤害**（12 颗心，一枪基本带走）· **5 发弹匣 + 膛内 1 发**· 栓动（必须膛内有弹才能击发）· **每发后自动拉栓抛壳**（照 TaCZ `ai_awp`：拉机柄抬 **62°**、枪机后退 **1.90px**、**整枪向右侧倾 11.9° + 微抬 4.6°**、弹壳三轴翻滚抛向射手右侧，约 1.4 s 一发）· **8 倍镜**（右键抵肩）· 腰射散布大、抵肩几乎指哪打哪 · **有效射程 96 格**（射程内重力 0.004，比步枪弹更平）· **v2 模型 18 骨骼 / 180 方块**：**一整根八棱空洞枪管**（外 0.250 / 内孔 0.125 + 内壁膛线 + 八棱制退器两道泄气槽）· **空心镜筒 + 整片透明圆镜片（十字分划 + 中心点）**· **弹匣里 5 发看得见的子弹**（拉栓时托弹板顶到弹匣口 → 枪机推进膛 → 闭锁后看不见）· **持枪动画照 TaCZ 通用步枪 `rifle_default`**（idle 呼吸 / 走路摆动 / 冲刺时枪压低转到身侧）· 换弹时弹匣 **45° 翻转脱出** · 第一人称**双手：右手握把/拉栓、左手托护木** |
 | **Kar98k 栓动步枪**（r105 新增，r107 改装填/弹药/伤害） | **7.62×59mm**（`ammo_762_59`，与莫辛-纳甘**共用同一发**；与 7.62×39、.338 都不通用） | **独立模型**：木托长枪 + 下弯拉机柄 + 自带 **4 倍镜筒**（`tools/kar98k_gen.py` 生成）· **单发 50 点伤害**（25 颗心，**爆头 ×1.85**）· 初速 5.7 · **5 发内置弹仓 + 膛内 1 发** · **一次击发一发**：每发后自动拉栓**带出弹壳抛掉**（拉机柄抬 **64°**——下弯柄再大就捅进镜筒、枪机后退 2.6px）· **`R` = 用手一发一发压进弹仓**（开栓 15 tick → 每发 12 tick → 关栓上膛 16 tick；模型里那一发从机匣上方落进弹仓、左手跟着往下按；被打断的那一发 30% 概率掉地）· **4 倍镜**：抵肩走 **AWP 那套整屏镜筒遮罩**（世界变焦 1/4）· 目前**只能创造页签取用**（还没进探险箱掉落/配方） |
 | **莫辛-纳甘 M91/30 栓动步枪**（r106 新增） | **7.62×59mm**（`ammo_762_59`，与 7.62×39、.338 **都不通用**） | 右键抵肩（自带 4 倍镜）/ 左键击发 / `R` 逐发压弹 · **有效射程 84 格**（射程内重力 0.005）· **单发 26 点伤害**（13 颗心，**爆头 ×1.85**）· 初速 5.4 · **5 发固定弹仓**（无弹匣）：`R` = 开栓 15 tick → **每发 12 tick 一发一发压进弹仓** → 关栓上膛 16 tick；被打断的那一发有 30% 概率掉地（TaCZ `bullet_lost = 0.3`）· **拉栓自动「抽壳 → 抛壳 → 推下一发上膛」**（18 tick ≈ 0.85 s）· **出厂自带 4 倍镜**（整屏镜筒遮罩 + 世界变焦 1/4；拆掉镜筒就是**机瞄 ×2**）· 木托 + 发蓝钢 + 顶部导轨，**枪管加长**（整枪 22.4 模型像素 = 1.40 格）· **独立模型** `tools/mosin_gen.py` → 14 骨骼 / 97 方块 · **数值整套套用 TaCZ 的 Kar98k 配置** |
-| **M1 加兰德半自动步枪**（r108 新增） | **7.62×61mm**（`ammo_762_61`，与 7.62×39 / 7.62×59 / .338 **都不通用**） | **连射**（按住左键每 10 tick 一发，`tools/m1_garand_gen.py` 生成整木托 + 上下护木 + 右侧长导气杆）· **单发 22 点伤害**（11 颗心，**爆头 ×1.5**）· 初速 5.15 · **8 发漏夹 + 膛内 1 发**（`R` = 右手把漏夹压进机匣 → 枪机释放一次上膛，**一个漏夹只拉一次栓**）· **每发自动「枪机后退 → 带出弹壳抛向右上 → 复进顶下一发」**（8 tick，不用自己拉栓）· 打空最后一发**整只漏夹弹出「叮」一声** · **只有机瞄**（抵肩走 AKM 那套轻机瞄，视野 1/3）· 有效射程 72 格（射程内重力 0.0055）· **持枪参数照 TaCZ 步枪**（`zoom_model_fov = 45` / `iron_zoom = 1.33`） |
+| **M1 加兰德半自动步枪**（r108 新增，**r112 重建模型，r113 改平行抬盖**） | **7.62×61mm**（`ammo_762_61`，与 7.62×39 / 7.62×59 / .338 **都不通用**） | **连射**（按住左键每 10 tick 一发；`tools/m1_garand_v2.py` 生成：**空心圆管枪管** + **空心觇孔环（透明玻璃十字线）** + **8 发可见漏夹**，**没有外露弹匣 / 拉机柄 / 导气杆**）· **单发 22 点伤害**（11 颗心，**爆头 ×1.5**）· 初速 5.15 · **8 发漏夹 + 膛内 1 发**（`R` = 右手把漏夹压进机匣 → 枪机释放一次上膛，**一个漏夹只拉一次栓**）· **每发自动「枪机后退 → 抛壳（射手右侧）→ 复进顶下一发」**（8 tick，不用自己拉栓）· **弹夹盖每发平行抬起一下、装填完成自动落回合上、打空不合上**（r113）· 打空最后一发**整只漏夹弹出「叮」一声** · **只有机瞄**（抵肩走 AKM 那套轻机瞄，视野 1/3）· 有效射程 72 格（射程内重力 0.0055）· **持枪参数照 TaCZ 步枪**（`zoom_model_fov = 45` / `iron_zoom = 1.33`） |
 | **复合弓** | 复合弓箭 / 尸毒箭 | 右键蓄力（20 tick 满蓄），**三段拉弦动画**（0.65 / 0.9 蓄力切换模型）· 蓄力越高穿透与伤害越强 · 没普通箭时自动改用尸毒箭 · **有效射程 34 格** |
 
 > **十字弩的弦（r60）**：上弦（已装填）后弦**不往后拉**，直接贴回两弓臂之间 ——
@@ -112,7 +112,7 @@ $env:JAVA_HOME='C:\Users\Administrator\.jdks\temurin-17'
 > （r83 实测把枪缩成了一根细针），已回退。要真正做到「强变焦 + 看得见枪」，必须改成
 > **自己用独立投影画枪并立刻 flush**（cancel `RenderHandEvent`，自己调 BEWLR + 手臂）。
 > 整屏镜筒遮罩现在只剩十字弩在用。
-> 光轴参照点 = 模型 Y 3.15（`WeaponMount.AWP_SCOPE_Y`，必须与 `tools/awp_gen.py` 打印的 `SCOPE_AXIS` 一致）。
+> 光轴参照点 = 模型 Y 3.15（`WeaponMount.AWP_SCOPE_Y`，必须与 `tools/awp_v2.py` 打印的 `SCOPE_Y` 一致）。
 
 > **Kar98k 的 4 倍镜（r105）**：与 AWP 同一套「整屏镜筒遮罩」开镜（`ClientEvents.scoping` 对
 > `Kar98kItem` 直接返回 true ⇒ 走 `maskScoping`，把枪与手臂一起藏掉、只留镜筒 + 分划 + 蓝圈），
@@ -497,7 +497,8 @@ tools/  开发辅助脚本（见第五节）
 | `_awp_arms.py` | AWP 双手**可达性校核**：把手部落点换算到相机空间，检查肩距是否在 `drawArm` 的 (0.1, 3.0) 格内、拉伸倍率多少、在画面哪个位置 |
 | `_awpanim.py` | 把某段动画按时间点烘成静态 geo 再出图（拉栓 / 抛壳 / 换弹 / 开镜的**故事板**）|
 | `kar98k_gen.py` | **Kar98k 模型生成器**（r105，r107 加弹）：程序化画木托长枪 + 下弯拉机柄 + 自带 4 倍镜筒 + 机匣里的黄铜弹壳（`casing` 骨骼）+ **压弹时那一发**（`round_in` 骨骼，7.62×59 弹壳/弹肩/弹头三段，弹头朝 −Z），一次输出 `geo/kar98k.geo.json`（11 骨骼 / 29 方块）+ `textures/models/kar98k_geo.png` + `textures/models/kar98k_geo_glowmask.png`（流光遮罩只留钢 / 镜筒 / 镜片 / 黄铜四条色带，木托不发光）。末尾打印骨骼表与包围盒 —— **`WeaponMount.KAR98K_*` 与 `Kar98kGeoModel` 的模型点都要照着这份打印量** |
-| `m1_garand_gen.py` | **M1 加兰德模型生成器**（r108）：整木托（胡桃木）+ 上下两片木护木包住枪管 + 机匣 + **右侧长导气杆** + 大觇孔照门 + 机瞄 + 扳机护圈环 + 黄铜弹壳 + **8 发漏夹**（`clip_in` 骨骼），输出 `geo/m1_garand.geo.json`（10 骨骼 / 29 方块）+ 贴图 + 流光遮罩；末尾打印**关键模型点**（枪口 / 瞄准线 3.10 / 抛壳口 / 握把 / 压漏夹手位）——**这些数要原样抄进 `WeaponMount.M1_*` 与 `M1GarandGeoModel`**。用法同 kar98k：跑完再 `geo2bbmodel` 导 `.bbmodel` |
+| `m1_garand_gen.py` | **M1 加兰德模型生成器**（r108，**已被 `m1_garand_v2.py` 取代，别跑**）：整木托（胡桃木）+ 上下两片木护木包住枪管 + 机匣 + **右侧长导气杆** + 大觇孔照门 + 机瞄 + 扳机护圈环 + 黄铜弹壳 + **8 发漏夹**（`clip_in` 骨骼） |
+| `m1_garand_v2.py` | ★ **M1 加兰德模型生成器 v2**（r112，**r113 改平行抬盖**）：12 骨骼 / 71 方块 / 512² 逐面 UV = **八棱空心枪管（带黑色膛底堵头）** + **八棱空心觇孔环 + 透明玻璃十字线** + **整体平行抬起的弹夹盖**（`cover`，纯平移不转角度）+ **实体顶桥**（照门座坐它上面）+ **8 发黄铜子弹的漏夹**（压在机匣内部）+ **八棱圆盘旋钮**照门，另生成 6 条空动画；末尾打印**自检**（空心管 / 瞄准线 / 漏夹不越机匣 / 盖板与桥齐平 / **抛壳轨迹不穿盖板**）与关键模型点。<br>用法：`python tools/m1_garand_v2.py`（跑完 `geo2bbmodel m1_garand` + `bbpush`）；自检汇总用 `python tools/_m1check.py`（写 `build/_m1check.txt`，终端直接看中文会乱码） |
 | `gen_ammo762_61_icons.py` | 画 **7.62×61mm（M1 加兰德）** 子弹与弹药盒的 16×16 图标（细长瓶颈弹壳 + 铜被甲尖弹头；弹盒 = 军绿铁盒 + **钢蓝灰标签带**）|
 | `_oggdur.py` | 不装第三方库读 Ogg 时长（解析 page 的 granule / 采样率）—— 配音效前先量长度，再用 `playSound` 的 pitch 对齐动作时长 |
 | `fp_preview.py` | 第一人称 / GUI / 第三人称离线预览：读模型 JSON 的 `display` + OBJ，按游戏同样的矩阵光栅化出 PNG，并打印屏幕像素包围盒。<br>调手持姿态用它：`python fp_preview.py --json akm.json --obj akm.obj --ctx firstperson_righthand --rot 0,0,0 --trans=-5,-3,4.5 --scale=0.5 --out t.png` |
@@ -518,7 +519,7 @@ tools/  开发辅助脚本（见第五节）
 
 | 想改什么 | 位置 |
 |---|---|
-| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_vox.py`（体素化参考网格）、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`、**AWP `awp_gen.py`**）→ 再跑 `install_models.py` + `gen_glowmask.py`（awp 的遮罩由 `awp_gen.py` 自己画，不用跑后者）|
+| **武器形状 / 贴图** | `mod/tools/akm_v3.py`（弩 `crossbow_vox.py`（体素化参考网格）、弓 `bow_v3.py`、手雷 `grenade_v3.py`、震爆弹 `flashbang_v3.py`、**AWP `awp_v2.py`**）→ 再跑 `install_models.py` + `gen_glowmask.py`（awp 的遮罩由 `awp_v2.py` 自己画，不用跑后者）|
 | **AWP 腰射姿态 / 屏幕斜不斜** | `client/AwpGeoModel.java` 的 `HIP_PITCH`（**-14°**，举枪时 ×(1-aim) 归零、第三人称不加）+ `weapon/WeaponMount.java` 的 `AWP_HIP_PITCH` / `awpHipPitch()`（**两处必须一致**，后者给枪口/抛壳取点用）；离线扫角 `tools/_awpscan.py`、看效果 `tools/_awpfp.py --pitch -14` |
 | **AWP 数值（弹匣 / 时序 / 弹道）** | `weapon/AwpRifleItem.java`（`MAG_SIZE` 5 · `RELOAD_TICKS` 44 · `BOLT_TICKS` 22 · `BOLT_DELAY` 6 · `CYCLE_TICKS` 28 · `BULLET_SPEED` 6.2 · `SCOPE_ZOOM` 8）+ `Ballistics.AWP_RANGE` / `AWP_IN_RANGE_GRAVITY` + `BulletEntity.SNIPER_DAMAGE`（24；用初速 >5.5 识别狙击弹）|
 | **AWP 栓动 / 抛壳 / 扳机 / 手** | `client/AwpGeoModel.java`：`boltLiftAt` / `boltBackAt`（**骨骼与右手共用**）、`BOLT_LIFT` 62° / `BOLT_BACK` 1.9px、抛壳轨迹常数（`CASE_T0/T1` / `CASE_VX/Y/G` / 三轴翻滚）、`triggerPullAt`（按 `fireWindow` 推扳机）；左手目标 `ARM_SUPPORT`（**不要放到 z<-4.2**，那儿是露出的枪管 + 折叠两脚架）|
@@ -552,7 +553,110 @@ tools/  开发辅助脚本（见第五节）
 
 ## 七、更新日志（本次开发）
 
-> 版本 `1.0.0-r110`
+> 版本 `1.0.0-r114`
+
+- ★★ **r114：AWP 整体重建（模型 v2）+ 动作与持枪动画照 TaCZ 的精密国际 `ai_awp`**
+（用户：「根据图片用 blockbench 建模……**枪管为圆形空洞枪管**、**弹匣可以看见子弹**、
+**拉完栓看不见弹匣里面子弹**、**瞄准镜也是圆型空心内部透明玻璃和十字线**……
+**打一下拉一下栓把空弹壳带出抛出，带入新的子弹推入发射**……**套用 TaCZ 精密国际 awm 的手持动画**」）。
+
+  **① 新生成器 `tools/awp_v2.py`**（照参考图 `模型/AWP_Printstream_Minecraft` 重建，**18 骨骼 / 180 方块 / 512² 逐面 UV**）：
+    1. **枪管 = 一整根八棱空洞壁**：外径全程 0.250 / 内孔 0.125、内壁再贴 **8 段膛线**，
+       「枪口→膛底」整条轴线上没有任何方块（自检逐点扫过），膛底一颗黑堵头 ⇒ 看进去是**有膛线的深孔**；
+       枪口是**八棱制退器**（两道泄气槽只开在两侧面，不堵膛）。
+    2. **瞄准镜 = 空心镜筒 + 整片透明圆镜片**：筒身只按变倍环分两段、首尾相接，
+       前后镜片**背景 alpha = 0**（方角直接丢弃 ⇒ 是圆的不是方的），目镜那片刻**十字分划 + 中心红点**；
+       镜座改成坐在机匣后桥上的**一整块实心块**（不再有「两根细腿」的缝）。
+    3. **弹匣里 5 发看得见的子弹**：`round_in`（最上一发）+ `mag_r1..mag_r4`，**5 根独立骨骼**。
+    4. **自检**（`tools/_awp2check.py` → `build/_awp2check.txt`）：枪口↔膛底轴线是空的 OK ·
+       镜筒内通 + 镜片整片透明含十字线（透明 106 px / 十字 48 px / 无多余实心块）OK ·
+       5 发都在匣内且不穿底 OK · **闭锁盖住抛壳口、后拉 1.90 后让开** OK。
+
+  **② Java 端适配 v2 骨骼**（`client/AwpGeoModel`）：
+    · 旧的 `magazine_rounds`（一根骨骼装 3 个方块）**作废**，改成按 NBT 余弹一根根控 `round_in` / `mag_r1..mag_r4`：
+      **闭锁时全藏**（枪机体盖住装填口，从外面本来就看不见）→ **拉栓时露出来**
+      （托弹板把最上一发顶到弹匣口）→ **枪机回位时把它推进膛，推到底就从弹匣里消失**
+      ⇒ 正好是用户要的「弹匣看得见子弹 / 拉完栓看不见」；打一发少一发也自动跟着 `HlcMag` 走。
+    · 拉机柄握点跟着新几何挪到球头中心 (1.31, 1.365)，抛壳「抽出距离」跟枪机行程一起收到 1.90。
+
+  **③ 拉栓 / 换弹照 TaCZ `ai_awp`**（TaCZ 里没有单独的 `awp`，只有**精密国际 `ai_awp`**，
+    它的 `ai_awp_display.json` 写了 `use_default_animation: "rifle"` ⇒ 持枪就是**通用步枪**那一套）：
+    · `bolt` 段：拉机柄转 **60°**（取 62°）、**整枪 rotation Z 11.87°（向右侧倾）**、
+      rotation X 4.59°（微抬）、position Y −0.80（按枪长折半取 −0.40）——
+      **枪与双手一起歪**（走 `move` 骨骼 + `GunFrame`，手臂不会脱手）
+    · `shoot` 段：枪口上抬 7.94° ⇒ `AWP_FIRE_PITCH` 6.0（另有一路镜头后坐，所以不取满）
+    · `reload_tactical` / `reload_empty`：弹匣是**翻转着**脱出的（它的 rotation Z 到 −131°）⇒ 我们取 45°
+    · 枪机后退量不照搬（TaCZ 那把枪更长）：用新几何自检扫出来的 **1.90**
+
+  **④ 持枪动画 = TaCZ 通用步枪 `rifle_default`**（新增 `WeaponMount.awpHoldPose`，与 M1 同一份数值）：
+    idle 呼吸（rotX ±0.8° / rotY ±0.5° / rotZ ±0.9° / posY ±0.10）、walk 轻摆，
+    **冲刺时枪压低并转到射手右侧**（rotX −35.6° / rotY −44.6° / rotZ 31.4°，位移按枪长 ×0.63）；
+    抵肩时全部收掉（镜筒光轴必须精确落在屏幕中心）。
+    **枪口 / 抛壳点的世界坐标走同一份姿态**（`WeaponMount.awpHoldPoint`）⇒ 跑动时枪口焰与弹道不会与枪身脱开。
+    新工具 `tools/_ai_awp_times.py`（看 TaCZ `ai_awp` 某段的关键帧 / 长度）。
+
+- ★ **r113：M1 加兰德的弹夹盖改成「整体平行抬起」**（用户：「漏匣上盖是平行的」「打开时也保持平行」「抛壳也如此」）。
+r112 是绕机匣后缘**翻开** 55°，这轮改成**沿 Y 竖着平抬 0.40 像素**，**三个角度恒为 0** ⇒
+关上时与机匣顶 3.00 齐平、打开时和关上时**同形同向**（俯视就是一块升起的平板）。
+  1. **机匣顶分前后两段**：前段 z −1.98…−0.78 = **可抬起的盖板**（漏夹就从这儿压进去），
+     后段 z −0.78…1.10 = **实体顶桥**（不动，照门座坐在它上面）—— 真枪也是这个布局
+     （弹夹口只在照门座**前面**，座子后面是实心机匣桥）。抬升是纯竖直运动 ⇒
+     与照门座 / 觇孔环（z −0.70…0.14，y 2.96…3.92）**零干涉**。
+  2. **抛壳走的也是这条让出来的口子**：抬 0.40 后盖板底 3.28 − 机匣顶 3.00 = 缝 **0.28**，
+     黄铜空壳直径 0.20 ⇒ 出得来；空壳照旧从**射手右侧（+X）** 抛（`CASE_VX/VY/BACK` 没动）。
+     为了不刮到正在升起的盖板：**盖板先抬（枪机进度 0.26 抬满）、空壳后出现（0.14 起）**，
+     空壳本体从 z −2.45…−1.95 后移到 **−2.50…−2.00**（就位在弹膛里）。
+  3. **新增自检**：`tools/m1_garand_v2.py` 自检 5 验「盖板抬起后与机匣顶的缝 ≥ 空壳直径」
+     「盖板与实体桥齐平无缝隙」「漏夹落在盖板开口内」，**自检 5b 用 Java 同一套公式复算
+     空壳整条飞行轨迹**，确认全程不碰盖板；新工具 `tools/_m1check.py` 一键跑完并落成 UTF-8 报告
+     `build/_m1check.txt`（26 行自检、**0 失败**）。
+  4. **顺带**：照门高低旋钮由方块改成**八棱圆盘 + 一字槽 + 中心螺丝**（同参考照）；
+     `ARM_CLIP`（换弹时右手下压点）的 z 由 −0.90 改为 **−1.40**（正对盖板开口中心）；
+     `M1GarandGeoModel` 里删掉 `COVER_DEG`，换成 `COVER_LIFT = 0.40F` +
+     `cover.setPosY(开合量 × COVER_LIFT)`（`staticPose` 也一并归零）。
+  5. 版本 `1.0.0-r113`，jar `hexalunar_calamity-1.0.0-r113.jar`（**BUILD SUCCESSFUL**，Q 版 q3 同步重建）。
+
+- ★★ **r112：M1 加兰德整体重建（模型 v2）+ 三轮用户标注修复**。新生成器 `tools/m1_garand_v2.py`
+  （旧的 `m1_garand_gen.py` 已在文件头标注「已被取代，别跑」），12 骨骼 / 67 方块 / 402 面 /
+  512² 逐面 UV，几何与贴图全部重做：
+  1. **空心圆管枪管**：`tube_z()` 用 8 段斜置小盒拼八棱**空心**管（外径 0.21 / 内孔 0.11），
+     枪口正视是一圈管壁 + 中间黑洞（孔底另有黑色八棱堵头 ⇒ 有膛深）。
+  2. **照门 = 圆型空心 + 透明玻璃 + 十字线**：`ap` 八棱空心环（内孔 0.62 单位）+ 孔内 `rs_glass`，
+     该方块贴图**背景 alpha = 0**（cutout 直接丢弃），只画暗蓝镜片边 + 1px 深色十字分划 + 中心亮点。
+     **觇孔圆心 = 准星片顶 = 模型 Y 3.44**（r108 是 3.10）；`python tools\_ads_check.py m1_aim`
+     验算仍是 **0.00% / 0.00%**（枪管轴 −8.27%）。
+  3. **弹夹盖 `cover`**（机匣后端铰链，绕 X 转 +55° 翻开）：每打一发随气动枪机翻开一下放空壳、
+     装填完成自动合上、**打空不合上**（空仓挂机）。用户标注「这块多余」⇒ 已把盖板改成
+     **与机匣顶齐平、不比机匣宽**（x ±0.46 / y 2.88…3.00），删掉两道加强筋与唇边。
+  4. **漏夹 + 8 发可见子弹**：`clip_in`（侧壁只包下半截）+ `clip_rounds`（8 发黄铜子弹，一发 0.0755）。
+     装填时整只抬到机匣上方 1.75（y 3.63…4.32）⇒ 8 发全看得见；盖上/压进去后 Java 把两根骨骼
+     一起隐藏 ⇒ 合上看不见里面。★ 漏夹整套**压在机匣内部**（底 1.88 ≥ 弹仓井底 1.55、
+     顶 2.574 ≤ 枪机底 2.58）—— 用户标注「这个位置不要漏出来」就是它原来下半截从机匣底下伸出来。
+  5. **没有外露弹匣 / 拉机柄 / 导气杆**（用户三轮标注）：删 `magazine` 底板方块、删凸出的拉机柄、
+     删右侧那根长导气杆（「这个位置也不需要」）；侧边只剩木材与枪管。
+  6. **枪身收窄约 23%**（「枪身可以细一点」）：机匣外半宽 0.60→0.46、漏夹口 0.24→0.20、枪托 0.66→0.54、
+     护木 0.56→0.46、枪管外径 0.25→0.21、觇孔环 0.58→0.48。**轴线 Y=2.30 与瞄准线 3.44 一点没动**
+     ⇒ `WeaponMount.M1_T*` 不改，只有 `M1_EJECT` 的 x 跟随抛壳窗 0.42→0.33。
+  7. **枪托与握把是一整块木头**（「M1 加兰德没有握把和枪托一体」）：去掉原来那块独立深色握把块，
+     枪托改成 细托颈（1.40）→ 逐渐加高的托底（2.20）连续三段；右手握点移到托颈前下角 `(0, 1.45, 2.55)`。
+  8. **持枪动画 = TaCZ 通用步枪 `rifle_default`**（TaCZ 里没有 M1）：取 idle（呼吸 rotX ±0.8°/rotZ ±0.9°/
+     位移 ±0.10）、walk_aiming（走路轻摆）、run（**枪压低并转到射手右侧** rotX −35.6°/rotY −44.6°/
+     rotZ +31.4°，位置按枪长 38→21 折算 ×0.55）三段均值，写在 `WeaponMount.m1HoldPose`；
+     **骨骼渲染与弹道共用同一份**（`m1HoldPoint` 用与 GeckoLib 渲染器逐字相同的
+     `new Quaternionf().rotationXYZ(...)`），举枪时按 aim 整套收掉。
+  9. 生成器自检新增：漏夹不许露在机匣外、机匣下方最低点、盖板张开会不会穿过觇孔环、
+     镜片像素够不够画十字线；Q 版（`tools/qgen.py`）同步（clip/cover 不参与加粗，
+     锚点改到管壁 —— 枪口轴心现在是空的洞）。
+- ★ **据 `mod/logs` 现场日志修 Q 版「缺贴图」刷屏**：
+  `Missing textures in model hexalunar_calamity_q:item/crossbow_hand_part:`
+  → `hexalunar_calamity:models/crossbow`。根因：`build.gradle` 的 `prepareQResources`
+  把基础命名空间搬成 Q 命名空间时**只替换 `**/*.json`**，`.mtl` 里的
+  `map_Kd hexalunar_calamity:models/crossbow` 没换 ⇒ 指向已不存在的命名空间。
+  现改成 `*.json / *.mtl / *.obj` 一起替换，并用 `tools/_jarread.py` 核对 Q 版 jar 里的
+  `crossbow.mtl` 与 `textures/models/crossbow.png` 都对上了。
+  日志里其余告警（`Object did not get ID it asked for`、`Missing data pack mod:hexalunar_calamity_q`、
+  `Skipping Entity with id hexalunar_calamity_q:*`）都是「在同一个存档里来回装卸 Q 版 jar / 增删物品」
+  的固有现象，不是代码 bug —— 想两个版本都玩请**各用一个存档**。
 
 - ★ **据 `mod/logs` 的现场日志修掉三处问题**。日志是 **GBK** 编码的（`latest.log` / `debug.log`
   + 三个 `.gz` 归档），按 UTF-8 读会全是乱码；筛掉诊断行之后，属于本模组的其实只有 **8 行**。
@@ -589,15 +693,64 @@ tools/  开发辅助脚本（见第五节）
 
 - ★ **Q 弹版构建开关**：`gradlew build -Pqmode=true` ⇒ mod id **`hexalunar_calamity_q`**、
   显示名「六相月灾 · Q弹版」，与普通版**可以同时安装**（id 不同互不冲突）。代码只有一份，
-  差别全在 `build.gradle`（`BuildInfo.Q_MODE`，javac 常量折叠 ⇒ 非 Q 版里 Q 分支的字节码
-  直接消失）+ `src/qresources` 覆盖层；`prepareQResources` 会把基础命名空间的
-  `assets/` `data/` 整体搬到 Q 命名空间，再叠 Q 版文件。
+  差别全在 `build.gradle`（`BuildInfo.Q_MODE`，javac 常量折叠 ⇒ 非 Q 版里 Q 分支的**调用点**
+  直接消失，细节见下文「字节码级验证」）+ `src/qresources` 覆盖层；`prepareQResources` 会把
+  基础命名空间的 `assets/` `data/` 整体搬到 Q 命名空间，再叠 Q 版文件。
 - **Q 版资源**：Q 版 AKM 骨骼模型
   （`qresources/assets/hexalunar_calamity_q/geo/akm.geo.json` + 贴图 + 流光遮罩，
   `tools/q_akm_gen.py` 生成）、Q 版僵尸贴图（`tools/q_chibi_zombie_tex.py`）、
   Q 版自爆尸模型层（`client/QChibiZombieModel` / `QChibiZombieRenderer`，
   配 `client/Jelly` 的果冻晃动）。Q 版自爆尸的渲染分支由 `BuildInfo.Q_MODE` 选择
   （见 `client/ModClient#onRegisterRenderers`）。
+- ★ **q2：Q 版 4 倍镜往后挪到机匣上**（用户实机截图反馈「倍镜太靠前，把它挪到红框里」）：
+  Q 版第一版把 `scope_4x` 摆在了**护木正上方**（镜筒 z −7.10..−4.10、物镜座到 −7.30），
+  而原版 AKM 的 4 倍镜是**骑在机匣盖后段**的（镜筒 −4.98..−3.50、底座 −5.30..−3.30）
+  ⇒ 实机里就是「倍镜飞在枪管前面」。修法：`tools/q_akm_gen.py` 新增
+  **`SCOPE_SETBACK = 2.70`**，把镜筒 + 两个镜座 + 两个镜环连同骨骼 pivot **整体 +z（朝射手）平移**：
+  镜筒落到 **z[−4.60, −1.20]**、物镜座 [−4.60, −4.20]、目镜座 [−1.60, −1.20]。
+  - **光轴仍是 `SCOPE_Y = 4.28`**，`WeaponMount.AKM_SCOPE_Y` 只认 Y、**Java 没有任何 z 依赖**
+    ⇒ 一行 Java 都没改，开镜 FOV / 贴脸锚点不受影响（`AkmGeoModel#applySights` 只用骨骼名做显隐）。
+  - 生成器结尾新增自检并打印：**镜筒前端让开红点**（−4.60 > 红点后端 −5.05 ✓）、
+    **后端仍在机匣上**（−1.20 < 枪托前端 2.20 ✓）；想再微调只改 `SCOPE_SETBACK` 一个数
+    （1.0 = 1 模型像素 = 1/16 格，变大更靠后）。
+  - 出货前用 `tools/qjar_check.py` + 一段 `build/_jarscope.py` 核对**jar 里**的 geo 确实是
+    `scope_4x z=[−4.60, −1.20] / pivot Y=4.28`（防止覆盖层没生效、把旧模型发出去）。
+- ★★ **q3：Q 版造型铺满全部内容**（8 个模型 + 6 种特殊感染者），出货版本 `1.0.0-q3`。
+  - **武器/投掷物统一由 `tools/qgen.py` 批量 Q 化**（不再一个个手搓）：AWP、复合弓、
+    十字弩（871 方块那份 `crossbow_geo`）、闪光弹、手雷、莫辛、Kar98k、M1 加兰德
+    （Q 版 AKM 仍是手搓的那份）。贴图同步做 Q 化调色（`Color×1.28 / Brightness×1.10 / Contrast×1.06`），
+    流光遮罩沿用基础版。
+  - ★ **为什么这样变胖是安全的**（Q 版最硬的约束是**锚点一个都不能动**）：
+    <br>① 只放大 **X/Y**、**Z 一个面都不动** ⇒ 枪口端面 / 抛壳口 / 弹匣井 / 拉机柄 /
+    箭杆出膛点全部原地不动（`WeaponMount` 里那些 `*_MUZZLE` / `*_EJECT` 直接受用）；
+    <br>② 每个方块**绕自身几何中心**放大 ⇒ 所有高度中心不变 ⇒ **红点圆心 / 4x 光轴 /
+    各枪 `*_SCOPE_Y` 逐字不动**（这是开镜时"瞄准线顶到眼睛"的参照）；
+    <br>③ 只放大不缩小 ⇒ 任何原本在方块**内部**的锚点（握把/护木/弹匣 pivot 等）仍然在内部；
+    <br>④ 骨骼名 / 骨骼数 / 每骨骼方块数 / pivot 全部保留 ⇒ GeckoLib 的换弹·拉栓·抛壳动画
+    与各 `*GeoModel` 的程序化驱动**一行都不用改**；
+    <br>⑤ 仿射变换保共面性 ⇒ 基础版没有共面重叠面的话，变胖后也不会新冒出 z-fighting。
+  - **两处例外**：瞄具骨骼（`sight*` / `scope*` / `dot_sight`）**只加宽不加高**（`FLATY`）——
+    它们的高度就是 Java 里的瞄具线，加高会把瞄准参照点顶偏；枪托尾段用 `tail=(z_from, k)`
+    朝机匣收短（那一段没有任何锚点）。加粗倍率写在 `qgen.py` 的 `CONFIG` 里
+    （步枪 `kx≈1.6 / ky≈1.5`、投掷物 `1.5/1.44`），想更 Q 就改这一张表。
+  - **自检**：`qgen.py` 每跑一个模型都会逐条验（骨骼集合一致、方块数一致、每个方块 X/Y 中心没动、
+    尺寸只增不减、Z 面没动、瞄具骨骼 Y 高度逐字不变、锚点仍在骨骼内），任何一条不过就**不写文件**、
+    退出码 1；出货前再用 `build/_jarq3.py` 拆 **jar 里**的 9 个 geo 复核一遍
+    （枪口点在骨骼内、瞄具骨骼 Y 未动、11 张贴图/遮罩齐全、两张怪物皮肤在）。
+  - ★ **6 种特殊感染者全部 Q 化**（原来只有自爆尸）：
+    - 僵尸系（自爆 / 弓手 / 桶 / 巨尸）共用 `QChibiZombieRenderer`，染色与体型沿用原配置
+      （弓手 `0x59C46B`、桶尸 `0x6E6E78`、巨尸 1.9 倍且不带标识层）；
+    - 骷髅系（冲刺 / 剧毒）新增 `QChibiSkeletonRenderer`：**几何复用同一套 chibi 大头矮胖身子**
+      （`QChibiZombieModel.SKELETON_LAYER`），行为仍交给原版 `SkeletonModel`
+      ⇒ 拉弓瞄准姿势不用自己写；皮肤是新的骨头版 `textures/entity/q_chibi_skeleton.png`
+      （`tools/q_chibi_skeleton_tex.py`，同一张 UV 表：骷髅脸/眼窝/牙/肋骨）。
+    - 「果冻」逻辑抽到 `client/QChibi`（无状态：走路挤压 + 小跳 + 受伤抖动 + 静止呼吸），
+      两种渲染器共用；老存档里的怪一进游戏就变 Q，不碰任何 NBT。
+    - 查原版签名踩的坑记一笔：1.20.1 的 `SkeletonRenderer` **不是泛型类**、写死
+      `AbstractSkeleton`，而且它的构造器第 2~4 个参数是 **ModelLayerLocation**（不是模型实例），
+      覆写的方法参数类型是 `AbstractSkeleton`（`javap` 核过才改对）。
+  - 顺手把 Q 版 AKM 的红点镜片圆心从 4.075 校正到**恰好 4.07**（`AKM_DOT_Y`），
+    现在 9 个模型的所有瞄具锚点都是逐字精确的。
 - **这一轮做到哪一步（样板先行）**：只做了 **1 把枪 + 1 只怪**当样板 —— Q 版 AKM（`tools/q_akm_gen.py`）
   与 Q 版自爆尸（`client/QChibiZombieModel` / `QChibiZombieRenderer` + `tools/q_chibi_zombie_tex.py`），
   先把「Q 版造型」与「Q 弹晃动」两套机制跑通、上手看手感；确认后再把剩下 7 把枪 / 2 种投掷物 /
@@ -606,7 +759,7 @@ tools/  开发辅助脚本（见第五节）
   握把 (0,0.55,−0.15)、护木 (0,2.05,−6.30)、弹匣轴 (0,1.45,−3.78)、枪机 (0.70,2.64,−3.54)），
   所以**武器侧一行 Java 都没改** —— 同一套 `AkmGeoModel` / `WeaponMount` / `WeaponArms` /
   `AkmRifleItem` 直接驱动这个矮胖模型（`q_akm_gen.py` 结尾会把这些锚点逐条打印出来自检）。
-- **Q 弹手感来自哪**（两处都只在 Q 版生效；普通版的 Q 分支被 javac 常量折叠掉，字节码里不存在）：
+- **Q 弹手感来自哪**（两处都只在 Q 版生效，见下面的字节码验证）：
   - **枪**：`client/Jelly` 弹簧（开火给冲量 `punch`，每 tick 按 0.82 衰减、1.15 刚度回位）
     → `GunPose.matrix` 绕握把做**挤压拉伸** `1+0.05j / 1−0.16j / 1+0.10j`，
     再叠 `0.055·j` 的 Y 向弹跳（`client/WeaponHandGrip#pushAds`）。开镜冲量 0.55、腰射 0.85。
@@ -618,7 +771,7 @@ tools/  开发辅助脚本（见第五节）
 - **怎么装 / 怎么切**：两个 jar **同名内容、不同 mod id**，实战里**建议一次只放一个**
   （同时装会出现两套创造模式页签与两批怪）：
   - 普通版：`gradlew build --offline` ⇒ `build/libs/hexalunar_calamity-1.0.0-rXXX.jar`
-  - Q 弹版：`gradlew build --offline -Pqmode=true` ⇒ `build/libs/hexalunar_calamity_q-1.0.0-q1.jar`
+  - Q 弹版：`gradlew build --offline -Pqmode=true` ⇒ `build/libs/hexalunar_calamity_q-1.0.0-q2.jar`
   - 两个都丢进 `.minecraft/mods/` 也能起来（id 不同、属性修饰符 UUID 已错开），
     想切回普通版就把 Q 版 jar 移出 `mods/`。
 - **要改名 / 改版号**：只动 `build.gradle` 里 qmode 分支的 `modId` / `modName` / `version`
@@ -627,6 +780,32 @@ tools/  开发辅助脚本（见第五节）
   `CorpsePoisonEffect` 里的旧字面量也已换成 `MOD_ID`）。
   ★ 普通版那行 `version = '1.0.0-rXXX'` 必须留在**行首**（发版 CI 用 sed 读它），
   qmode 的覆盖写在它后面。
+- **字节码级验证（`javap -v` 反汇编两个 jar 的 `ModClient`）**：两个 jar 的
+  `onRegisterRenderers` 方法体里**都没有** `getstatic BuildInfo.Q_MODE` —— 常量在编译期就折掉了，
+  不存在运行期分支：
+  | jar | BOMBER_ZOMBIE 绑到的 lambda | 说明 |
+  | --- | --- | --- |
+  | `hexalunar_calamity`（普通） | `lambda$onRegisterRenderers$4` → `tintedZombie` | 原版僵尸渲染器 |
+  | `hexalunar_calamity_q`（Q 版） | `lambda$onRegisterRenderers$5` → `QChibiZombieRenderer` | Q 版矮胖渲染器 |
+  javac 仍会**留下没人引用的那个合成 lambda 方法体**（普通版里是 `$5`，Q 版里是 `$6`），
+  它只存在于方法表、没有任何 `MethodHandle` 指向它 ⇒ **运行期零影响**，不必当成「没折掉」。
+  另外 `onRegisterLayerDefinitions` 在两个 jar 里都无条件注册了 Q 僵尸的模型层
+  （无害：普通版没有任何渲染器去取它）。资源侧则是**硬隔离**：
+  普通版 191 条 `assets/hexalunar_calamity/**`、0 条 Q 命名空间；Q 版反过来
+  （192 条 `hexalunar_calamity_q/**`、0 条基础命名空间）。
+- ★ **出货前自检脚本 `tools/qjar_check.py`**（`python tools/qjar_check.py`，退出码非 0 即有 FAIL）：
+  按 **jar 本体**体检，专治「构建成功但产物不可用」——
+  1. **zip 完整性 / class 数量**：今天真踩过两次 —— `hexalunar_calamity-1.0.0-r110.jar` 曾出现
+     「有资源、**0 个 class**」（两个 Gradle 构建共用同一个 `build/` 目录并发跑，jar 任务抓到了
+     空的 classes 输出），部署到 `mods/` 的 `hexalunar_calamity-1.0.0-r109.jar` 则是**非法 zip**
+     （1.1MB 截断包，Forge 会直接报无效模组）；
+  2. `mods.toml` 的 modId / version / displayName 与 jar 内资源命名空间是否自洽；
+  3. 扫全部 `.json` / `.mcmeta` / `.toml`，确认**零跨命名空间引用**（Q 版里不得残留
+     `hexalunar_calamity:`，普通版里不得出现 `hexalunar_calamity_q:`）；
+  4. Q 版样板资源（Q AKM 骨骼 + 贴图 + 流光遮罩、Q 僵尸贴图）是否就位、普通版是否混入；
+  5. 有 `javap` 时反汇编 `ModClient`，确认常量折叠后 BOMBER_ZOMBIE 绑的是
+     普通版 `$4`(tintedZombie) / Q 版 `$5`(QChibiZombieRenderer)。
+  **并发构建会互相踩 `build/`**：跑完两个版本后最好各检查一次，或串行构建。
 
 > 版本 `1.0.0-r108`
 

@@ -194,10 +194,11 @@ public final class ClientWeaponInput {
             auto = false;
         } else if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .M1GarandItem) {
-            // ★ r108 M1 加兰德：**连射**（半自动）—— 按住左键按 FIRE_INTERVAL 的节奏一发一发打，
-            //   枪机由导气杆自动循环，不需要玩家拉栓
+            // ★ r108 M1 加兰德：**半自动**步枪 —— 每扣一次扳机（重新按下左键）才打一发，
+            //   按住左键**不会**连发；两次击发之间至少等 FIRE_INTERVAL tick（枪机由导气杆自动循环，
+            //   玩家不需要拉栓）。要连续射击就一下一下点。
             interval = cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem.FIRE_INTERVAL;
-            auto = true;
+            auto = false;
         } else if (weapon.getItem() instanceof CrossbowWeaponItem) {
             interval = CrossbowWeaponItem.FIRE_INTERVAL; // 按住连发
             auto = true;

@@ -24,12 +24,53 @@ JOBS = [
     ('crossbow_v3', 'hexalunar_crossbow'),
     ('awp_v1', 'hexalunar_awp'),
     ('mosin_v1', 'hexalunar_mosin_nagant'),
+    ('mosin_m9130', 'hexalunar_mosin_m9130'),      # M91/30 带长刺刀（照用户照片做的，只出模型）
+    ('m1_garand', 'hexalunar_m1_garand'),           # M1 加兰德（气动半自动：带 m1_garand.animation.json）
 ]
 
 
 def _uuid(s):
     h = hashlib.md5(s.encode('utf-8')).hexdigest()
     return '%s-%s-%s-%s-%s' % (h[:8], h[8:12], h[12:16], h[16:20], h[20:32])
+
+
+def _bb_animations(geo_name, group_uuids):
+    """build/<geo>.animation.json（Bedrock/GeckoLib 格式）→ .bbmodel 的 animations。
+
+    GeckoLib 的「时间字符串 → 通道」字典，转成 Blockbench 的 animators（按组 uuid）。
+    """
+    ap = os.path.join(ROOT, 'build', geo_name + '.animation.json')
+    if not os.path.exists(ap):
+        return []
+    src = json.load(open(ap, encoding='utf-8')).get('animations', {})
+    out = []
+    for name, spec in src.items():
+        animators = {}
+        for bone, chans in (spec.get('bones') or {}).items():
+            gu = group_uuids.get(bone)
+            if not gu:
+                continue
+            kfs = []
+            for channel, times in chans.items():       # ★ 通道 → 时刻（不是时刻 → 通道）
+                for tstr, val in times.items():
+                    t = float(tstr)
+                    v = list(val) if isinstance(val, (list, tuple)) else [val] * 3
+                    kfs.append({'channel': channel,
+                                'data_points': [{'x': v[0], 'y': v[1], 'z': v[2]}],
+                                'uuid': _uuid('%s/anim/%s/%s/%s/%s'
+                                              % (geo_name, name, bone, channel, t)),
+                                'time': t, 'color': -1, 'interpolation': 'linear'})
+            kfs.sort(key=lambda k: (k['time'], k['channel']))
+            animators[gu] = {'name': bone, 'type': 'bone', 'keyframes': kfs}
+        lp = spec.get('loop')
+        loop = ('hold' if lp == 'hold_on_last_frame' else
+                'loop' if (lp is True or lp == 'loop') else 'once')
+        out.append({'name': name, 'loop': loop, 'override': False,
+                    'length': spec.get('animation_length', 1.0), 'snapping': 24,
+                    'selected': False, 'anim_time_update': '', 'blend_weight': '',
+                    'start_delay': '', 'loop_delay': '', 'uuid': _uuid(geo_name + '/anim/' + name),
+                    'animators': animators, 'keyframes': []})
+    return out
 
 
 def convert(geo_name, out_name):
@@ -81,6 +122,8 @@ def convert(geo_name, out_name):
              if not b.get('parent') or b['parent'] not in nodes]
 
     durl = 'data:image/png;base64,' + base64.b64encode(open(tex_path, 'rb').read()).decode()
+    group_uuids = {b['name']: nodes[b['name']]['uuid'] for b in g['bones']}
+    bbanims = _bb_animations(geo_name, group_uuids)
     bb = {'meta': {'format_version': '4.5', 'model_format': 'geckolib_model',
                    'box_uv': False},
           'name': out_name,
@@ -92,12 +135,13 @@ def convert(geo_name, out_name):
                         'namespace': '', 'id': '0', 'particle': False,
                         'render_mode': 'default', 'visible': True, 'mode': 'bitmap',
                         'saved': False, 'uuid': _uuid(geo_name + '/tex'), 'source': durl}],
-          'animations': [], 'animation_controllers': []}
+          'animations': bbanims, 'animation_controllers': []}
     os.makedirs(MODELS_DIR, exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as fh:
         json.dump(bb, fh, ensure_ascii=False)
-    print('%-28s 元素 %3d  组 %2d  %.2f MB' % (os.path.basename(out_path), len(elements),
-                                               len(order), os.path.getsize(out_path) / 1048576))
+    print('%-28s 元素 %3d  组 %2d  动画 %d  %.2f MB'
+          % (os.path.basename(out_path), len(elements), len(order), len(bbanims),
+             os.path.getsize(out_path) / 1048576))
 
 
 def main(argv):

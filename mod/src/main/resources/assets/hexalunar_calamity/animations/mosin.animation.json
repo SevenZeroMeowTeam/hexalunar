@@ -63,7 +63,7 @@
   },
   "animation.mosin.fire": {
    "loop": false,
-   "animation_length": 0.35,
+   "animation_length": 0.5,
    "bones": {
     "root": {
      "rotation": {

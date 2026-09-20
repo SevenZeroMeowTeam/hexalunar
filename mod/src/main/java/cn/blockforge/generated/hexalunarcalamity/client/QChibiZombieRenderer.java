@@ -5,7 +5,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.monster.Zombie;
 
 /**
@@ -28,7 +27,7 @@ import net.minecraft.world.entity.monster.Zombie;
 public class QChibiZombieRenderer<T extends Zombie> extends HumanoidMobRenderer<T, QChibiZombieModel<T>> {
 
     /** Q 版僵尸皮肤（由 {@code tools/q_chibi_zombie_tex.py} 按模型的 UV 表画出来） */
-    private static final ResourceLocation TEXTURE = new ResourceLocation(
+    public static final ResourceLocation ZOMBIE_TEXTURE = new ResourceLocation(
             HexaLunarCalamity.MOD_ID, "textures/entity/q_chibi_zombie.png");
 
     /** 走路压弹幅度（0.11 ≈ 最高时压扁 11%） */
@@ -40,21 +39,34 @@ public class QChibiZombieRenderer<T extends Zombie> extends HumanoidMobRenderer<
     /** 受伤抖动幅度 */
     private static final float HURT_SQUASH = 0.16F;
 
+    private final ResourceLocation texture;
+    private final float scaleFactor;
+
+    /** 自爆尸（默认）：Q 版僵尸皮肤 + 橙标识层 + 原体型 */
     public QChibiZombieRenderer(EntityRendererProvider.Context ctx) {
+        this(ctx, ZOMBIE_TEXTURE, 0xFFB45A, 120, 1.0F);
+    }
+
+    /**
+     * 通用 Q 版僵尸：皮肤 / 染色标识 / 体型缩放都可配 —— 弓手尸、桶尸、巨尸共用这一个渲染器。
+     *
+     * @param tintAlpha 0 = 不加染色标识层（巨尸就是原样，没有标识）
+     * @param scale     渲染缩放（巨尸 1.9，其余 1.0）
+     */
+    public QChibiZombieRenderer(EntityRendererProvider.Context ctx, ResourceLocation texture,
+                                int tintRgb, int tintAlpha, float scale) {
         super(ctx, new QChibiZombieModel<>(ctx.bakeLayer(QChibiZombieModel.LAYER)), 0.45F);
-        // 自爆尸的橙色标识层沿用原版那套（Q 版也一眼能认出是哪只）
-        addLayer(new VariantTintLayer(this, 0xFFB45A, 120));
+        this.texture = texture;
+        this.scaleFactor = scale;
+        if (tintAlpha > 0) {
+            // 各变种的标识层沿用原版那套（Q 版也一眼能认出是哪只）
+            addLayer(new VariantTintLayer(this, tintRgb, tintAlpha));
+        }
     }
 
     @Override
     public ResourceLocation getTextureLocation(T entity) {
-        return TEXTURE;
-    }
-
-    /** 水平移动速度归一化成 0..1（≈ 是否在走、走得快不快） */
-    private static float walkAmount(Zombie entity) {
-        double d = entity.getDeltaMovement().horizontalDistance();
-        return Mth.clamp((float) (d * 3.5D), 0.0F, 1.0F);
+        return texture;
     }
 
     @Override
@@ -62,24 +74,14 @@ public class QChibiZombieRenderer<T extends Zombie> extends HumanoidMobRenderer<
                                   float partialTick) {
         super.setupRotations(entity, pose, ageInTicks, bodyYaw, partialTick);
         // ★ 走路时一颠一颠的小跳（单位：格）
-        float walk = walkAmount(entity);
-        if (walk > 0.02F) {
-            pose.translate(0.0F, Math.abs(Mth.sin(entity.walkDist)) * WALK_HOP * walk, 0.0F);
-        }
+        QChibi.hop(entity, pose, WALK_HOP);
     }
 
     @Override
     protected void scale(T entity, PoseStack pose, float partialTick) {
-        float walk = walkAmount(entity);
-        // 走路：一步一压一弹；受伤：更快的抖动；静止：慢慢呼吸
-        float squash = WALK_SQUASH * walk * Mth.sin(entity.walkDist * 2.4F)
-                + IDLE_SQUASH * Mth.sin((entity.tickCount + partialTick) * 0.11F);
-        if (entity.hurtTime > 0) {
-            squash += HURT_SQUASH * (entity.hurtTime / 10.0F)
-                    * Mth.sin((entity.tickCount + partialTick) * 1.7F);
+        if (scaleFactor != 1.0F) {
+            pose.scale(scaleFactor, scaleFactor, scaleFactor);
         }
-        squash = Mth.clamp(squash, -0.35F, 0.35F);
-        // 体积大致守恒：竖着压多少，横向就胖多少
-        pose.scale(1.0F + squash, 1.0F - squash * 1.15F, 1.0F + squash);
+        QChibi.squash(entity, pose, partialTick, WALK_SQUASH, IDLE_SQUASH, HURT_SQUASH);
     }
 }

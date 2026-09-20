@@ -17,9 +17,9 @@ def modName = qmode ? '六相月灾 · Q弹版' : '六相月灾'
 //    （见 .github/workflows/build.yml）。写成三目之后 sed 匹配不到，VERSION 为空，
 //    release 作业会直接 `exit 1` 失败（jar 照样构建成功，但不会打 tag / 发 Release）。
 //    Q 弹版的版本号在这行之后覆盖，两种构建的产物名与以前完全一致。
-version = '1.0.0-r110'
+version = '1.0.0-r114'
 if (qmode) {
-    version = '1.0.0-q1'
+    version = '1.0.0-q3'
 }
 group = 'cn.blockforge.generated.hexalunarcalamity'
 base { archivesName = modId }
@@ -129,7 +129,15 @@ tasks.register('prepareQResources') {
             from(new File(srcRes, 'data/forge')) { into 'data/forge' }
             into qresDir
         }
-        fileTree(qresDir).matching { include '**/*.json' }.each { f ->
+        // ★ 命名空间替换：**json / mtl / obj 都要换**。
+        //   踩过的坑（2026-09-20 用户日志）：原来只 include '**/*.json' ⇒ `.mtl` 里
+        //   `map_Kd hexalunar_calamity:models/crossbow` 仍指向**基础命名空间**，
+        //   而 Q 版里 `assets/hexalunar_calamity/**` 已经不存在了 ⇒ 客户端启动时刷
+        //   `Missing textures in model hexalunar_calamity_q:item/crossbow_hand_part:
+        //    minecraft:textures/atlas/blocks.png:hexalunar_calamity:models/crossbow`
+        //   （两条：crossbow_hand_part / crossbow_bolt_part）。
+        //   OBJ 里的 `mtllib` 是相对文件名，不受影响；顶点数据里也不含命名空间。
+        fileTree(qresDir).matching { include '**/*.json', '**/*.mtl', '**/*.obj' }.each { f ->
             def t = f.getText('UTF-8')
             if (t.contains(baseNs)) f.setText(t.replace(baseNs, theId), 'UTF-8')
         }

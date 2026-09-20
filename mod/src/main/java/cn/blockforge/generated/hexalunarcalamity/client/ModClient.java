@@ -88,7 +88,11 @@ public final class ModClient {
     }
 
     /**
-     * ★ Q 弹版：注册 Q 版僵尸的模型层（几何 + 64×64 UV 布局，见 {@link QChibiZombieModel}）。
+     * ★ Q 弹版：注册 Q 版怪物的模型层。
+     *
+     * <p>{@code q_chibi_zombie} = 僵尸系（自爆/弓手/桶/巨尸）用的 chibi 几何；
+     * {@code q_chibi_skeleton} = 骷髅系复用**同一套 chibi 几何**，只是换骨头皮肤
+     * （行为由原版 {@code SkeletonModel} 提供 ⇒ 拉弓瞄准姿势不用自己写）。
      *
      * <p>普通版也照常注册（只是没人用）—— 注册一个模型层没有任何副作用，
      * 而这样代码里就不用为「要不要注册」再分一次支。
@@ -97,6 +101,7 @@ public final class ModClient {
     public static void onRegisterLayerDefinitions(
             net.minecraftforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(QChibiZombieModel.LAYER, QChibiZombieModel::createBodyLayer);
+        event.registerLayerDefinition(QChibiZombieModel.SKELETON_LAYER, QChibiZombieModel::createBodyLayer);
     }
 
     @SubscribeEvent
@@ -114,26 +119,42 @@ public final class ModClient {
                 ctx -> new ThrownItemRenderer(ctx, 0.85F, false));
 
         // 特殊感染者：僵尸变种
-        // ★ Q 弹版（-Pqmode=true）：自爆尸换成「大头矮胖 + 果冻晃动」的 Q 版渲染器；
-        //   普通版保持原样（Q_MODE 是编译期常量，普通版这段分支会被 javac 直接折掉）
+        // ★ Q 弹版（-Pqmode=true）：**全部 6 种特殊感染者**都换成「大头矮胖 + 果冻晃动」的 Q 版；
+        //   染色/体型沿用原来的配置（弓手 0x59C46B、桶尸 0x6E6E78、巨尸 1.9 倍、骷髅两种染色）。
+        //   普通版保持原样（Q_MODE 是编译期常量，普通版这整段分支会被 javac 折掉）
         if (cn.blockforge.generated.hexalunarcalamity.BuildInfo.Q_MODE) {
             event.registerEntityRenderer(ModEntities.BOMBER_ZOMBIE.get(),
                     ctx -> new QChibiZombieRenderer<>(ctx));
+            event.registerEntityRenderer(ModEntities.ARCHER_ZOMBIE.get(),
+                    ctx -> new QChibiZombieRenderer<>(ctx, QChibiZombieRenderer.ZOMBIE_TEXTURE,
+                            0x59C46B, 96, 1.0F));
+            event.registerEntityRenderer(ModEntities.BARREL_ZOMBIE.get(),
+                    ctx -> new QChibiZombieRenderer<>(ctx, QChibiZombieRenderer.ZOMBIE_TEXTURE,
+                            0x6E6E78, 110, 1.0F));
+            event.registerEntityRenderer(ModEntities.GIANT_ZOMBIE.get(),
+                    ctx -> new QChibiZombieRenderer<>(ctx, QChibiZombieRenderer.ZOMBIE_TEXTURE,
+                            0, 0, 1.9F));            // 巨尸：无标识层，只放大 1.9 倍
+            event.registerEntityRenderer(ModEntities.RUSHER_SKELETON.get(),
+                    ctx -> new QChibiSkeletonRenderer(ctx, QChibiSkeletonRenderer.SKELETON_TEXTURE,
+                            0x7FB6FF, 110, 1.0F));
+            event.registerEntityRenderer(ModEntities.TOXIC_SKELETON.get(),
+                    ctx -> new QChibiSkeletonRenderer(ctx, QChibiSkeletonRenderer.SKELETON_TEXTURE,
+                            0x8FE04A, 130, 1.0F));
         } else {
             event.registerEntityRenderer(ModEntities.BOMBER_ZOMBIE.get(),
                     ctx -> tintedZombie(ctx, 0xFFB45A, 120));
-        }
-        event.registerEntityRenderer(ModEntities.ARCHER_ZOMBIE.get(),
-                ctx -> tintedZombie(ctx, 0x59C46B, 96));
-        event.registerEntityRenderer(ModEntities.BARREL_ZOMBIE.get(),
-                ctx -> tintedZombie(ctx, 0x6E6E78, 110));
-        event.registerEntityRenderer(ModEntities.GIANT_ZOMBIE.get(), ModClient::giantZombie);
+            event.registerEntityRenderer(ModEntities.ARCHER_ZOMBIE.get(),
+                    ctx -> tintedZombie(ctx, 0x59C46B, 96));
+            event.registerEntityRenderer(ModEntities.BARREL_ZOMBIE.get(),
+                    ctx -> tintedZombie(ctx, 0x6E6E78, 110));
+            event.registerEntityRenderer(ModEntities.GIANT_ZOMBIE.get(), ModClient::giantZombie);
 
-        // 骷髅变种
-        event.registerEntityRenderer(ModEntities.RUSHER_SKELETON.get(),
-                ctx -> tintedSkeleton(ctx, 0x7FB6FF, 110));
-        event.registerEntityRenderer(ModEntities.TOXIC_SKELETON.get(),
-                ctx -> tintedSkeleton(ctx, 0x8FE04A, 130));
+            // 骷髅变种
+            event.registerEntityRenderer(ModEntities.RUSHER_SKELETON.get(),
+                    ctx -> tintedSkeleton(ctx, 0x7FB6FF, 110));
+            event.registerEntityRenderer(ModEntities.TOXIC_SKELETON.get(),
+                    ctx -> tintedSkeleton(ctx, 0x8FE04A, 130));
+        }
     }
 
 

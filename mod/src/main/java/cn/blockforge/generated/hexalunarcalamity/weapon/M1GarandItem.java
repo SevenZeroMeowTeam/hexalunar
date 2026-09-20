@@ -42,8 +42,9 @@ import java.util.function.Consumer;
  * reload 六段），需要动的部分全部程序化驱动（见 {@code M1GarandGeoModel}）。
  * 朝向：<b>枪口 = −Z（北）</b>、<b>上 = +Y</b>、<b>原点 = 握把</b>。
  *
- * <h2>★ 连射（半自动）+ 自动枪机循环</h2>
- * 按住左键每 {@link #FIRE_INTERVAL} tick 打一发；**每发都由导气杆自动完成
+ * <h2>★ 半自动（每扣一次扳机一发）+ 自动枪机循环</h2>
+ * **每按一次左键打一发**（按住左键不会连发）；两次击发之间至少 {@link #FIRE_INTERVAL} tick
+ * （枪机循环 + 扳机复位）。**每发都由导气杆自动完成
  * 「枪机后退 → 把空弹壳带出来抛向右上 → 复进闭锁、顶上下一发」**（{@link #BOLT_TICKS}），
  * 不需要玩家自己拉栓 —— 这就是「拉一次栓即可」：一个漏夹只拉一次栓（换弹最后那一下）。
  *
@@ -74,7 +75,8 @@ public class M1GarandItem extends Item implements WeaponAmmo, GeoItem {
     // ---------------------------------------------------------------- 数值
     /** 漏夹容量（M1 的 8 发漏夹）—— 装填后是「弹仓 7 + 膛内 1」= 身上最多 8 发 */
     public static final int MAG_SIZE = 8;
-    /** 连射节奏（tick）：按住左键每这么多 tick 一发（半自动，不用自己拉栓） */
+    /** ★ 半自动的「扳机复位」间隔（tick）：两次击发之间至少这么多 tick
+     *  （客户端按住左键不会连发，必须松开再按；这个值同时是连点时的最小间隔） */
     public static final int FIRE_INTERVAL = 10;
     /** 自动枪机循环（tick）：后退抽壳 → 抛壳 → 复进闭锁上膛 */
     public static final int BOLT_TICKS = 8;
@@ -259,7 +261,7 @@ public class M1GarandItem extends Item implements WeaponAmmo, GeoItem {
                 return InteractionResultHolder.success(stack);
             }
             if (!level.isClientSide) {
-                player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
+                reloadDenied(player, stack, now, "no_ammo");
             }
             return InteractionResultHolder.fail(stack);
         }
@@ -290,8 +292,8 @@ public class M1GarandItem extends Item implements WeaponAmmo, GeoItem {
 
     // ================================================================ 开火
     /**
-     * 左键（服务端）：**连射**——按住时客户端按 {@link #FIRE_INTERVAL} 的节奏发请求，
-     * 每发只要求「膛内有弹」；打完由导气杆自动完成枪机循环与抛壳。
+     * 左键（服务端）：**半自动击发**——客户端每扣一次扳机（重新按下左键）才发一次请求，
+     * 按住左键不会连发；每发只要求「膛内有弹」；打完由导气杆自动完成枪机循环与抛壳。
      */
     @Override
     public void serverFire(Player player, ItemStack stack, InteractionHand hand) {
@@ -303,7 +305,7 @@ public class M1GarandItem extends Item implements WeaponAmmo, GeoItem {
             if (mag(stack) > 0) {
                 startBolt(level, player, stack);
             } else if (!tryStartLoad(level, player, stack) && !level.isClientSide) {
-                player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
+                reloadDenied(player, stack, now, "no_ammo");
             }
             return;
         }
@@ -371,19 +373,48 @@ public class M1GarandItem extends Item implements WeaponAmmo, GeoItem {
 
     // ================================================================ 压漏夹
     /**
-     * R 键（服务端）：压漏夹。**只在漏夹打空时**才能压（真枪如此：漏夹要从上面压进去，
-     * 打空后托弹板才把它顶出来）。
+     * R 键（服务端）：压漏夹。
+     *
+     * <p>★ 用户反馈「m1 加兰德按 r 键无效」——以前两种情况都是**静默 return**：
+     * ① 漏夹里还有子弹（M1 本来是打空才能压）② 背包里没有 7.62x61。
+     * 现在：① 允许「战术压弹」：把漏夹里剩下的子弹**退回背包**（不亏弹）再压新漏夹；
+     * ② 任何被拒绝的情况都给动作栏提示 + 空响一声，不会再让人以为按键坏了。
      */
     @Override
     public void serverReload(Player player, ItemStack stack, InteractionHand hand) {
         Level level = player.level();
         if (level.isClientSide) return;
         long now = level.getGameTime();
-        if (loading(stack, now) || bolting(stack, now)) return;
-        if (!empty(stack)) return;                                  // 还有弹：不换（M1 不能补弹）
-        if (!tryStartLoad(level, player, stack)) {
-            player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
+        if (loading(stack, now) || bolting(stack, now)) {
+            reloadDenied(player, stack, now, "m1_busy");
+            return;
         }
+        if (!empty(stack)) {
+            int left = mag(stack) + (chambered(stack) ? 1 : 0);
+            AmmoUtil.refund(player, AmmoType.RIFLE_762_61, left);
+            setMag(stack, 0);
+            setChambered(stack, false);
+            note(player, "m1_clip_swap", left);
+        }
+        if (!tryStartLoad(level, player, stack)) {
+            reloadDenied(player, stack, now, "no_ammo");
+        }
+    }
+
+    /** ★ 「按 R 没反应」的三种原因：弹夹没空 / 没弹药 / 正在忙（动作栏一句话 + 空响） */
+    private static void reloadDenied(Player player, ItemStack stack, long now, String key) {
+        if ("no_ammo".equals(key)) {
+            note(player, key, new ItemStack(AmmoType.RIFLE_762_61.get()).getHoverName());
+        } else {
+            note(player, key, mag(stack), chambered(stack) ? 1 : 0);
+        }
+        player.playSound(ModSounds.EMPTY.get(), 0.6F, 1.0F);
+    }
+
+    /** 动作栏提示（不刷屏、不写聊天栏） */
+    private static void note(Player player, String key, Object... args) {
+        player.displayClientMessage(
+                Component.translatable("msg.hexalunar_calamity." + key, args), true);
     }
 
     private boolean tryStartLoad(Level level, Player player, ItemStack stack) {

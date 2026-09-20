@@ -198,26 +198,26 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
      * 动画的位置是「首帧跳到位、末帧跳回去」的阶跃，每发都会让枪（和跟着它的双手）顿一下；
      * 后坐只用 {@link WeaponAnim} 的冲量（开火那一 tick 加上去、之后每 tick ×0.55 衰减）驱动，天生平滑。
      *
-     * <p>举枪（ADS）只做平移：一旦叠加角度，「照门—准星」那条线就会离开屏幕中心。
+     * <p>★★ 举枪（ADS）位移在这里**一律给 0**，与 AWP / Kar98k / 莫辛 / M1 的
+     * {@code computeMovePose} 完全一致 —— 举枪只由 pose 层负责：
+     * {@code WeaponHandGrip#pushAds} 把位移写进 {@code GunPose}，再由
+     * {@code GunPose#matrix} 作用到枪本体与补画的双臂上。
+     *
+     * <p><b>以前为什么坏（只有 AKM 出问题）</b>：这里还算了一份 ADS 平移
+     * （{@code akmAimDx} / {@code akmAimDy} / {@code AKM_AIM_DZ} × aim，单位模型像素）
+     * 推给 {@code move} 骨骼，而 {@code pushAds} 又把**同一份数**写进 {@code GunPose}
+     * ⇒ 同一段举枪位移被**叠加两次**：枪被抬到视线以上、双手被拉得贴住眼睛。
+     * 再叠上举枪时收窄到 45° 的枪模投影（真实放大 ≈ tan38°/tan22.5° ≈ **1.89 倍**，
+     * 不是常量注释里那个线性的 76/45 = 1.69），屏幕上就是「枪飘在右上、只剩一大片皮肤色楔子」。
+     * 其余四把的 {@code computeMovePose} 早就清零了，所以**只有 AKM** 会这样。
+     *
+     * <p>（{@code sight} 仍保留在签名里：瞄准档位对应的举枪参照高度现在只在
+     * {@code WeaponMount#akmAds} / {@code WeaponMount#akmAnchorY} 里用。）
      */
     static void computeMovePose(float[] out, int sight) {
-        float aim = Mth.clamp(WeaponAnim.of(WeaponAnim.Kind.AKM).aim, 0.0F, 1.0F);
-        float px = 0.0F;
-        float py = 0.0F;
-        float pz = 0.0F;
-        if (aim > 0.001F) {
-            Player local = Minecraft.getInstance().player;
-            float aimDx = local == null ? WeaponMount.AKM_AIM_DX : WeaponMount.akmAimDx(local);
-            px = aimDx * aim;
-            // ★ 举枪参照点随瞄具变：机械瞄具 3.44 / 红点 3.79 / 4 倍镜 4.00
-            py = WeaponMount.akmAimDy(sight) * aim;
-            pz = WeaponMount.AKM_AIM_DZ * aim;
-        }
-        // ★ r84：后坐力**不再推枪/手臂**（用户要求「后坐力仅视角晃动，不是手臂和 akm 上下晃动」）
-        //   —— 枪与双手稳住不动，后座改由 ClientEvents.applyRecoilKick 推镜头。
-        out[0] = px;
-        out[1] = py;
-        out[2] = pz;
+        out[0] = 0.0F;
+        out[1] = 0.0F;
+        out[2] = 0.0F;
         out[3] = 0.0F;
         out[4] = 0.0F;
         out[5] = 0.0F;
