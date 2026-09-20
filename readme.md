@@ -545,6 +545,28 @@ tools/  开发辅助脚本（见第五节）
     CD 自己的进化与尸潮）会同时生效 —— 这是"同步"的预期结果；若只想要视觉一致、不要效果叠加，
     可以再加一个配置开关单独关掉我们的效果。
 
+### 另：整合包环境修复（据 `mod/logs` + `crash-reports`，不属于模组代码）
+
+- **07:29 FML 崩溃**（`crash-2026-09-20_07.29.13-fml.txt`）：
+  `-- MOD craftingdeadsurvival -- Caused by: NoClassDefFoundError: kotlin/NoWhenBranchMatchedException`
+  ⇒ **缺 KotlinForForge**。用户 07:29:59 补上 `kotlinforforge-4.12.0-all.jar` 后 CD 已能正常加载。
+- **08:08 服务器崩溃**（`crash-2026-09-20_08.08.48-server.txt`）：
+  `WritingException → FileSystemException: ...serverconfig\craftingdead-server.toml: 另一个程序正在使用此文件`
+  ⇒ Forge 保存 CD 的 server config 时**文件被占用**（多为同时开了两个实例 / 杀毒瞬时扫描）。
+  文件本身完好（12,624 B，与其 `.bak` 一致）⇒ 直接重开即可；反复出现就删掉
+  `saves/<世界>/serverconfig/craftingdead-server.toml` 让它重建。
+- **`hcdservercore`（`craftingdeadloot-1.20.1-3.jar`）5 张战利品表整表解析失败** ⇒ 那些战利品方块
+  **空手**（日志里 `Couldn't parse element loot_tables:...` + `unknown string 'craftingdead:multi_paint'`）。
+  原因：表里引用了 24 个 CD 1.9.5 里不存在的 id。修复（已落地到用户世界）：
+  在 `saves/新的世界/datapacks/hcd_loot_fix/` 放一个**数据包**覆盖这 5 张表 ——
+  - **改名**：`splint`/`cure_syringe`/`rbi_syringe` → `craftingdeadsurvival:`；
+    `red_dot_sight` → **`hexalunar_calamity:red_dot_sight`**（本模组物品）；
+    `magnum_magazine` → `craftingdead:magnum_ammunition`；`m1garand_magazine` → `craftingdead:m1garand_ammunition`
+  - **剔除**（CD 里确实没有）：`trenchgun`、`trenchgun_shells`、`pipe_grenade`、`scarh`、`broad_sword`、`multi_paint`
+  - CD 的**配件**（`attachment.craftingdead.*`：acog/eotech/hp_scope/lp_scope/bipod/tactical_grip/suppressor）
+    核对后是**真物品**，全部保留。
+  - 一键重跑脚本：`tools/fix_craftingdead_loot.py`（读 CD 系模组的 lang/tags 建白名单后改写表 + 写数据包）。
+
 > 版本 `1.0.0-r101`
 
 - ★ **修复右下角弹药框被截断**（`client/ClientEvents.drawAmmoHud`）：
