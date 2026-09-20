@@ -46,6 +46,24 @@ public final class GunPose {
      */
     public static final float MODEL_FOV_AIM_AWP = 25.0F;
     /**
+     * ★ r105：Kar98k 的 {@code zoom_model_fov} —— 它自带的是 **4 倍镜**（比 AWP 的 8 倍低一档），
+     * 取 40°（AKM 45 / AWP 25 之间）。注意 Kar98k 抵肩走的是**整屏镜筒遮罩**，
+     * 开镜时枪本体不画，所以这个数只在过渡帧与腰射（76°）之间起作用。
+     */
+    public static final float MODEL_FOV_AIM_KAR98K = 40.0F;
+
+    /**
+     * ★ r106：莫辛-纳甘的 {@code zoom_model_fov} —— 同样取 TaCZ kar98k 的 **25°**
+     * （「莫辛的模型套用 TaCZ 98k 的配置」，与 AWP 同一档）。
+     */
+    public static final float MODEL_FOV_AIM_MOSIN = 25.0F;
+    /**
+     * ★ r108：M1 加兰德的 {@code zoom_model_fov} —— 它只有机瞄（无镜），取 **45**，
+     * 也就是 **TaCZ 步枪**（{@code ak47_display.json}）那一档：{@code AK47 = 45}
+     * （{@code m4a1_display.json} 是 55）。用户要求「套用 TaCZ 步枪的持枪」，这组就是它的持枪参数。
+     */
+    public static final float MODEL_FOV_AIM_M1 = 45.0F;
+    /**
      * 腰射时的枪模 FOV。原版手持那一遍本来就用 70°（{@code GameRenderer.renderItemInHand} 里
      * {@code getFov(camera, partial, false)} —— 那个 {@code false} 表示"不套 fov 设置与各种修正"）。
      *
@@ -70,34 +88,46 @@ public final class GunPose {
     /**
      * 当前武器的「举枪位移」（相机空间、单位<b>格</b>）：
      * [0..2] = xyz，[3] = 开火上抬（AWP 用），[4] = 举枪时的横滚（度，TaCZ 那种"从侧上方看枪顶"的构图），
-     * [5] = ★ r93 开火俯仰（度，**绕手/握把**：正 = 枪管上抬 + 枪托下沉，AWP 用）。
+     * [5] = ★ r93 开火俯仰（度，**绕手/握把**：正 = 枪管上抬 + 枪托下沉，AWP 用），
+     * [6] = ★ 构建 Q 弹版时才用：果冻形变量 -1..1（见 {@link cn.blockforge.generated.hexalunarcalamity.client.Jelly}），
+     *       驱动「整枪挤压拉伸」。
      *
      * <p>由各武器在每帧的渲染/取帧路径写入（{@code WeaponHandGrip.apply} 与各 {@code captureNow()}
      * 写的是同一份值），手臂与枪都从这里取，所以不会错开。
      */
-    public static final float[] ADS = new float[6];
+    public static final float[] ADS = new float[7];
 
     /** {@link #transform} 复用的一块四元数（客户端渲染单线程，不会并发） */
     private static final Quaternionf PITCH = new Quaternionf();
 
     /** 写入举枪位移（格）。lift 不受 aim 缩放：那是开火那一瞬的上抬 */
     public static void setAds(float x, float y, float z, float lift, float rollDeg) {
-        setAds(x, y, z, lift, rollDeg, 0.0F);
+        setAds(x, y, z, lift, rollDeg, 0.0F, 0.0F);
     }
 
     /** ★ r93：再带一个「开火俯仰」（度，绕手/握把转：正 = 枪管上抬 + 枪托下沉） */
     public static void setAds(float x, float y, float z, float lift, float rollDeg, float firePitch) {
+        setAds(x, y, z, lift, rollDeg, firePitch, 0.0F);
+    }
+
+    /**
+     * ★ Q 弹版：最后一个参数是果冻形变量（-1..1）—— 只有 Q 版会传非 0 值，
+     * {@link #matrix} 用它给整枪做挤压拉伸（普通版恒为 0，等于没有这段变换）。
+     */
+    public static void setAds(float x, float y, float z, float lift, float rollDeg,
+                              float firePitch, float jelly) {
         ADS[0] = x;
         ADS[1] = y;
         ADS[2] = z;
         ADS[3] = lift;
         ADS[4] = rollDeg;
         ADS[5] = firePitch;
+        ADS[6] = jelly;
     }
 
     /** 不是我们这套武器时清零（否则换枪那一帧会残留上一把的位移） */
     public static void clearAds() {
-        setAds(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+        setAds(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
     }
 
     /** 当前 aim 下的枪模投影 FOV（默认 45°，TaCZ 的 AK47 值） */
@@ -114,7 +144,15 @@ public final class GunPose {
      * 专用服务器加载本类时就可能炸。
      */
     public static float modelFov(boolean awp, double aim) {
-        float aimFov = awp ? MODEL_FOV_AIM_AWP : MODEL_FOV_AIM;
+        return modelFovForGun(awp ? MODEL_FOV_AIM_AWP : MODEL_FOV_AIM, aim);
+    }
+
+    /**
+     * ★ r105：按枪自己那份「举枪时的枪模 FOV」插值 —— 三把枪各给一个数
+     * （AKM {@link #MODEL_FOV_AIM} 45 / AWP {@link #MODEL_FOV_AIM_AWP} 25 /
+     * Kar98k {@link #MODEL_FOV_AIM_KAR98K} 40），腰射一律 {@link #MODEL_FOV_HIP}。
+     */
+    public static float modelFovForGun(float aimFov, double aim) {
         return (float) (MODEL_FOV_HIP + (aimFov - MODEL_FOV_HIP) * aim01(aim));
     }
 
@@ -123,7 +161,7 @@ public final class GunPose {
      * 顺序必须是 {@code 平移 · 旋转}，与 {@link #transform} 一致。
      */
     public static void matrix(float aim, Matrix4f out) {
-        matrix(aim, ADS[0], ADS[1], ADS[2], ADS[3], ADS[4], ADS[5], out);
+        matrix(aim, ADS[0], ADS[1], ADS[2], ADS[3], ADS[4], ADS[5], ADS[6], out);
     }
 
     /**
@@ -149,6 +187,22 @@ public final class GunPose {
     /** 带开火俯仰的重载（见 {@link #matrix(float, float, float, float, float, float, Matrix4f)}） */
     public static void matrix(float aim, float adsX, float adsY, float adsZ, float lift,
                               float rollDeg, float firePitch, Matrix4f out) {
+        matrix(aim, adsX, adsY, adsZ, lift, rollDeg, firePitch, 0.0F, out);
+    }
+
+    /**
+     * ★ Q 弹版：再带一个果冻形变量 {@code jelly}（-1..1）。
+     *
+     * <p>它乘在**最后**（最先作用在模型点上，与 {@code firePitch} 同级）—— 也就是**绕模型原点
+     * （握把）做挤压拉伸**：{@code jelly > 0} 时「压扁 + 顺枪管拉长」，{@code jelly < 0} 时反过来
+     * ⇒ 开火那一下整枪像果冻一样「噗」地弹一下。
+     *
+     * <p>为什么放在这里而不是骨骼上：这一段姿态是 {@code WeaponHandGrip.apply} 亲手填进 pose 的，
+     * 只作用于**枪本体**那一遍渲染（补画的手臂走 {@code GunFrame → transform()}，不带缩放），
+     * 所以缩放不会把手臂一起拉变形。
+     */
+    public static void matrix(float aim, float adsX, float adsY, float adsZ, float lift,
+                              float rollDeg, float firePitch, float jelly, Matrix4f out) {
         float a = aim01(aim);
         float k = 1.0F - a;
         out.identity();
@@ -161,6 +215,10 @@ public final class GunPose {
         }
         if (firePitch != 0.0F) {
             out.rotateX(firePitch * Mth.DEG_TO_RAD);        // ★ 开火俯仰：绕手（最先作用在模型点上）
+        }
+        if (jelly != 0.0F) {
+            // ★ Q 弹版：绕握把的挤压拉伸（体积差不多守恒：压扁就拉长、拉长就变细）
+            out.scale(1.0F + 0.05F * jelly, 1.0F - 0.16F * jelly, 1.0F + 0.10F * jelly);
         }
     }
 

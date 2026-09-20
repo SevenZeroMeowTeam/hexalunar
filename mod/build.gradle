@@ -1,7 +1,19 @@
 plugins { id 'java'; id 'net.minecraftforge.gradle' version '[6.0,6.2)' }
-version = '1.0.0-r106'
+
+// =====================================================================================
+// ★ Q 弹版构建开关：gradlew build -Pqmode=true
+//   · 普通版：mod id = hexalunar_calamity   、显示名「六相月灾」
+//   · Q 弹版：mod id = hexalunar_calamity_q 、显示名「六相月灾 · Q弹版」
+//   两个 jar 可以同时装（id 不同互不冲突）；代码只有这一份，差别全在这里 + src/qresources 覆盖层
+// =====================================================================================
+def qmode = project.hasProperty('qmode') && project.property('qmode').toString().equalsIgnoreCase('true')
+def baseNs = 'hexalunar_calamity'
+def modId = qmode ? 'hexalunar_calamity_q' : baseNs
+def modName = qmode ? '六相月灾 · Q弹版' : '六相月灾'
+
+version = qmode ? '1.0.0-q1' : '1.0.0-r109'
 group = 'cn.blockforge.generated.hexalunarcalamity'
-base { archivesName = 'hexalunar_calamity' }
+base { archivesName = modId }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 minecraft {
     mappings channel: 'official', version: '1.20.1'
@@ -12,7 +24,7 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.console.level', 'debug'
             mods {
-                hexalunar_calamity {
+                "${modId}" {
                     source sourceSets.main
                 }
             }
@@ -21,7 +33,7 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.console.level', 'debug'
             mods {
-                hexalunar_calamity {
+                "${modId}" {
                     source sourceSets.main
                 }
             }
@@ -30,7 +42,7 @@ minecraft {
 }
 
 repositories {
-    // GeckoLib 鐎规ɑ鏌?maven閿涘牓顎囨鐓庡З閻㈣绨遍敍?
+    // GeckoLib 官方 maven（动画/骨骼模型库）
     maven {
         name = 'GeckoLib'
         url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
@@ -39,16 +51,104 @@ repositories {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
-    // 4.8.x 閺?1.20.1 Forge 閻ㄥ嫭娓堕崥搴濈閺夛紕鍤庨敍瀹焑o/animation 閺嶇厧绱℃稉?Blockbench GeckoLib 閹绘帊娆㈣ぐ鎾冲閻楀牊婀版稉鈧懛?
+    // 4.8.x 是 1.20.1 Forge 的配套版本：geo/animation 都能直接用 Blockbench GeckoLib 插件导出
     implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4')
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+// -------------------------------------------------------------------------------------
+// 1) 构建期生成 BuildInfo.java：把 mod id 与 Q 弹开关烘进代码（javac 会把它常量折叠，
+//    所以非 Q 版编译出来的字节码里 Q 分支会被直接去掉）
+// -------------------------------------------------------------------------------------
+def buildInfoDir = layout.buildDirectory.dir('generated/buildinfo').get().asFile
+tasks.register('generateBuildInfo') {
+    def outDir = buildInfoDir
+    def theId = modId
+    def q = qmode
+    outputs.dir(outDir)
+    doLast {
+        def pkg = new File(outDir, 'cn/blockforge/generated/hexalunarcalamity')
+        pkg.mkdirs()
+        new File(pkg, 'BuildInfo.java').setText("""package cn.blockforge.generated.hexalunarcalamity;
+
+/** 构建期生成（见 build.gradle 的 -Pqmode），不要手改。 */
+public final class BuildInfo {
+    /** 本 jar 的 mod id：hexalunar_calamity（普通版）/ hexalunar_calamity_q（Q 弹版） */
+    public static final String MOD_ID = "${theId}";
+    /** 是否 Q 弹版：Q 版造型 + 果冻晃动（javac 常量折叠，非 Q 版里这些分支不存在） */
+    public static final boolean Q_MODE = ${q};
+
+    private BuildInfo() {}
+}
+""", 'UTF-8')
+    }
+}
+sourceSets.main.java.srcDir buildInfoDir
+compileJava.dependsOn generateBuildInfo
+
+// -------------------------------------------------------------------------------------
+// 2) Q 弹版资源树：把基础命名空间整体搬成 Q 命名空间，再叠上 src/qresources 的 Q 版文件
+//    （两个 jar 不能同时提供 assets/hexalunar_calamity/** 这种同路径资源，否则会互相抢）
+// -------------------------------------------------------------------------------------
+def qresDir = layout.buildDirectory.dir('qresources').get().asFile
+tasks.register('prepareQResources') {
+    def srcRes = file('src/main/resources')
+    def overlay = file('src/qresources')
+    def theId = modId
+    inputs.dir(srcRes)
+    inputs.dir(overlay)
+    outputs.dir(qresDir)
+    doLast {
+        delete qresDir
+        qresDir.mkdirs()
+        // a) 不带命名空间的部分：原样（方块图集 / mods.toml / pack.mcmeta）
+        copy {
+            from(new File(srcRes, 'assets/minecraft')) { into 'assets/minecraft' }
+            from(new File(srcRes, 'META-INF')) { into 'META-INF' }
+            from(new File(srcRes, 'pack.mcmeta')) { into '.' }
+            into qresDir
+        }
+        // b) 我们自己的命名空间 → Q 命名空间（data/forge 里的战利品 id 也要一起改）
+        copy {
+            from(new File(srcRes, 'assets/' + baseNs)) { into 'assets/' + theId }
+            from(new File(srcRes, 'data/' + baseNs)) { into 'data/' + theId }
+            from(new File(srcRes, 'data/forge')) { into 'data/forge' }
+            into qresDir
+        }
+        fileTree(qresDir).matching { include '**/*.json' }.each { f ->
+            def t = f.getText('UTF-8')
+            if (t.contains(baseNs)) f.setText(t.replace(baseNs, theId), 'UTF-8')
+        }
+        // ★ 创造页签的显示名跟着改名（键已经被换成 Q 命名空间，这里只改值）
+        [['zh_cn.json', '六相月灾', '六相月灾 · Q弹版'],
+         ['en_us.json', 'Hexa Lunar Calamity', 'Hexa Lunar Calamity · Bouncy']].each { lang ->
+            def f = new File(qresDir, "assets/${theId}/lang/${lang[0]}")
+            if (f.exists()) {
+                f.setText(f.getText('UTF-8')
+                        .replace("\"itemGroup.${theId}\": \"${lang[1]}\"",
+                                 "\"itemGroup.${theId}\": \"${lang[2]}\""), 'UTF-8')
+            }
+        }
+        // c) Q 版覆盖层（同路径覆盖：Q 版模型 / 贴图 / 语言）
+        copy {
+            from(overlay) { into '.' }
+            into qresDir
+        }
+    }
+}
+
 processResources {
-    def props = [mod_id: 'hexalunar_calamity', mod_name: '六相月灾', mod_version: project.version,
+    def props = [mod_id: modId, mod_name: modName, mod_version: project.version,
                  minecraft_version: '1.20.1', forge_version: '47.4.0', geckolib_version: '4.8.4']
     inputs.properties props
     filteringCharset = 'UTF-8'
     filesMatching('META-INF/mods.toml') { expand props }
+    if (qmode) {
+        dependsOn tasks.named('prepareQResources')
+        // 默认那份资源整体不要（它的命名空间已被 prepareQResources 搬进 qresDir）
+        exclude 'assets/**', 'data/**', 'META-INF/**', 'pack.mcmeta'
+        from(qresDir)
+    }
 }
 jar.finalizedBy('reobfJar')

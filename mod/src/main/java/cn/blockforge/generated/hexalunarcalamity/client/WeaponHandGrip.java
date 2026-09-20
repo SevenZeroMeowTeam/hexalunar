@@ -75,6 +75,27 @@ public final class WeaponHandGrip {
      */
     public static final float AWP_FIRE_PITCH = 6.0F;
 
+    /**
+     * ★ r105：Kar98k 开火后坐的「绕手俯仰」角（度 × {@code WeaponAnim.recoil}），与 AWP 同一套
+     * （见 {@link #AWP_FIRE_PITCH}）—— 栓动步枪的后坐都是「枪管微抬 + 枪托微沉」。
+     * 数值略小一点：它发射的是同样的 .338，但枪身更短、握把更低。
+     */
+    public static final float KAR98K_FIRE_PITCH = 5.5F;
+
+    /**
+     * ★ r106：莫辛-纳甘开火后坐的「绕手俯仰」角（度 × {@code WeaponAnim.recoil}）。
+     * 取 **4.0°**：TaCZ kar98k 的 {@code recoil.pitch} 峰值是 3.8°（见 {@code kar98_data.json}），
+     * 这里取同量级（AWP 6.0 / Kar98k 5.5）。
+     */
+    public static final float MOSIN_FIRE_PITCH = 4.0F;
+
+    /**
+     * ★ r108：M1 加兰德开火后坐的「绕手俯仰」角（度 × {@code WeaponAnim.recoil}）。
+     * 它是**半自动**、连射节奏快（每 {@code FIRE_INTERVAL} tick 一发），所以后坐比栓动枪小一点，
+     * 免得连射时整把枪抖得看不清：取 **3.5°**（AWP 6.0 / Kar98k 5.5 / 莫辛 4.0）。
+     */
+    public static final float M1_FIRE_PITCH = 3.5F;
+
     /** {@link #apply} 复用的一块矩阵（客户端渲染单线程，不会并发） */
     private static final Matrix4f SCRATCH = new Matrix4f();
     /** {@link #pushAds} 复用的临时数组 */
@@ -97,6 +118,26 @@ public final class WeaponHandGrip {
             // ★ r93：后坐改成**绕手俯仰**（枪管微抬 + 枪托微沉），不再是整枪平抬 —— 见 AWP_FIRE_PITCH
             GunPose.setAds(ADS_TMP[0], ADS_TMP[1], ADS_TMP[2], 0.0F, 0.0F,
                     AWP_FIRE_PITCH * WeaponAnim.of(gun).recoil);
+        } else if (gun == WeaponAnim.Kind.KAR98K) {
+            // ★ r105：与 AWP 完全同一套 —— 4 倍镜筒的光轴必须顶到屏幕中心，所以只做平移；
+            //   后坐同样是绕手（握把）的俯仰
+            WeaponMount.kar98kAds(player, ADS_TMP);
+            GunPose.setAds(ADS_TMP[0], ADS_TMP[1], ADS_TMP[2], 0.0F, 0.0F,
+                    KAR98K_FIRE_PITCH * WeaponAnim.of(gun).recoil);
+        } else if (gun == WeaponAnim.Kind.MOSIN) {
+            // ★ r106 莫辛：举枪位移**分机瞄 / 4 倍镜两档**（两档的参照点不同：2.72 / 3.44），
+            //   后坐同样是绕手（握把）的俯仰
+            int sight = cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem
+                    .sight(stack);
+            WeaponMount.mosinAds(player, sight, ADS_TMP);
+            GunPose.setAds(ADS_TMP[0], ADS_TMP[1], ADS_TMP[2], 0.0F, 0.0F,
+                    MOSIN_FIRE_PITCH * WeaponAnim.of(gun).recoil);
+        } else if (gun == WeaponAnim.Kind.M1_GARAND) {
+            // ★ r108 M1 加兰德：机瞄（无镜）⇒ 举枪只做平移，把「准星顶—照门觇孔」那条线顶到屏幕中心；
+            //   后坐同样是绕手（握把）的俯仰
+            WeaponMount.m1GarandAds(player, ADS_TMP);
+            GunPose.setAds(ADS_TMP[0], ADS_TMP[1], ADS_TMP[2], 0.0F, 0.0F,
+                    M1_FIRE_PITCH * WeaponAnim.of(gun).recoil);
         } else if (gun == WeaponAnim.Kind.AKM) {
             int sight = Sights.sight(stack);
             WeaponMount.akmAds(player, sight, ADS_TMP);
@@ -107,6 +148,13 @@ public final class WeaponHandGrip {
         } else {
             GunPose.clearAds();          // 十字弩：开镜是整屏遮罩，不需要位移
         }
+        // ★ Q 弹版统一收尾：把果冻晃动叠到「Y 位移 + 整枪挤压拉伸」上（所有枪一致）。
+        //   普通版这里恒为 0：javac 会把整段折叠掉，等价于没有这段代码。
+        if (cn.blockforge.generated.hexalunarcalamity.BuildInfo.Q_MODE) {
+            float wob = WeaponAnim.of(gun).jelly.wobble();
+            GunPose.setAds(GunPose.ADS[0], GunPose.ADS[1] + 0.055F * wob, GunPose.ADS[2],
+                    GunPose.ADS[3], GunPose.ADS[4], GunPose.ADS[5], wob);
+        }
     }
 
     /**
@@ -116,6 +164,9 @@ public final class WeaponHandGrip {
     public static WeaponAnim.Kind gunKind(ItemStack stack) {
         WeaponAnim.Kind kind = WeaponAnim.kindOf(stack);
         return kind == WeaponAnim.Kind.AKM || kind == WeaponAnim.Kind.AWP
+                || kind == WeaponAnim.Kind.KAR98K
+                || kind == WeaponAnim.Kind.MOSIN
+                || kind == WeaponAnim.Kind.M1_GARAND
                 || kind == WeaponAnim.Kind.CROSSBOW ? kind : null;
     }
 

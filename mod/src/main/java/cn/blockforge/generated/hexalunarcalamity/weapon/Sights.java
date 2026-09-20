@@ -45,6 +45,26 @@ public final class Sights {
         stack.getOrCreateTag().putInt(TAG, value);
     }
 
+    /**
+     * ★ r106：「出厂默认带镜」的枪用（莫辛-纳甘狙击型自带 4 倍镜）——
+     * 没写过 {@code HlcSight} 时返回 {@code fallback}，写过就以 NBT 为准。
+     */
+    public static int sightDefault(ItemStack stack, int fallback) {
+        CompoundTag tag = stack == null ? null : stack.getTag();
+        if (tag == null || !tag.contains(TAG)) return fallback;
+        return sight(stack);
+    }
+
+    /**
+     * ★ r106：把档位**真的写进 NBT**（连 {@link #IRON} 也写）。
+     * 与 {@link #set} 的差别：{@code set(IRON)} 是删键（表示「用默认档」），
+     * 而默认档是 4 倍镜的枪上删键 = 又长回一个镜子 —— 拆镜必须用这个。
+     */
+    public static void setExplicit(ItemStack stack, int value) {
+        if (stack == null || stack.isEmpty()) return;
+        stack.getOrCreateTag().putInt(TAG, value);
+    }
+
     /** 手上的物品是哪一档瞄具（不是瞄具返回 IRON） */
     public static int fromItem(Item item) {
         if (item == ModItems.RED_DOT_SIGHT.get()) return DOT;

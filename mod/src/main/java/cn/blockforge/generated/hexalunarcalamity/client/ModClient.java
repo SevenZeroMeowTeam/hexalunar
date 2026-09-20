@@ -68,6 +68,12 @@ public final class ModClient {
         if (path.startsWith("akm")) return null;
         // AWP 同样用 GeckoLib 骨骼渲染（AwpGeoRenderer + geo/awp.geo.json）
         if (path.startsWith("awp")) return null;
+        // ★ r105 Kar98k 也用 GeckoLib 骨骼渲染（Kar98kGeoRenderer + geo/kar98k.geo.json）
+        if (path.startsWith("kar98k")) return null;
+        // ★ r106 莫辛-纳甘（MosinGeoRenderer + geo/mosin.geo.json）
+        if (path.startsWith("mosin")) return null;
+        // ★ r108 M1 加兰德（M1GarandGeoRenderer + geo/m1_garand.geo.json）
+        if (path.startsWith("m1_garand")) return null;
         // 十字弩也改 GeckoLib 骨骼渲染（CrossbowGeoRenderer + geo/crossbow_geo.geo.json），
         // 拉弦装弹由 CrossbowGeoModel 程序化驱动，不再走 OBJ 分件/display 包装
         if (path.startsWith("crossbow") || path.contains("crossbow_pulling")) return null;
@@ -124,6 +130,18 @@ public final class ModClient {
         });
     }
 
+    /**
+     * ★ Q 弹版：注册 Q 版僵尸的模型层（几何 + 64×64 UV 布局，见 {@link QChibiZombieModel}）。
+     *
+     * <p>普通版也照常注册（只是没人用）—— 注册一个模型层没有任何副作用，
+     * 而这样代码里就不用为「要不要注册」再分一次支。
+     */
+    @SubscribeEvent
+    public static void onRegisterLayerDefinitions(
+            net.minecraftforge.client.event.EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(QChibiZombieModel.LAYER, QChibiZombieModel::createBodyLayer);
+    }
+
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         // 投射物
@@ -139,8 +157,15 @@ public final class ModClient {
                 ctx -> new ThrownItemRenderer(ctx, 0.85F, false));
 
         // 特殊感染者：僵尸变种
-        event.registerEntityRenderer(ModEntities.BOMBER_ZOMBIE.get(),
-                ctx -> tintedZombie(ctx, 0xFFB45A, 120));
+        // ★ Q 弹版（-Pqmode=true）：自爆尸换成「大头矮胖 + 果冻晃动」的 Q 版渲染器；
+        //   普通版保持原样（Q_MODE 是编译期常量，普通版这段分支会被 javac 直接折掉）
+        if (cn.blockforge.generated.hexalunarcalamity.BuildInfo.Q_MODE) {
+            event.registerEntityRenderer(ModEntities.BOMBER_ZOMBIE.get(),
+                    ctx -> new QChibiZombieRenderer<>(ctx));
+        } else {
+            event.registerEntityRenderer(ModEntities.BOMBER_ZOMBIE.get(),
+                    ctx -> tintedZombie(ctx, 0xFFB45A, 120));
+        }
         event.registerEntityRenderer(ModEntities.ARCHER_ZOMBIE.get(),
                 ctx -> tintedZombie(ctx, 0x59C46B, 96));
         event.registerEntityRenderer(ModEntities.BARREL_ZOMBIE.get(),

@@ -1,0 +1,15 @@
+{
+ "type": "minecraft:crafting_shapeless",
+ "ingredients": [
+  {
+   "item": "minecraft:gunpowder"
+  },
+  {
+   "item": "minecraft:iron_ingot"
+  }
+ ],
+ "result": {
+  "item": "hexalunar_calamity:ammo_762_61",
+  "count": 4
+ }
+}

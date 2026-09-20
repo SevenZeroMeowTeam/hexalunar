@@ -36,8 +36,11 @@ import java.util.Random;
  */
 public final class WeaponAnim {
 
-    /** 有动作的武器种类 */
-    public enum Kind { AKM, AWP, CROSSBOW, BOW, GRENADE, FLASH }
+    /**
+     * 有动作的武器种类（★ r105：追加 {@code KAR98K}；★ r106：追加 {@code MOSIN}；
+     * ★ r108：追加 {@code M1_GARAND} —— **只能往后加**，中间插值会打乱所有武器的状态）
+     */
+    public enum Kind { AKM, AWP, CROSSBOW, BOW, GRENADE, FLASH, KAR98K, MOSIN, M1_GARAND }
 
     /** 每种武器一份运行时状态（同一时刻只有手上那把在推进，其余衰减归零） */
     public static final class State {
@@ -63,6 +66,11 @@ public final class WeaponAnim {
         public boolean wasUsing;
         /** 松手时的蓄力，决定放箭回弹多猛 */
         public float lastCharge;
+        /**
+         * ★ Q 弹版：果冻弹簧（开火时打冲量 ⇒ 枪像果冻一样挤压拉伸 + 上下弹一下）。
+         * 非 Q 版里没人读它（javac 会把 Q 分支折叠掉），所以留着不影响普通版。
+         */
+        public final Jelly jelly = new Jelly();
     }
 
     private static final Map<Kind, State> STATES = new EnumMap<>(Kind.class);
@@ -93,6 +101,15 @@ public final class WeaponAnim {
         if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem) {
             return Kind.AWP;
         }
+        if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem) {
+            return Kind.KAR98K;
+        }
+        if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem) {
+            return Kind.MOSIN;                      // ★ r106
+        }
+        if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem) {
+            return Kind.M1_GARAND;                  // ★ r108
+        }
         if (item instanceof CrossbowWeaponItem) return Kind.CROSSBOW;
         if (item instanceof CompoundBowItem) return Kind.BOW;
         if (item instanceof FragGrenadeItem) return Kind.GRENADE;
@@ -119,6 +136,10 @@ public final class WeaponAnim {
         float impulse = aiming ? 0.42F : 0.6F;
         st.recoil = Math.min(1.5F, st.recoil + impulse);
         st.recoilYaw = Mth.clamp(st.recoilYaw + (RNG.nextFloat() - 0.5F) * (aiming ? 0.5F : 0.9F), -1.0F, 1.0F);
+        // ★ Q 弹版：开火打一个果冻冲量（抵肩时小一点，免得开镜晃得看不清）
+        if (cn.blockforge.generated.hexalunarcalamity.BuildInfo.Q_MODE) {
+            st.jelly.punch(aiming ? 0.55F : 0.85F);
+        }
     }
 
     /** 手雷出手：甩手动作 */
@@ -153,6 +174,10 @@ public final class WeaponAnim {
             st.recoil *= 0.55F;
             st.recoilYaw *= 0.5F;
             st.release *= 0.5F;
+            // ★ Q 弹版：果冻弹簧（衰减慢一点、相位匀速 ⇒ 能看见「弹回去」那一下）
+            if (cn.blockforge.generated.hexalunarcalamity.BuildInfo.Q_MODE) {
+                st.jelly.tick(0.82F, 1.15F);
+            }
             st.throwKick *= 0.45F;
 
             boolean active = kind == heldKind && player != null;
@@ -176,11 +201,28 @@ public final class WeaponAnim {
                     st.reload = AkmRifleItem.reloadProgress(held, gameTime);
                     st.wasUsing = using;
                 }
-                case AWP -> {
-                    // ★★ r84：这个 case 以前**漏了** ⇒ {@code Kind.AWP.aim} 永远是 0，
+                case AWP, KAR98K -> {
+                    // ★★ r84：AWP 这个 case 以前**漏了** ⇒ {@code Kind.AWP.aim} 永远是 0，
                     //   「抵肩举枪（镜筒光轴顶到屏幕中心）」的姿态从来没生效过（以前开镜是整屏遮罩、
                     //   枪还藏着，所以看不出来）。现在开镜看得见枪了，一按右键枪必须抬到屏幕中央。
+                    //   ★ r105：Kar98k 与 AWP 走同一套（举枪位移 + 开火俯仰），共用这一支。
                     st.aim = approach(st.aim, using ? 1.0F : 0.0F, 0.3F);
+                    st.wasUsing = using;
+                }
+                case MOSIN -> {
+                    // ★ r106 莫辛：与 AWP / Kar98k 同一套举枪位移（只平移）；
+                    //   reload 那一路给的是**逐发压弹的总进度**（>0 = 正在压弹），给流光层/手臂用
+                    st.aim = approach(st.aim, using ? 1.0F : 0.0F, 0.3F);
+                    st.reload = cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem
+                            .reloadProgress(held, gameTime);
+                    st.wasUsing = using;
+                }
+                case M1_GARAND -> {
+                    // ★ r108 M1 加兰德：机瞄⇒举枪位移只平移（TaCZ 步枪那一套）；
+                    //   reload 给的是**压漏夹 + 枪机释放**的总进度（>0 = 正在换弹）
+                    st.aim = approach(st.aim, using ? 1.0F : 0.0F, 0.3F);
+                    st.reload = cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem
+                            .reloadProgress(held, gameTime);
                     st.wasUsing = using;
                 }
                 case CROSSBOW -> {

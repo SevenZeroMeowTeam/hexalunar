@@ -102,6 +102,12 @@ public final class WeaponArmPose implements IClientItemExtensions {
 
     public static final WeaponArmPose AKM = new WeaponArmPose(WeaponAnim.Kind.AKM);
     public static final WeaponArmPose AWP = new WeaponArmPose(WeaponAnim.Kind.AWP);
+    /** ★ r105：Kar98k —— 与 AKM / AWP 同一套「双手端枪 / 举枪瞄准」姿势 */
+    public static final WeaponArmPose KAR98K = new WeaponArmPose(WeaponAnim.Kind.KAR98K);
+    /** ★ r106：莫辛-纳甘 —— 同样「双手端枪 / 举枪瞮准」 */
+    public static final WeaponArmPose MOSIN = new WeaponArmPose(WeaponAnim.Kind.MOSIN);
+    /** ★ r108：M1 加兰德 —— 同样「双手端枪 / 举枪瞄准」（机瞄） */
+    public static final WeaponArmPose M1_GARAND = new WeaponArmPose(WeaponAnim.Kind.M1_GARAND);
     public static final WeaponArmPose CROSSBOW = new WeaponArmPose(WeaponAnim.Kind.CROSSBOW);
     public static final WeaponArmPose BOW = new WeaponArmPose(WeaponAnim.Kind.BOW);
     public static final WeaponArmPose GRENADE = new WeaponArmPose(WeaponAnim.Kind.GRENADE);
@@ -114,8 +120,9 @@ public final class WeaponArmPose implements IClientItemExtensions {
     public HumanoidModel.ArmPose getArmPose(LivingEntity entity, InteractionHand hand, ItemStack stack) {
         boolean using = entity.isUsingItem() && entity.getUseItem() == stack;
         return switch (kind) {
-            // ★ AKM / AWP：腰射「双手端枪」（CROSSBOW_HOLD），举枪换成自定义的举枪矄准姿势
-            case AKM, AWP -> using ? RIFLE_AIM : HumanoidModel.ArmPose.CROSSBOW_HOLD;
+            // ★ AKM / AWP / Kar98k / 莫辛 / M1：腰射「双手端枪」（CROSSBOW_HOLD），举枪换成自定义的举枪瞮准姿势
+            case AKM, AWP, KAR98K, MOSIN, M1_GARAND -> using
+                    ? RIFLE_AIM : HumanoidModel.ArmPose.CROSSBOW_HOLD;
             case CROSSBOW -> {
                 // 上弦时也用「弩蓄力」姿势：原版那套会把左手放在弦上往回拉，正好是上弦动作
                 long now = entity.level() == null ? 0L : entity.level().getGameTime();
@@ -147,6 +154,15 @@ public final class WeaponArmPose implements IClientItemExtensions {
         if (stack.getItem() instanceof AkmRifleItem) return AKM;
         if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem) {
             return AWP;
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem) {
+            return KAR98K;
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem) {
+            return MOSIN;                            // ★ r106
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem) {
+            return M1_GARAND;                        // ★ r108
         }
         if (stack.getItem() instanceof CrossbowWeaponItem) return CROSSBOW;
         if (stack.getItem() instanceof CompoundBowItem) return BOW;

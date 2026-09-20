@@ -107,11 +107,11 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      * 让弹壳从抛壳口翻出去时**离开枪身与右臂**，能看清它三轴翻滚地飞走。
      */
     private static final float CASE_BACK = 3.0F;
-    private static final float CASE_VX = -5.0F;
+    private static final float CASE_VX = 5.0F;    // ★ r107：右抛壳（+X），原来是 -5 往左飞
     private static final float CASE_VY = 2.2F;
     private static final float CASE_G = 0.8F;
     /** 三轴翻滚（度） */
-    private static final float CASE_SPIN_Z = 240.0F;
+    private static final float CASE_SPIN_Z = -240.0F;   // ★ r107：自转方向跟着镜像
     private static final float CASE_SPIN_X = 150.0F;
     private static final float CASE_SPIN_Y = 90.0F;
 

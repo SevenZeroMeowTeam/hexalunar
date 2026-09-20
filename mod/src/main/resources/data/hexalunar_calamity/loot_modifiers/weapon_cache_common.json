@@ -41,6 +41,18 @@
         "weight": 1,
         "ammo": "hexalunar_calamity:ammo_338",
         "ammo_count": 6
+      },
+      {
+        "weapon": "hexalunar_calamity:mosin_nagant",
+        "weight": 2,
+        "ammo": "hexalunar_calamity:ammo_762_59",
+        "ammo_count": 10
+      },
+      {
+        "weapon": "hexalunar_calamity:m1_garand",
+        "weight": 2,
+        "ammo": "hexalunar_calamity:ammo_762_61",
+        "ammo_count": 10
       }
     ]
   }

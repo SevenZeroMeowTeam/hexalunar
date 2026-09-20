@@ -157,6 +157,44 @@ public final class WeaponArms {
     }
 
     /**
+     * ★ r105 Kar98k：与 AWP 同一套分工 —— **右手**平时握在握把上（食指在扳机上），
+     * 拉栓时抬起来抓**下弯拉机柄**、跟着枪机抬起 / 后退抛壳，拉完再回握把；
+     * **左手**托在护木下方不动（栓动步枪的支撑手），只在换弹时抬到机匣左上方**压桥夹**
+     * （它没有可拆弹匣，见 {@link Kar98kGeoModel} 的说明）。
+     */
+    public static void renderKar98k(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        WeaponDiag.armsCalled = true;                            // 诊断
+        Kar98kGeoModel.captureNow();
+        render(mc, pose, buffer, light, Kar98kGeoModel.frame,
+                Kar98kGeoModel.rightHandPx(new float[3]), Kar98kGeoModel.leftHandPx(new float[3]));
+    }
+
+    /**
+     * ★ r106 莫辛-纳甘：分工与 AWP / Kar98k 一致 —— **右手**平时握在碗部（食指在扳机上），
+     * 拉栓时抬起来抓**下弯拉机柄**（空弹壳就是在这一下被抽出来抛掉的）；
+     * ★ 逐发压弹也是**右手**的活：手从拉机柄移到机匣上方，一发一发把子弹按进弹仓。
+     * **左手全程扶枪**（托在前托下方把枪端稳，不参与装填）。
+     */
+    public static void renderMosin(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        WeaponDiag.armsCalled = true;                            // 诊断
+        MosinGeoModel.captureNow();
+        render(mc, pose, buffer, light, MosinGeoModel.frame,
+                MosinGeoModel.rightHandPx(new float[3]), MosinGeoModel.leftHandPx(new float[3]));
+    }
+
+    /**
+     * ★ r108 M1 加兰德：**右手**平时握着托颈（食指在扳机上）—— 半自动射击时枪机是导气杆自己动的，
+     * 所以手**不跟着枪机跑**；换弹时右手抬到机匣上方把 8 发漏夹压下去，再抓住拉机柄跟着枪机复进
+     * （「拉一次栓」那一下）。**左手全程托着前托**（加兰德换弹就是单手压漏夹，左手把枪端住）。
+     */
+    public static void renderM1Garand(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {
+        WeaponDiag.armsCalled = true;                            // 诊断
+        M1GarandGeoModel.captureNow();
+        render(mc, pose, buffer, light, M1GarandGeoModel.frame,
+                M1GarandGeoModel.rightHandPx(new float[3]), M1GarandGeoModel.leftHandPx(new float[3]));
+    }
+
+    /**
      * 手雷 / 震爆弹：**右手**握在弹体上；**左手**只在拔销 / 插销的时候出现（抓保险销拉环），
      * 投掷时绝不把左手也甩出去（用户要求「不是双手投掷动作」）。
      */

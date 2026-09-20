@@ -13,7 +13,14 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 @Mod(HexaLunarCalamity.MOD_ID)
 public final class HexaLunarCalamity {
-    public static final String MOD_ID = "hexalunar_calamity";
+    /**
+     * 本 jar 的 mod id —— **由构建期生成**（{@code build.gradle} 的 {@code -Pqmode}）：
+     * 普通版 {@code hexalunar_calamity}、Q 弹版 {@code hexalunar_calamity_q}。
+     * 它是编译期常量（{@code BuildInfo.MOD_ID} 也是常量），所以 {@code @Mod} / 各种
+     * {@code modid = MOD_ID} 注解照旧能用；资源路径也全部跟着它走，
+     * 于是「同一套代码 → 两个不同 id 的 jar」不需要改任何业务代码。
+     */
+    public static final String MOD_ID = BuildInfo.MOD_ID;
 
     /**
      * ★★ r95：客户端「构造期引导」标志 —— 只有它为 true 时才允许创建自定义 {@code ArmPose} 常量。

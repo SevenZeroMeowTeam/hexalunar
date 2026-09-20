@@ -23,8 +23,10 @@ public class CorpsePoisonEffect extends MobEffect {
     }
 
     private static String modifierKey(String name) {
+        // ★ 用 MOD_ID：Q 弹版与原版同时安装时属性修饰符 UUID 不能撞车（同 StunEffect 的说明）
         return java.util.UUID.nameUUIDFromBytes(
-                ("hexalunar_calamity:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+                (cn.blockforge.generated.hexalunarcalamity.HexaLunarCalamity.MOD_ID + ":" + name)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
     }
 
     @Override

@@ -28,7 +28,10 @@ public class StunEffect extends MobEffect {
     }
 
     private static String key(String name) {
-        return UUID.nameUUIDFromBytes(("hexalunar_calamity:" + name).getBytes(StandardCharsets.UTF_8)).toString();
+        // ★ 用 MOD_ID：Q 弹版与原版**同时安装**时，两边的属性修饰符 UUID 必须不同，
+        //   否则同一个实体的同一属性会被对方的修饰符顶掉（同一 UUID 不能重复挂）
+        return UUID.nameUUIDFromBytes((cn.blockforge.generated.hexalunarcalamity.HexaLunarCalamity.MOD_ID
+                + ":" + name).getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     @Override

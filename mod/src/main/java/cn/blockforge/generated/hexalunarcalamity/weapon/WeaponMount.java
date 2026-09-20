@@ -289,6 +289,183 @@ public final class WeaponMount {
         return toWorld(entity, AWP_TX, AWP_TY, AWP_TZ, 1.0F, modelPoint, aim,
                 ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
     }
+
+    // ------------------------------------------------------------------ Kar98k（栓动步枪，自带 4 倍镜）
+    /**
+     * {@code models/item/kar98k.json → display.firstperson_righthand.translation}。
+     *
+     * <p>★ 与 {@link #AWP_TY} 同一个定法：<b>枪管轴线在屏幕上与 AKM 重合</b>。
+     * AKM 的枪管轴线在模型 Y=1.75，Kar98k 的枪管轴线在 Y=2.25
+     * （{@code kar98k_gen.py} 的外露枪管方块 y 1.95…2.55 的中心）
+     * ⇒ {@code TY = AKM_TY + (1.75 − 2.25) = −1.10}；TX / TZ 沿用 AKM / AWP 那组（−5.0 / 0.50）。
+     *
+     * <p>⚠️ 与 AWP 的差别：Kar98k 的**握把在模型 Y≈0.6**（比枪管轴线低 1.65），
+     * 所以双手会比 AWP 的手位再低一点 —— 手臂走 {@code GunFrame}、跟着枪走，不会脱手。
+     */
+    public static final float KAR98K_TX = -5.0F;
+    public static final float KAR98K_TY = -1.10F;
+    public static final float KAR98K_TZ = 0.50F;
+    /**
+     * 4 倍镜筒光轴（模型 Y）：镜筒方块 y 3.95…4.85 的中心 = {@code scope} 骨骼 pivot **4.4**
+     * （必须与 {@code tools/kar98k_gen.py} 里那根镜筒的 y 中心一致 —— 改模型要同步改这里）。
+     */
+    public static final double KAR98K_SCOPE_Y = 4.40D;
+    public static final float KAR98K_AIM_DX = (float) (-HAND_X_PX - KAR98K_TX);                       // -3.96
+    public static final float KAR98K_AIM_DY =
+            (float) (-ARM_Y * 16.0D - KAR98K_SCOPE_Y - KAR98K_TY);                                   // +5.02
+    /**
+     * 举枪时整把枪往前推离眼睛的量（与 AWP 同一取值）。抵肩即**整屏镜筒遮罩**
+     * （见 {@code ClientEvents.maskScoping}），枪本体开镜时根本不画 ⇒
+     * 这个数实际只影响**开镜射击时枪口 / 抛壳点的世界坐标**（弹道起点）。
+     */
+    public static final float KAR98K_AIM_DZ = -3.5F;
+    /** 枪口（模型像素）：枪管轴线 Y=2.25、最前端 z=−13.60 */
+    public static final double[] KAR98K_MUZZLE = {0.0D, 2.25D, -13.60D};
+    /** 抛壳口（模型像素）：机匣右侧、正对拉机柄（{@code casing} 骨骼 pivot 0.30 / 3.00 / −1.20） */
+    public static final double[] KAR98K_EJECT = {0.55D, 3.00D, -1.20D};
+
+    /** 举枪时的 display X 增量（左撇子走另一侧） */
+    public static float kar98kAimDx(LivingEntity entity) {
+        return side(entity) > 0 ? KAR98K_AIM_DX : (float) (HAND_X_PX - KAR98K_TX);
+    }
+
+    /** Kar98k 的举枪位移（相机空间、格）；{@code out[3]} = 0（镜筒必须正着） */
+    public static void kar98kAds(LivingEntity entity, float[] out) {
+        out[0] = kar98kAimDx(entity) / 16.0F;
+        out[1] = KAR98K_AIM_DY / 16.0F;
+        out[2] = KAR98K_AIM_DZ / 16.0F;
+        if (out.length > 3) out[3] = 0.0F;
+    }
+
+    /** Kar98k 的某个模型点 → 世界坐标（aiming = 正抵肩瞄准；枪不做任何额外旋转，直接取模型点） */
+    public static Vec3 kar98k(LivingEntity entity, boolean aiming, double[] modelPoint) {
+        float[] ads = new float[4];
+        kar98kAds(entity, ads);
+        float aim = aiming ? 1.0F : 0.0F;
+        return toWorld(entity, KAR98K_TX, KAR98K_TY, KAR98K_TZ, 1.0F, modelPoint, aim,
+                ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
+    }
+
+    // ------------------------------------------------------------------ 莫辛-纳甘 M91/30（7.62x59 栓动，出厂自带 4 倍镜）
+    /**
+     * {@code models/item/mosin_nagant.json → display.firstperson_righthand.translation}。
+     *
+     * <p>★ 与 AKM **完全同一组**：莫辛的原点就是握把、枪管轴线也在模型 Y=1.75
+     * （{@code tools/mosin_gen.py} 的 {@code BORE}）⇒ 手持构图与 AKM 逐像素一致。
+     */
+    public static final float MOSIN_TX = -5.0F;
+    public static final float MOSIN_TY = -0.6F;
+    public static final float MOSIN_TZ = 1.8F;
+    /**
+     * 机瞄瞮准线（模型 Y）：照门缺口两耳顶 = 准星柱顶 = **2.72**
+     * （与 {@code tools/mosin_gen.py} 的 {@code IRON_Y} 必须一致）。
+     */
+    public static final double MOSIN_IRON_Y = 2.72D;
+    /** 4 倍镜光轴（模型 Y）：镜筒中心 = **3.44**（{@code mosin_gen.py} 的 {@code SCOPE_Y}） */
+    public static final double MOSIN_SCOPE_Y = 3.44D;
+    public static final float MOSIN_AIM_DX = (float) (-HAND_X_PX - MOSIN_TX);
+    /** 机瞄举枪的 Y 增量（把「照门顶—准星顶」那条线顶到屏幕中心） */
+    public static final float MOSIN_IRON_AIM_DY =
+            (float) (-ARM_Y * 16.0D - MOSIN_IRON_Y - MOSIN_TY);
+    /** 4 倍镜举枪的 Y 增量（把镜筒光轴顶到屏幕中心） */
+    public static final float MOSIN_SCOPE_AIM_DY =
+            (float) (-ARM_Y * 16.0D - MOSIN_SCOPE_Y - MOSIN_TY);
+    /**
+     * 举枪时把枪**朝射手收**多少（display 平移增量、模型像素）。
+     *
+     * <p>TaCZ kar98k 的定位组：{@code idle_view z = 17.0} → {@code iron_view z = 17.5}
+     * （只差 0.5 单位），换算到我们这把 22.4 像素长的枪上 ≈ 0.2 像素 ⇒ **几乎不前后走**；
+     * 取 1.2 只是让举枪后的构图稍微紧凑一点（抵肩时眼睛离机匣不会太远）。
+     */
+    public static final float MOSIN_AIM_DZ = 1.2F;
+    /** 枪口（模型像素）：枪管轴线 Y=1.75、最前端 z=−16.78（长枪管） */
+    public static final double[] MOSIN_MUZZLE = {0.0D, 1.75D, -16.78D};
+    /** 抛壳口（模型像素）：机匣右侧、正对拉机柄（{@code casing} 骨骼 pivot 0.62 / 2.10 / −1.95） */
+    public static final double[] MOSIN_EJECT = {0.62D, 2.10D, -1.95D};
+
+    /** 举枪时该顶到屏幕中心的参照高度（机瞄 / 4 倍镜两档） */
+    public static double mosinAnchorY(int sight) {
+        return sight == Sights.SCOPE ? MOSIN_SCOPE_Y : MOSIN_IRON_Y;
+    }
+
+    /** 举枪时该给的 display Y 增量（随瞄具档位变） */
+    public static float mosinAimDy(int sight) {
+        return sight == Sights.SCOPE ? MOSIN_SCOPE_AIM_DY : MOSIN_IRON_AIM_DY;
+    }
+
+    /** 举枪时的 display X 增量（左撇子走另一侧） */
+    public static float mosinAimDx(LivingEntity entity) {
+        return side(entity) > 0 ? MOSIN_AIM_DX : (float) (HAND_X_PX - MOSIN_TX);
+    }
+
+    /** 莫辛的举枪位移（相机空间、格）；{@code out[3]} = 0（举枪只做平移，瞮准线才钉在屏幕中心） */
+    public static void mosinAds(LivingEntity entity, int sight, float[] out) {
+        out[0] = mosinAimDx(entity) / 16.0F;
+        out[1] = mosinAimDy(sight) / 16.0F;
+        out[2] = MOSIN_AIM_DZ / 16.0F;
+        if (out.length > 3) out[3] = 0.0F;
+    }
+
+    /** 莫辛的某个模型点 → 世界坐标（aiming = 正抵肩瞮准；枪不做任何额外旋转，直接取模型点） */
+    public static Vec3 mosin(LivingEntity entity, boolean aiming, int sight, double[] modelPoint) {
+        float[] ads = new float[4];
+        mosinAds(entity, sight, ads);
+        float aim = aiming ? 1.0F : 0.0F;
+        return toWorld(entity, MOSIN_TX, MOSIN_TY, MOSIN_TZ, 1.0F, modelPoint, aim,
+                ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
+    }
+
+    // ------------------------------------------------------------------ M1 加兰德（半自动，机瞄）
+    /**
+     * {@code models/item/m1_garand.json → display.firstperson_righthand.translation}。
+     *
+     * <p>与 AKM / AWP / Kar98k / 莫辛同一个定法：<b>枪管轴线在屏幕上与 AKM 重合</b>。
+     * AKM 的枪管轴线在模型 Y=1.75，M1 的枪管轴线在 Y=2.30
+     * （{@code m1_garand_gen.py} 的枪管方块 y 2.06…2.54 的中心）
+     * ⇒ {@code TY = AKM_TY + (1.75 − 2.30) = −1.15}；TX / TZ 沿用 −5.0 / 0.50。
+     */
+    public static final float M1_TX = -5.0F;
+    public static final float M1_TY = -1.15F;
+    public static final float M1_TZ = 0.50F;
+    /** 机瞄瞄准线（模型 Y）：**准星片顶 = 照门觇孔中心 = 3.10**（改模型要同步这个数） */
+    public static final double M1_IRON_Y = 3.10D;
+    public static final float M1_AIM_DX = (float) (-HAND_X_PX - M1_TX);                         // -3.96
+    public static final float M1_AIM_DY = (float) (-ARM_Y * 16.0D - M1_IRON_Y - M1_TY);         // +6.37
+    /**
+     * 举枪时「把后照门拉到你眼前」的量（模型像素）。
+     *
+     * <p>照 TaCZ 的 {@code ak47_display.json} 规律（{@code idle_view z = 13.75} →
+     * {@code iron_view z = 10.156}，收 3.59 单位且**没有任何旋转**）：它那把枪 38 单位长，
+     * 我们这把 20.9 ⇒ 按比例 3.59 × 0.5 ≈ **1.8**（与 AKM 的 {@code AKM_AIM_DZ} 同值）。
+     */
+    public static final float M1_AIM_DZ = 1.8F;
+    /** 枪口（模型像素）：枪管轴线 Y=2.30、最前端 z=−13.60 */
+    public static final double[] M1_MUZZLE = {0.0D, 2.30D, -13.60D};
+    /** 抛壳口（模型像素）：机匣右侧抛壳窗（{@code casing} 骨骼 pivot 0.42 / 2.90 / −1.05） */
+    public static final double[] M1_EJECT = {0.42D, 2.90D, -1.05D};
+
+    /** 举枪时的 display X 增量（左撇子走另一侧） */
+    public static float m1GarandAimDx(LivingEntity entity) {
+        return side(entity) > 0 ? M1_AIM_DX : (float) (HAND_X_PX - M1_TX);
+    }
+
+    /** M1 加兰德的举枪位移（相机空间、格）；{@code out[3]} = 0（机瞄只做平移） */
+    public static void m1GarandAds(LivingEntity entity, float[] out) {
+        out[0] = m1GarandAimDx(entity) / 16.0F;
+        out[1] = M1_AIM_DY / 16.0F;
+        out[2] = M1_AIM_DZ / 16.0F;
+        if (out.length > 3) out[3] = 0.0F;
+    }
+
+    /** M1 加兰德的某个模型点 → 世界坐标（aiming = 正抵肩瞄准） */
+    public static Vec3 m1Garand(LivingEntity entity, boolean aiming, double[] modelPoint) {
+        float[] ads = new float[4];
+        m1GarandAds(entity, ads);
+        float aim = aiming ? 1.0F : 0.0F;
+        return toWorld(entity, M1_TX, M1_TY, M1_TZ, 1.0F, modelPoint, aim,
+                ads[0] * aim, ads[1] * aim, ads[2] * aim, 0.0F);
+    }
+
     // ------------------------------------------------------------------ 复合弓
     /** models/item/compound_bow.json → display.firstperson_righthand（平移 0、scale 0.75） */
     public static final float BOW_TX = 0.0F;

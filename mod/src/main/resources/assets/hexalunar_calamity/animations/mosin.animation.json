@@ -1,0 +1,125 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.mosin.idle": {
+   "loop": true,
+   "animation_length": 2.0,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "1.0": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "animation.mosin.run": {
+   "loop": true,
+   "animation_length": 1.0,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "1.0": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "animation.mosin.run_fast": {
+   "loop": true,
+   "animation_length": 0.8,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "1.0": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "animation.mosin.fire": {
+   "loop": false,
+   "animation_length": 0.35,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "1.0": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "animation.mosin.bolt": {
+   "loop": false,
+   "animation_length": 0.9,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "1.0": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "animation.mosin.reload": {
+   "loop": false,
+   "animation_length": 3.0,
+   "bones": {
+    "root": {
+     "rotation": {
+      "0.0": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "1.0": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  }
+ }
+}

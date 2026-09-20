@@ -159,6 +159,21 @@ public final class WeaponDiag {
             return new float[]{WeaponMount.AWP_TX, WeaponMount.AWP_TY, WeaponMount.AWP_TZ};
         }
         if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem) {
+            // ★ r105：Kar98k 的 display 常数（models/item/kar98k.json 与 WeaponMount 必须是同一组）
+            return new float[]{WeaponMount.KAR98K_TX, WeaponMount.KAR98K_TY, WeaponMount.KAR98K_TZ};
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem) {
+            // ★ r106：莫辛的 display 常数（models/item/mosin_nagant.json 与 WeaponMount 必须同一组）
+            return new float[]{WeaponMount.MOSIN_TX, WeaponMount.MOSIN_TY, WeaponMount.MOSIN_TZ};
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .M1GarandItem) {
+            // ★ r108：M1 加兰德的 display 常数（models/item/m1_garand.json 与 WeaponMount 必须同一组）
+            return new float[]{WeaponMount.M1_TX, WeaponMount.M1_TY, WeaponMount.M1_TZ};
+        }
+        if (stack.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .CrossbowWeaponItem) {
             return new float[]{0.0F, 0.0F, 0.0F};            // crossbow.json：平移 0 / scale 0.8
         }

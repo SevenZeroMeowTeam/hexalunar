@@ -81,6 +81,20 @@ public final class ClientEvents {
                 event.setNewFovModifier(1.0F / SCOPE_8X_ZOOM);
                 return;
             }
+            // ★ r105 Kar98k：自带 **4 倍镜** —— 与 AWP 同一套整屏镜筒开镜，只是倍率低一档
+            if (using instanceof cn.blockforge.generated
+                    .hexalunarcalamity.weapon.Kar98kItem) {
+                event.setNewFovModifier(1.0F / cn.blockforge.generated.hexalunarcalamity.weapon
+                        .Kar98kItem.SCOPE_ZOOM);
+                return;
+            }
+            // ★ r106 莫辛-纳甘：自带的 4 倍镜（TaCZ 的 scope_98k：zoom 4.25）
+            if (using instanceof cn.blockforge.generated
+                    .hexalunarcalamity.weapon.MosinRifleItem) {
+                event.setNewFovModifier(1.0F / cn.blockforge.generated.hexalunarcalamity.weapon
+                        .MosinRifleItem.SCOPE_ZOOM);
+                return;
+            }
             // 剩下的就是 AKM 装了 4 倍镜
             event.setNewFovModifier(1.0F / SCOPE_4X_ZOOM);
             return;
@@ -88,6 +102,19 @@ public final class ClientEvents {
         // AKM 机瞄 / 红点：TaCZ 的 iron_zoom = 1.33
         if (player.getUseItem().getItem() instanceof cn.blockforge.generated
                 .hexalunarcalamity.weapon.AkmRifleItem) {
+            event.setNewFovModifier(1.0F / IRON_ZOOM);
+            return;
+        }
+        // ★ r106 莫辛机瞄：TaCZ kar98k 的 {@code iron_zoom = 2}（比 AKM 的 1.33 更“拉近”）
+        if (player.getUseItem().getItem() instanceof cn.blockforge.generated
+                .hexalunarcalamity.weapon.MosinRifleItem) {
+            event.setNewFovModifier(1.0F / cn.blockforge.generated.hexalunarcalamity.weapon
+                    .MosinRifleItem.IRON_ZOOM);
+            return;
+        }
+        // ★ r108 M1 加兰德：只有机瞄 ⇒ 用 **TaCZ 步枪的 iron_zoom = 1.33**（同 AK47 / AKM）
+        if (player.getUseItem().getItem() instanceof cn.blockforge.generated
+                .hexalunarcalamity.weapon.M1GarandItem) {
             event.setNewFovModifier(1.0F / IRON_ZOOM);
             return;
         }
@@ -111,6 +138,17 @@ public final class ClientEvents {
         if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .AwpRifleItem) {
             return true;
+        }
+        // ★ r105 Kar98k：同样自带镜筒，抵肩即开 4 倍镜（复用 AWP 那套整屏镜筒遮罩）
+        if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem) {
+            return true;
+        }
+        // ★ r106 莫辛-纳甘：**装了 4 倍镜**才是整屏镜筒（拆了镜子就是机瞄，看得见枪）
+        if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem) {
+            return cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem.sight(using)
+                    == cn.blockforge.generated.hexalunarcalamity.weapon.Sights.SCOPE;
         }
         if (using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .CrossbowWeaponItem) {
@@ -285,6 +323,15 @@ public final class ClientEvents {
         } else if (held.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .AwpRifleItem) {
             st = WeaponAnim.of(WeaponAnim.Kind.AWP);
+        } else if (held.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem) {
+            st = WeaponAnim.of(WeaponAnim.Kind.KAR98K);       // ★ r105
+        } else if (held.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem) {
+            st = WeaponAnim.of(WeaponAnim.Kind.MOSIN);        // ★ r106
+        } else if (held.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .M1GarandItem) {
+            st = WeaponAnim.of(WeaponAnim.Kind.M1_GARAND);    // ★ r108
         } else {
             return;
         }
@@ -386,9 +433,9 @@ public final class ClientEvents {
             handProjection = com.mojang.blaze3d.systems.RenderSystem.getProjectionMatrix();
             com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(
                     mc.gameRenderer.getProjectionMatrix(
-                            // ★ r94：各枪自己的 zoom_model_fov（TaCZ：AK47=45 / ai_awp=35）
+                            // ★ r94/r105：各枪自己的 zoom_model_fov（AK47=45 / AWP=25 / Kar98k=40）
                             cn.blockforge.generated.hexalunarcalamity.weapon.GunPose
-                                    .modelFov(gun == WeaponAnim.Kind.AWP, WeaponAnim.of(gun).aim)),
+                                    .modelFovForGun(modelAimFov(gun), WeaponAnim.of(gun).aim)),
                     com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
         }
         if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon.AkmRifleItem) {
@@ -403,6 +450,21 @@ public final class ClientEvents {
             // AWP：右手握把 + 左手托枪管（换弹时去抓弹匣）
             WeaponArms.renderAwp(mc, event.getPoseStack(), event.getMultiBufferSource(),
                     event.getPackedLight());
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem) {
+            // ★ r105 Kar98k：右手握把 + 拉栓时抓下弯拉机柄；左手托护木（换弹时压桥夹）
+            WeaponArms.renderKar98k(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem) {
+            // ★ r106 莫辛：右手握碗部 + 拉栓时抓拉机柄（抽壳抛壳）；左手托前托（装填时上机匣逐发压弹）
+            WeaponArms.renderMosin(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
+        } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .M1GarandItem) {
+            // ★ r108 M1：右手握托颈（射击时不动）+ 换弹时压漏夹 / 抓拉机柄复进；左手全程托前托
+            WeaponArms.renderM1Garand(mc, event.getPoseStack(), event.getMultiBufferSource(),
+                    event.getPackedLight());
         } else if (item instanceof cn.blockforge.generated.hexalunarcalamity.item
                 .GrenadeItem) {
             // 手雷 / 震爆弹：右手握雷；左手只在拔销 / 插销时伸进来抓拉环
@@ -413,6 +475,24 @@ public final class ClientEvents {
 
     /** 被我们换成「枪模投影」之前的那块投影（副手渲染前还原，见 {@link #onRenderHand}） */
     private static org.joml.Matrix4f handProjection;
+
+    /**
+     * 各枪**举枪时**的枪模投影 FOV（TaCZ 的 {@code zoom_model_fov}）：
+     * AKM / 十字弩 45、AWP 25、★ r105 Kar98k 40（4 倍镜）。
+     * 腰射那一档由 {@code GunPose.MODEL_FOV_HIP} 统一给（76°）。
+     */
+    private static float modelAimFov(WeaponAnim.Kind gun) {
+        return switch (gun) {
+            case AWP -> cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.MODEL_FOV_AIM_AWP;
+            case KAR98K -> cn.blockforge.generated.hexalunarcalamity.weapon.GunPose
+                    .MODEL_FOV_AIM_KAR98K;
+            case MOSIN -> cn.blockforge.generated.hexalunarcalamity.weapon.GunPose
+                    .MODEL_FOV_AIM_MOSIN;                       // ★ r106（TaCZ kar98k 的 25°）
+            case M1_GARAND -> cn.blockforge.generated.hexalunarcalamity.weapon.GunPose
+                    .MODEL_FOV_AIM_M1;                          // ★ r108（TaCZ 步枪 AK47 的 45°）
+            default -> cn.blockforge.generated.hexalunarcalamity.weapon.GunPose.MODEL_FOV_AIM;
+        };
+    }
 
     private static void restoreHandProjection() {
         if (handProjection == null) return;
@@ -607,6 +687,12 @@ public final class ClientEvents {
                 || using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .AwpRifleItem
                 || using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem
+                || using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem
+                || using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .M1GarandItem
+                || using.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
                 .CrossbowWeaponItem;
         if (gun) event.setCanceled(true);
     }
@@ -625,7 +711,29 @@ public final class ClientEvents {
                         ? cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem.mag(weapon)
                                 + (cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
                                 .chambered(weapon) ? "+1" : "") + " / " + reserveText
-                        : reserveText;
+                        // ★ r105 Kar98k：同样「弹仓 + 膛内一发」（内置弹仓，没有可拆弹匣）
+                        : weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                                .Kar98kItem
+                                ? cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem.mag(weapon)
+                                        + (cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem
+                                        .chambered(weapon) ? "+1" : "") + " / " + reserveText
+                                // ★ r106 莫辛-纳甘：5 发弹仓 + 膛内一发（逐发压弹，没有可拆弹匣）
+                                : weapon.getItem() instanceof cn.blockforge.generated
+                                        .hexalunarcalamity.weapon.MosinRifleItem
+                                        ? cn.blockforge.generated.hexalunarcalamity.weapon
+                                                .MosinRifleItem.mag(weapon)
+                                                + (cn.blockforge.generated.hexalunarcalamity.weapon
+                                                .MosinRifleItem.chambered(weapon) ? "+1" : "")
+                                                + " / " + reserveText
+                                // ★ r108 M1 加兰德：8 发漏夹（弹仓 7 + 膛内 1）
+                                : weapon.getItem() instanceof cn.blockforge.generated
+                                        .hexalunarcalamity.weapon.M1GarandItem
+                                        ? cn.blockforge.generated.hexalunarcalamity.weapon
+                                                .M1GarandItem.mag(weapon)
+                                                + (cn.blockforge.generated.hexalunarcalamity.weapon
+                                                .M1GarandItem.chambered(weapon) ? "+1" : "")
+                                                + " / " + reserveText
+                                : reserveText;
         // ★★ r101：框宽按**文字实测宽度**算，别再写死 —— AWP 的 "4+1 / ∞" 比 "30 / ∞" 宽，
         //   原来写死 78 宽 ⇒ ∞ 被挤到框外面（用户截图）。现在右对齐时整框随文字宽度伸缩。
         Font font = mc.font;

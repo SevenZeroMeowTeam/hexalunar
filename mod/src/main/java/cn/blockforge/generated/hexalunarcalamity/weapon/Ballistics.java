@@ -15,6 +15,10 @@ public final class Ballistics {
     public static final double AKM_RANGE = 60.0D;
     /** AWP 有效射程（格）：.338 栓动狙击，比步枪弹更远更直 */
     public static final double AWP_RANGE = 96.0D;
+    /** ★ r106 莫辛-纳甘（7.62x59 栓动）：比 AKM 远、比 .338 近 */
+    public static final double MOSIN_RANGE = 84.0D;
+    /** ★ r108 M1 加兰德（7.62x61 半自动）：比 AKM 的 7.62x39 强、比 7.62x59 略近 */
+    public static final double M1_RANGE = 72.0D;
     /** 十字弩有效射程（格） */
     public static final double BOLT_RANGE = 40.0D;
     /** 复合弓有效射程（格） */
@@ -24,6 +28,10 @@ public final class Ballistics {
     public static final double AKM_IN_RANGE_GRAVITY = 0.006D;
     /** AWP 弹头在有效射程内的重力（比步枪弹更平） */
     public static final double AWP_IN_RANGE_GRAVITY = 0.004D;
+    /** ★ r106 莫辛-纳甘弹头在有效射程内的重力（介于 AKM 与 AWP 之间） */
+    public static final double MOSIN_IN_RANGE_GRAVITY = 0.005D;
+    /** ★ r108 M1 加兰德（7.62x61）弹头在有效射程内的重力 */
+    public static final double M1_IN_RANGE_GRAVITY = 0.0055D;
     /** 弩箭在有效射程内的重力（原版箭为 0.05，这里收紧一半以上） */
     public static final double BOLT_IN_RANGE_GRAVITY = 0.022D;
     /** 复合弓箭在有效射程内的重力 */

@@ -151,13 +151,13 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
 
     // ------------------------------------------------------------------ 抛壳（从弹壳槽抛出空弹壳）
     /** 弹壳初速（模型像素 / tick）：**往后上方**飞（原版 AK 从右后侧的抛壳口抛，方向与枪口相反） */
-    private static final float CASE_VX = -0.75F;
+    private static final float CASE_VX = 0.75F;   // ★ r107：右抛壳（AK 也是右侧）
     private static final float CASE_VY = 1.50F;
     private static final float CASE_VZ = 0.50F;
     /** 弹壳下落（像素 / tick²） */
     private static final float CASE_G = 0.14F;
     /** 翻滚角速度（度 / tick）：绕 Z 翻得最快，看起来就是空壳在打转 */
-    private static final float CASE_SPIN_Z = 42.0F;
+    private static final float CASE_SPIN_Z = -42.0F;   // ★ r107：跟着镜像
     private static final float CASE_SPIN_X = 22.0F;
     private static final float CASE_SPIN_Y = 12.0F;
 

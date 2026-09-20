@@ -180,6 +180,24 @@ public final class ClientWeaponInput {
             interval = cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
                     .CYCLE_TICKS / 2;              // 栓动：击发 + 拉栓整个循环，按住也不会连发
             auto = false;
+        } else if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem) {
+            // ★ r105 Kar98k：同样是栓动（与 AWP 一条调校），按住左键不会连发
+            interval = cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem
+                    .CYCLE_TICKS / 2;
+            auto = false;
+        } else if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem) {
+            // ★ r106 莫辛：同样是栓动（击发 + 拉栓整个循环），按住左键不会连发
+            interval = cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem
+                    .CYCLE_TICKS / 2;
+            auto = false;
+        } else if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .M1GarandItem) {
+            // ★ r108 M1 加兰德：**连射**（半自动）—— 按住左键按 FIRE_INTERVAL 的节奏一发一发打，
+            //   枪机由导气杆自动循环，不需要玩家拉栓
+            interval = cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem.FIRE_INTERVAL;
+            auto = true;
         } else if (weapon.getItem() instanceof CrossbowWeaponItem) {
             interval = CrossbowWeaponItem.FIRE_INTERVAL; // 按住连发
             auto = true;
@@ -232,6 +250,30 @@ public final class ClientWeaponInput {
             return cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
                     .reloading(weapon, now)
                     || cn.blockforge.generated.hexalunarcalamity.weapon.AwpRifleItem
+                    .bolting(weapon, now);
+        }
+        if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .Kar98kItem) {
+            // ★ r105/r107 Kar98k：逐发压弹 / 拉栓期间 use 状态是正当的，不能释放
+            return cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem
+                    .loading(weapon, now)
+                    || cn.blockforge.generated.hexalunarcalamity.weapon.Kar98kItem
+                    .bolting(weapon, now);
+        }
+        if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .MosinRifleItem) {
+            // ★ r106 莫辛：逐发压弹 / 拉栓期间 use 状态是正当的，不能释放
+            return cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem
+                    .loading(weapon, now)
+                    || cn.blockforge.generated.hexalunarcalamity.weapon.MosinRifleItem
+                    .bolting(weapon, now);
+        }
+        if (weapon.getItem() instanceof cn.blockforge.generated.hexalunarcalamity.weapon
+                .M1GarandItem) {
+            // ★ r108 M1：压漏夹 / 枪机自动循环期间 use 状态是正当的，不能释放
+            return cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem
+                    .loading(weapon, now)
+                    || cn.blockforge.generated.hexalunarcalamity.weapon.M1GarandItem
                     .bolting(weapon, now);
         }
         // 复合弓：举弓蓄力本来就要一直按着右键，交给上面的 usePressed 判断

@@ -35,6 +35,12 @@ public final class ClientGunController {
                 && (weapon.getItem() instanceof AkmRifleItem
                     || weapon.getItem() instanceof cn.blockforge.generated
                             .hexalunarcalamity.weapon.AwpRifleItem
+                    || weapon.getItem() instanceof cn.blockforge.generated
+                            .hexalunarcalamity.weapon.Kar98kItem
+                    || weapon.getItem() instanceof cn.blockforge.generated
+                            .hexalunarcalamity.weapon.MosinRifleItem
+                    || weapon.getItem() instanceof cn.blockforge.generated
+                            .hexalunarcalamity.weapon.M1GarandItem
                     || weapon.getItem() instanceof CrossbowWeaponItem
                     || weapon.getItem() instanceof cn.blockforge.generated
                             .hexalunarcalamity.weapon.CompoundBowItem);
