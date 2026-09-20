@@ -8,7 +8,15 @@ Kar98k（独立新武器，保留原 AWP）—— 模型/贴图生成器
 1. ``assets/hexalunar_calamity/geo/kar98k.geo.json``   bedrock 几何（Blockbench 里
    File -> Import -> Bedrock Model 可直接打开编辑）
 2. ``assets/hexalunar_calamity/textures/models/kar98k_geo.png``  程序化贴图（木/钢/镜/黄铜）
-3. 顺便打印骨骼清单与包围盒（供后续调 WeaponMount / WeaponArms 参照点用）
+3. ``assets/hexalunar_calamity/textures/models/kar98k_geo_glowmask.png``  自发光遮罩
+   （只留 钢/镜筒/镜片/黄铜 四条色带 ⇒ 供 ``GlossGlintLayer`` 的抛光流光层用）
+4. 顺便打印骨骼清单与包围盒（供后续调 WeaponMount / WeaponArms 参照点用）
+
+接线状态（r105 已完成，见下面「后续接线」的对应条目）
+----------------------------------------------------
+模型 → 代码的每一条线都接好了：``Kar98kItem`` / ``Kar98kGeoModel`` / ``Kar98kGeoRenderer`` /
+``models/item/kar98k.json`` / ``WeaponMount.KAR98K_*`` / ``WeaponArms.renderKar98k`` /
+``lang`` + 创造页签。本脚本改动后直接重跑即可（几何 + 两张贴图一起覆盖）。
 
 坐标约定（与项目内其它枪一致）
 ------------------------------
@@ -20,19 +28,28 @@ Kar98k（独立新武器，保留原 AWP）—— 模型/贴图生成器
 ``root -> move -> body -> {barrel, stock, scope, bolt, casing, magazine, trigger, bipod}``
 动画里被 key 的通道：``move``（后坐/拉栓整枪位移）、``bolt``（拉机柄）、``casing``（抛壳）
 
-后续接线（下一轮，按顺序）
---------------------------
-1. ``registry/ModItems``：新增 ``KAR98K``（暂用 ``AwpRifleItem`` 同款逻辑或新类 ``Kar98kItem``）
-2. ``client``：新增 ``Kar98kGeoRenderer``（照 ``AwpGeoRenderer`` 抄）+ ``initializeClient`` 注册 BEWLR
-3. ``models/item/kar98k.json``：``parent = builtin/entity`` + firstperson display（照 akm/awp 的写法）
-4. ``WeaponMount``：新增 ``KAR98K_MUZZLE`` / 瞄准参照点（用本脚本打印的包围盒换算）
-5. ``WeaponArms``：新增右手握把、左手护木的模型点（同上）
-6. ``lang``（en_us/zh_cn）+ 创造模式物品栏 + 弹种（.338 与 AWP 共用还是新弹种，沿用 AWP 的）
-7. 4 倍镜：本模型自带镜筒 ⇒ 复用 AWP 的整屏镜筒开镜（``SCOPE_8X_ZOOM`` 那套）
+接线清单（r105 已逐条接完，落地位置记在括号里）
+----------------------------------------------
+1. ``registry/ModItems``：``KAR98K`` → 新类 ``Kar98kItem``（``weapon/Kar98kItem.java``，与
+   ``AwpRifleItem`` 同款栓动逻辑，弹种沿用 AWP 的 ``AmmoType.SNIPER`` = .338）
+2. ``client``：``Kar98kGeoModel`` / ``Kar98kGeoRenderer`` / ``Kar98kAnimState`` /
+   ``Kar98kItemClientExtensions``，由 ``Kar98kItem.initializeClient`` 注册 BEWLR；
+   动画**直接复用** ``animations/awp.animation.json``（骨骼名一致）
+3. ``models/item/kar98k.json``：``parent = builtin/entity`` + firstperson display
+   （平移 −5.0 / −1.10 / 0.50，与 ``WeaponMount.KAR98K_T*`` 必须一致）
+4. ``WeaponMount``：``KAR98K_MUZZLE`` {0, 2.25, −13.60}、``KAR98K_EJECT``、``KAR98K_SCOPE_Y``
+   = 4.40（镜筒 y 中心 = scope 骨骼 pivot）、``kar98kAds`` / ``kar98k()`` 换算
+5. ``WeaponArms.renderKar98k``：右手握把 / 拉栓抓下弯柄、左手托护木 / 换弹时压桥夹
+   （手位点写在 ``Kar98kGeoModel`` 里，必须与骨骼几何对着量）
+6. ``lang``（en_us/zh_cn 的 ``item/tooltip.hexalunar_calamity.kar98k*``）+ 创造页签
+   ``ModTabs``；弹种沿用 AWP 的 .338
+7. 4 倍镜：``Kar98kItem.SCOPE_ZOOM`` = 4.0 ⇒ 复用 AWP 的整屏镜筒开镜
+   （``ClientEvents.scoping`` / ``maskScoping``）；枪模投影 FOV 见
+   ``GunPose.MODEL_FOV_AIM_KAR98K``
 
 用法
 ----
-    python tools/kar98k_gen.py          # 直接写进 resources
+    python tools/kar98k_gen.py          # 直接写进 resources（几何 + 贴图 + 遮罩）
 """
 import io
 import json
@@ -44,6 +61,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, '..', 'src', 'main', 'resources', 'assets', 'hexalunar_calamity')
 GEO_OUT = os.path.join(RES, 'geo', 'kar98k.geo.json')
 TEX_OUT = os.path.join(RES, 'textures', 'models', 'kar98k_geo.png')
+GLOW_OUT = os.path.join(RES, 'textures', 'models', 'kar98k_geo_glowmask.png')
 
 TEX = 128
 # 贴图色带（y 坐标从上往下分块，每块 10 像素高，正方形 32x32 便于平铺）
@@ -75,7 +93,12 @@ def box(x0, x1, y0, y1, z0, z1, tex):
 
 
 def bone(name, pivot, parent, cubes=None):
-    b = {'name': name, 'pivot': [round(v, 4) for v in pivot], 'parent': parent, 'cubes': cubes or []}
+    # ★ 注意：bedrock 的 parent 必须是**字符串**，根骨骼要**整个省略**这个键。
+    #   写成 "parent": null 会让 GeckoLib 报 "parent to be a string, was null" 并崩客户端
+    #   （r105 修：之前 kar98k.geo.json 就是这么崩的）。
+    b = {'name': name, 'pivot': [round(v, 4) for v in pivot], 'cubes': cubes or []}
+    if parent:
+        b['parent'] = parent
     return b
 
 
@@ -127,8 +150,11 @@ def build_bones():
     trig = [box(-0.09, 0.09, 0.60, 1.10, 1.30, 1.60, 'brass')]
     B.append(bone('trigger', (0.0, 1.1, 1.3), 'body', trig))
 
-    # ---------------- casing：抛壳点（空骨骼，仅作动画锚点）
-    B.append(bone('casing', (0.30, 3.00, -1.20), 'body', []))
+    # ---------------- casing：抛壳点（弹壳本体 + 动画锚点）
+    # 弹壳就压在机匣右侧的抛壳口里（平时被 Kar98kGeoModel.staticPose 藏起来，
+    # 拉栓进度走到 CASE_T0..CASE_T1 时才露出来、跟着枪机抽出来再翻滚抛向右上）
+    case = [box(0.18, 0.42, 2.80, 3.04, -1.55, -0.85, 'brass')]
+    B.append(bone('casing', (0.30, 3.00, -1.20), 'body', case))
 
     # ---------------- scope：自带 4 倍镜筒（镜身 + 前后镜片 + 两个镜环）
     scope = []
@@ -182,6 +208,28 @@ def build_texture():
     return img
 
 
+# 会发光的色带（抛光钢 / 镜筒 / 镜片 / 黄铜弹壳）：木托不发光
+GLOW_BANDS = ('steel', 'scope', 'lens', 'brass')
+
+
+def build_glowmask():
+    """自发光遮罩：只把 GLOW_BANDS 那几条色带涂上（alpha=255），其余全透明。
+
+    配合 ``client/GlossGlintLayer``（``GlossGlintLayer.mask('kar98k_geo')`` ⇒
+    ``textures/models/kar98k_geo_glowmask.png``）做出「抛光件在暗处也反光」的流光层。
+    几何与底色用的是同一条色带、同一个抖动公式，所以遮罩与贴图逐像素对齐。
+    """
+    img = Image.new('RGBA', (TEX, TEX), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for name in GLOW_BANDS:
+        y, rgb = BANDS[name]
+        for x in range(TEX):
+            jitter = 1 + ((x * 7 + y * 13) % 5 - 2) * 0.02
+            col = tuple(min(255, int(c * jitter)) for c in rgb)
+            d.line([(x, y), (x, y + 9)], fill=col + (255,))
+    return img
+
+
 def main():
     geo = build_geo()
     os.makedirs(os.path.dirname(GEO_OUT), exist_ok=True)
@@ -190,6 +238,7 @@ def main():
         json.dump(geo, f, ensure_ascii=False, indent=1)
         f.write('\n')
     build_texture().save(TEX_OUT)
+    build_glowmask().save(GLOW_OUT)
 
     # 自检 + 打印包围盒（后面调 WeaponMount/WeaponArms 要用）
     xs, ys, zs, cubes = [], [], [], 0
@@ -206,6 +255,7 @@ def main():
     print('length = %.2f 像素 = %.3f 格' % (max(zs) - min(zs), (max(zs) - min(zs)) / 16.0))
     print('geo  ->', os.path.normpath(GEO_OUT))
     print('tex  ->', os.path.normpath(TEX_OUT))
+    print('glow ->', os.path.normpath(GLOW_OUT))
     for b in geo['minecraft:geometry'][0]['bones']:
         print('  %-9s parent=%-7s cubes=%d pivot=%s' % (b['name'], b['parent'], len(b['cubes']), b['pivot']))
 
