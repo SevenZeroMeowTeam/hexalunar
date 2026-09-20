@@ -5,7 +5,7 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r103`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r104`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
 
@@ -517,6 +517,19 @@ tools/  开发辅助脚本（见第五节）
 ---
 
 ## 七、更新日志（本次开发）
+
+> 版本 `1.0.0-r104`
+
+- **修正 r103 的一处误改**：`WeaponMount.fireDir(entity, level, from, minDist, maxDist)`
+  的后两个参数是**睐准辅助距离**，不是伤害；
+  上一轮把它改成 75 相当于把 AWP 的辅助距离拉到 75 格 ⇒ 已还原
+  为 `aiming ? 40.0D : 24.0D`。
+- **AWP 真正的伤害常量**：`BulletEntity.SNIPER_DAMAGE` 24.0F → **75.0F**（.338）。
+- **新增爆头判定**（`BulletEntity.onHitEntity`）：狙击弹命中头部盒
+  \uff08命中点 y ≥ 实体 `getEyeY() - 高度×0.12`）时 × **2.0** →
+  **150 点**：正常僵尸爆头**一枪带走**；只有血量特别厚的（CD 进化僵尸等）
+  才需要补枪（用户要求）。倍率只作用于狙击弹，AKM 不受影响。
+
 
 > 版本 `1.0.0-r103`
 

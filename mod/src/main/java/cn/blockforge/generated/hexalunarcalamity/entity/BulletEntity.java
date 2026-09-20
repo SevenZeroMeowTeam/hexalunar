@@ -27,7 +27,10 @@ public class BulletEntity extends ThrowableItemProjectile {
     /** 命中伤害：10 点 = 5 颗心（原版铁剑 6 / 下界合金剑 8，所以这是一枪很痛的水平） */
     public static final float BULLET_DAMAGE = 10.0F;
     /** 狙击弹（AWP）伤害：24 点 = 12 颗心，一枪基本带走 */
-    public static final float SNIPER_DAMAGE = 24.0F;
+    public static final float SNIPER_DAMAGE = 75.0F;
+    /** ★ r104：爆头倍率（仅狙击弹）—— 75 × 2 = 150，
+     *  正常僵尸爆头一枪带走；只有血量特别厚的（比如 CD 进化僵尸）才需要补枪。 */
+    public static final float HEADSHOT_MULTIPLIER = 2.0F;
 
     public BulletEntity(EntityType<? extends BulletEntity> type, Level level) {
         super(type, level);
@@ -98,6 +101,10 @@ public class BulletEntity extends ThrowableItemProjectile {
     protected void onHitEntity(EntityHitResult result) {
         Entity hit = result.getEntity();
         float damage = sniper() ? SNIPER_DAMAGE : BULLET_DAMAGE;
+        // ★ r104：爆头判定 —— 命中点高于「眼睛略往下」就算爆头（用实体自己的眼高，不硬编码）
+        if (sniper() && result.getLocation().y >= hit.getEyeY() - hit.getBbHeight() * 0.12D) {
+            damage *= HEADSHOT_MULTIPLIER;
+        }
         LivingEntity attacker = getOwner() instanceof LivingEntity living ? living : null;
         if (attacker != null) {
             hit.hurt(level().damageSources().mobProjectile(this, attacker), damage);

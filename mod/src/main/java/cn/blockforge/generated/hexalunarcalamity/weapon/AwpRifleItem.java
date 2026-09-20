@@ -274,7 +274,7 @@ public class AwpRifleItem extends Item implements WeaponAmmo, GeoItem {
         float spread = aiming ? 0.06F : 1.15F;
 
         Vec3 muzzle = WeaponMount.awp(player, aiming, WeaponMount.AWP_MUZZLE);
-        Vec3 dir = WeaponMount.fireDir(player, level, muzzle, 8.0D, 75.0D);
+        Vec3 dir = WeaponMount.fireDir(player, level, muzzle, 8.0D, aiming ? 40.0D : 24.0D);
 
         BulletEntity bullet = new BulletEntity(level, player);
         bullet.setPos(muzzle.x, muzzle.y, muzzle.z);
