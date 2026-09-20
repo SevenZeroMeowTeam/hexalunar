@@ -41,13 +41,25 @@ public final class WeaponFx {
                 0.08D, 0.08D, 0.08D, 0.006D);
     }
 
-    /** 抛壳：从抛壳口往**射手左侧**上方甩出黄铜壳 + 一缕硝烟（port = 模型上实际的抛壳口位置） */
+    /**
+     * 抛壳：从抛壳口往**射手右侧**上方甩出黄铜壳 + 一缕硝烟（port = 模型上实际的抛壳口位置）。
+     *
+     * <p>★ 方向必须是**射手右侧**：{@code dir × up} 本身就等于「射手的右边」——
+     * 这与 {@link WeaponMount#toWorld} 把模型 +X 映射到世界坐标用的是同一个右手系约定；
+     * 而枪上的抛壳口、{@code WeaponMount.*_EJECT}、第一人称 {@code casing} 骨骼的
+     * {@code CASE_VX} 全部落在 **+X（右侧）**。
+     *
+     * <p>r87 曾在这里补过一句 {@code .scale(-1)}（注释也写成了「往射手左侧」），
+     * 于是**世界里的黄铜壳往左飞**，与枪上看到的抛壳口方向正好相反；r107 把第一人称的
+     * {@code CASE_VX} 改成 +X 时没带上这里，两边就一直不一致（用户反馈 98k / 莫辛 / M1 抛壳不对）。
+     * 现去掉取反 —— 世界抛壳与第一人称弹壳统一都是**右侧**。
+     */
     public static void ejectCasing(ServerLevel server, Vec3 port, Vec3 dir) {
         Vec3 right = dir.cross(new Vec3(0.0D, 1.0D, 0.0D));
         if (right.lengthSqr() < 1.0E-6D) {
             right = new Vec3(1.0D, 0.0D, 0.0D);
         }
-        right = right.normalize().scale(-1.0D);      // ★ r87：抛壳方向与原来相反（用户反馈反了）
+        right = right.normalize();
         server.sendParticles(new DustParticleOptions(BRASS, 0.75F),
                 port.x, port.y, port.z, 1, 0.02D, 0.02D, 0.02D, 0.0D);
         server.sendParticles(ParticleTypes.SMOKE, port.x, port.y, port.z, 1,

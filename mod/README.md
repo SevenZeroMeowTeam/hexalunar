@@ -201,6 +201,11 @@
   阻塞文件 IO，且该文件跨启动无限增长）；现在要看得加 **`-Dhexalunar.diag=true`**。
   ③ ★ 删掉 `ModClient` 里 `AnimatedWeaponModel` 包装那层**死代码**与
   「包装了 0 个武器模型」的误报日志（认领函数每个分支都 `return null`，`wrapped` 恒为 0）。
+  ④ ★ **抛壳方向统一为「射手右侧」**（用户反馈 98k / 莫辛-纳甘 / M1 加兰德抛壳不对）：
+  世界里的黄铜壳由 `weapon/WeaponFx#ejectCasing` 抛，它算出的 `dir × up` **本来就是射手的右边**，
+  却在 r87 被补了一句 `.scale(-1)`（注释还写成了「往射手左侧」）⇒ 壳一直**往左飞**。
+  r107 只把第一人称 `casing` 骨骼的 `CASE_VX` 改成 +X，没带上这里，两边方向长期相反。
+  现已去掉取反：世界抛壳与第一人称弹壳、`WeaponMount.*_EJECT`（都落在 +X）全部一致朝右。
 
 - **r109** — **Q 弹版构建开关**：`gradlew build -Pqmode=true` ⇒ mod id **`hexalunar_calamity_q`**、
   显示名「六相月灾 · Q弹版」，与普通版**可以同时安装**；差别全在 `build.gradle` 的
