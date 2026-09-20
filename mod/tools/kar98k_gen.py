@@ -1,0 +1,214 @@
+# -*- coding: utf-8 -*-
+"""
+Kar98k（独立新武器，保留原 AWP）—— 模型/贴图生成器
+================================================================================
+
+产出
+----
+1. ``assets/hexalunar_calamity/geo/kar98k.geo.json``   bedrock 几何（Blockbench 里
+   File -> Import -> Bedrock Model 可直接打开编辑）
+2. ``assets/hexalunar_calamity/textures/models/kar98k_geo.png``  程序化贴图（木/钢/镜/黄铜）
+3. 顺便打印骨骼清单与包围盒（供后续调 WeaponMount / WeaponArms 参照点用）
+
+坐标约定（与项目内其它枪一致）
+------------------------------
+* 原点 = 握把附近；**枪口 = -Z**、上 = +Y、+X = 右
+* 1 单位 = 1 模型像素 = 1/16 格；本枪总长 ≈ 20 像素（枪口 z≈-13、枪托底 z≈+7）
+
+骨骼名（**必须**与 ``awp.animation.json`` 一致，才能直接复用现有动画）
+--------------------------------------------------------------------
+``root -> move -> body -> {barrel, stock, scope, bolt, casing, magazine, trigger, bipod}``
+动画里被 key 的通道：``move``（后坐/拉栓整枪位移）、``bolt``（拉机柄）、``casing``（抛壳）
+
+后续接线（下一轮，按顺序）
+--------------------------
+1. ``registry/ModItems``：新增 ``KAR98K``（暂用 ``AwpRifleItem`` 同款逻辑或新类 ``Kar98kItem``）
+2. ``client``：新增 ``Kar98kGeoRenderer``（照 ``AwpGeoRenderer`` 抄）+ ``initializeClient`` 注册 BEWLR
+3. ``models/item/kar98k.json``：``parent = builtin/entity`` + firstperson display（照 akm/awp 的写法）
+4. ``WeaponMount``：新增 ``KAR98K_MUZZLE`` / 瞄准参照点（用本脚本打印的包围盒换算）
+5. ``WeaponArms``：新增右手握把、左手护木的模型点（同上）
+6. ``lang``（en_us/zh_cn）+ 创造模式物品栏 + 弹种（.338 与 AWP 共用还是新弹种，沿用 AWP 的）
+7. 4 倍镜：本模型自带镜筒 ⇒ 复用 AWP 的整屏镜筒开镜（``SCOPE_8X_ZOOM`` 那套）
+
+用法
+----
+    python tools/kar98k_gen.py          # 直接写进 resources
+"""
+import io
+import json
+import math
+import os
+from PIL import Image, ImageDraw
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+RES = os.path.join(HERE, '..', 'src', 'main', 'resources', 'assets', 'hexalunar_calamity')
+GEO_OUT = os.path.join(RES, 'geo', 'kar98k.geo.json')
+TEX_OUT = os.path.join(RES, 'textures', 'models', 'kar98k_geo.png')
+
+TEX = 128
+# 贴图色带（y 坐标从上往下分块，每块 10 像素高，正方形 32x32 便于平铺）
+BANDS = {
+    'wood':   (0,  (122, 82, 44)),
+    'wood_d': (16, (96, 62, 32)),
+    'steel':  (32, (86, 90, 96)),
+    'steel_d': (48, (54, 57, 62)),
+    'scope':  (64, (34, 36, 40)),
+    'lens':   (80, (60, 120, 150)),
+    'brass':  (96, (176, 142, 62)),
+}
+PAT = {k: (0, v[0], 32, 10) for k, v in BANDS.items()}     # 色带左端 32x10：整面取同一块纯色
+
+
+def uv_for(name):
+    """每面同一张色带（和 crossbow_vox.py 的做法一致：整块纯色，靠贴图分带）"""
+    u, v, w, h = PAT[name]
+    return {f: {'uv': [u, v], 'uv_size': [w, h]}
+            for f in ('north', 'east', 'south', 'west', 'up', 'down')}
+
+
+def box(x0, x1, y0, y1, z0, z1, tex):
+    return {
+        'origin': [round(min(x0, x1), 4), round(min(y0, y1), 4), round(min(z0, z1), 4)],
+        'size': [round(abs(x1 - x0), 4), round(abs(y1 - y0), 4), round(abs(z1 - z0), 4)],
+        'uv': uv_for(tex),
+    }
+
+
+def bone(name, pivot, parent, cubes=None):
+    b = {'name': name, 'pivot': [round(v, 4) for v in pivot], 'parent': parent, 'cubes': cubes or []}
+    return b
+
+
+def build_bones():
+    """Kar98k：木托长枪 + 拉栓 + 自带 4 倍镜筒"""
+    B = []
+
+    # ---------------- body：机匣 + 木托 + 护木（整枪主体）
+    body = []
+    # 机匣（钢）：z -2.4 .. 1.2，高 y 1.5..3.0
+    body.append(box(-0.62, 0.62, 1.50, 3.00, -2.40, 1.20, 'steel'))
+    # 机匣顶部的桥夹槽/表尺座（钢，略窄）
+    body.append(box(-0.42, 0.42, 3.00, 3.42, -1.20, 0.90, 'steel_d'))
+    # 木托：从机匣后到枪托底（z 1.2 .. 7.2），向下倾斜（用两段近似）
+    body.append(box(-0.66, 0.66, 1.20, 2.90, 1.20, 4.20, 'wood'))
+    body.append(box(-0.72, 0.72, 0.60, 2.60, 4.20, 7.20, 'wood'))      # 枪托（更粗更靠下）
+    body.append(box(-0.72, 0.72, 0.72, 1.30, 6.60, 7.20, 'steel_d'))   # 托底钢板
+    # 握把（木，向下）
+    body.append(box(-0.52, 0.52, -0.10, 1.30, 1.30, 2.60, 'wood_d'))
+    # 护木（木，机匣前方，包住枪管下半）
+    body.append(box(-0.58, 0.58, 1.30, 2.45, -8.60, -2.40, 'wood'))
+    body.append(box(-0.44, 0.44, 2.45, 2.80, -8.60, -2.40, 'wood_d'))  # 护木上沿
+    # 弹仓底盖（钢）
+    body.append(box(-0.50, 0.50, 1.05, 1.55, -1.60, 0.60, 'steel_d'))
+    # 扳机护圈 + 扳机
+    body.append(box(-0.34, 0.34, 0.62, 1.15, 0.90, 2.05, 'steel_d'))
+    B.append(bone('body', (0.0, 1.9, 0.6), 'move', body))
+
+    # ---------------- barrel：枪管 + 准星 + 刺刀座
+    barrel = []
+    barrel.append(box(-0.30, 0.30, 1.95, 2.55, -13.60, -8.40, 'steel'))       # 外露枪管
+    barrel.append(box(-0.36, 0.36, 2.20, 2.95, -13.20, -12.80, 'steel_d'))    # 准星座
+    barrel.append(box(-0.10, 0.10, 2.95, 3.35, -13.05, -12.90, 'steel_d'))    # 准星片
+    barrel.append(box(-0.30, 0.30, 1.35, 1.95, -12.60, -11.60, 'steel_d'))    # 刺刀座/通条
+    B.append(bone('barrel', (0.0, 2.25, -8.4), 'body', barrel))
+
+    # ---------------- bolt：拉机柄（直栓 + 下弯手柄）
+    bolt = []
+    bolt.append(box(-0.24, 0.24, 2.75, 3.25, -1.90, 1.10, 'steel'))           # 枪机本体
+    bolt.append(box(0.24, 1.30, 2.65, 3.15, 0.20, 0.80, 'steel_d'))           # 手柄横臂
+    bolt.append(box(1.05, 1.45, 1.60, 2.90, 0.20, 0.80, 'steel_d'))           # 手柄下弯
+    B.append(bone('bolt', (0.0, 2.95, -1.9), 'body', bolt))
+
+    # ---------------- magazine：弹仓（Kar98k 是内置弹仓 ⇒ 只画底板）
+    mag = [box(-0.46, 0.46, 0.95, 1.45, -1.20, 0.40, 'steel_d')]
+    B.append(bone('magazine', (0.0, 1.2, -1.2), 'body', mag))
+
+    # ---------------- trigger：扳机
+    trig = [box(-0.09, 0.09, 0.60, 1.10, 1.30, 1.60, 'brass')]
+    B.append(bone('trigger', (0.0, 1.1, 1.3), 'body', trig))
+
+    # ---------------- casing：抛壳点（空骨骼，仅作动画锚点）
+    B.append(bone('casing', (0.30, 3.00, -1.20), 'body', []))
+
+    # ---------------- scope：自带 4 倍镜筒（镜身 + 前后镜片 + 两个镜环）
+    scope = []
+    scope.append(box(-0.42, 0.42, 3.95, 4.85, -4.20, 2.00, 'scope'))          # 镜筒
+    scope.append(box(-0.52, 0.52, 3.85, 4.95, -4.70, -4.20, 'scope'))         # 物镜座
+    scope.append(box(-0.40, 0.40, 3.95, 4.85, -4.62, -4.20, 'lens'))          # 物镜片
+    scope.append(box(-0.40, 0.40, 3.95, 4.85, 2.00, 2.42, 'lens'))            # 目镜片
+    scope.append(box(-0.46, 0.46, 3.30, 3.95, -3.10, -2.50, 'steel_d'))       # 前镜环
+    scope.append(box(-0.46, 0.46, 3.30, 3.95, 0.60, 1.20, 'steel_d'))         # 后镜环
+    B.append(bone('scope', (0.0, 4.4, -1.0), 'body', scope))
+
+    # ---------------- bipod：空骨骼（保持与 AWP 同一套骨骼名，便于共用动画/逻辑）
+    B.append(bone('bipod', (0.0, 1.9, -10.0), 'barrel', []))
+
+    # ---------------- move / root
+    B.append(bone('move', (0.0, 1.75, 0.0), 'root', []))
+    B.append(bone('root', (0.0, 0.0, 0.0), None, []))
+    return B
+
+
+def build_geo():
+    return {
+        'format_version': '1.12.0',
+        'minecraft:geometry': [{
+            'description': {
+                'identifier': 'geometry.kar98k',
+                'texture_width': TEX,
+                'texture_height': TEX,
+                'visible_bounds_width': 6,
+                'visible_bounds_height': 4,
+                'visible_bounds_offset': [0, 1.5, 0],
+            },
+            'bones': build_bones(),
+        }],
+    }
+
+
+def build_texture():
+    img = Image.new('RGBA', (TEX, TEX), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for name, (y, rgb) in BANDS.items():
+        base = rgb
+        for x in range(256):                      # 只用到左侧 256 列中的色带
+            if x >= TEX:
+                break
+            jitter = 1 + ((x * 7 + y * 13) % 5 - 2) * 0.02
+            col = tuple(min(255, int(c * jitter)) for c in base)
+            d.line([(x, y % TEX), (x, (y % TEX) + 9)], fill=col + (255,))
+    # 一条黑色描边，避免全图纯色
+    d.rectangle([0, 0, TEX - 1, TEX - 1], outline=(0, 0, 0, 255))
+    return img
+
+
+def main():
+    geo = build_geo()
+    os.makedirs(os.path.dirname(GEO_OUT), exist_ok=True)
+    os.makedirs(os.path.dirname(TEX_OUT), exist_ok=True)
+    with io.open(GEO_OUT, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(geo, f, ensure_ascii=False, indent=1)
+        f.write('\n')
+    build_texture().save(TEX_OUT)
+
+    # 自检 + 打印包围盒（后面调 WeaponMount/WeaponArms 要用）
+    xs, ys, zs, cubes = [], [], [], 0
+    for b in geo['minecraft:geometry'][0]['bones']:
+        for c in b['cubes']:
+            cubes += 1
+            o, s = c['origin'], c['size']
+            xs += [o[0], o[0] + s[0]]
+            ys += [o[1], o[1] + s[1]]
+            zs += [o[2], o[2] + s[2]]
+    print('bones =', len(geo['minecraft:geometry'][0]['bones']), ' cubes =', cubes)
+    print('bbox  x[%.2f, %.2f]  y[%.2f, %.2f]  z[%.2f, %.2f]  (枪口 = -Z)'
+          % (min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)))
+    print('length = %.2f 像素 = %.3f 格' % (max(zs) - min(zs), (max(zs) - min(zs)) / 16.0))
+    print('geo  ->', os.path.normpath(GEO_OUT))
+    print('tex  ->', os.path.normpath(TEX_OUT))
+    for b in geo['minecraft:geometry'][0]['bones']:
+        print('  %-9s parent=%-7s cubes=%d pivot=%s' % (b['name'], b['parent'], len(b['cubes']), b['pivot']))
+
+
+if __name__ == '__main__':
+    main()
