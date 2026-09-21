@@ -553,7 +553,38 @@ tools/  开发辅助脚本（见第五节）
 
 ## 七、更新日志（本次开发）
 
-> 版本 `1.0.0-r119`
+> 版本 `1.0.0-r120`
+
+- ★★ **r120：修「弹药在物品栏里是紫黑方块」**（用户截图：`.338` / `7.62×54R` / `.30-06`
+  三格全是品红黑格）。**两个独立的坑，都是 r118 引入 3D 物品模型时埋的**：
+
+  **① `rotation` 角度非法（真凶）**：MC 的 `BlockElement` 只接受
+  **-45 / -22.5 / 0 / 22.5 / 45** 五个角度值（`BlockElement$Deserializer` 里硬编码），
+  而八棱柱用 `angle = i*45` 生成 0/45/90/135/… ⇒
+  `JsonParseException: Invalid rotation 90.0 found` ⇒ **整个模型 JSON 解析失败**。
+  ⚠️ 游戏日志的表现极具误导性：
+  `Failed to load model hexalunar_calamity:models/item/ammo_338.json` +
+  `Unable to load model … FileNotFoundException: …ammo_338.json`
+  —— 看着就是「文件没打进 jar」（实测**在** jar 里，md5 也对），
+  真因藏在两条日志之间的**异常堆栈**里。查这类问题一定要带 `-Context` 看堆栈。
+  · 改法：不用 90/135/… 去「转」板——法线朝 ±Z 的边用「薄在 Z」的板、朝 ±X 的边用
+    「薄在 X」的板（靠 `from/to` 换轴向，而不是转 90°）、斜边绕**板自身中心**转 ±45°
+    （135° 与 −45° 形状等价）⇒ 8 块板只用 0/±45 三个合法角度就拼出正八边形，
+    几何与旧版**逐像素一致**（新旧渲染对比验证过）。
+  · 生成器新增 `check_rotations()` 自检：非法角度直接抛异常，不再流到游戏里。
+
+  **② `parent: item/generated` 会吃掉 elements**：`item/generated` 的根模型是
+  `builtin/generated` ⇒ `ModelBakery` 会调 `ItemModelGenerator` 重新生成元素，
+  而那个生成器只认 `#layer0..#layer4` 纹理（我们的面引用 `#0`）⇒ 产出 elements 为空的模型。
+  · 改法：新增 `models/item/ammo_3d_base.json`（`parent = block/block` + 完整的物品
+    display 八姿势），三个弹药模型改 parent 它。
+  · 连带：变成 BlockModel 后贴图走**方块图集** ⇒ 在
+    `assets/minecraft/atlases/blocks.json` 登记 `item/ammo_338` / `item/ammo_762_59` /
+    `item/ammo_762_61` 三个 sprite（与 OBJ 武器贴图同一套机制）。
+
+  **③ 新增体检脚本 `tools/ammo_audit.py`**：扫所有 `models/item/*.json` 里**带 elements**
+  的模型，报告 parent 是否会触发 ItemModelGenerator、rotation 角度/轴是否合法
+  （当前只有三颗弹药是 3D 物品模型，全部 OK）。
 
 - ★★ **r119：十字弩重新设计 —— 弦恢复平行线 / 弓臂向外扩展 / 拉弦内收 / 左手上箭**
   （用户：「使用 blockbench 重新设计模型，**弦恢复平行线**，**弓臂向外扩展**，有拉弦动画，

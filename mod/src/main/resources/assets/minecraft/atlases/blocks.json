@@ -20,6 +20,18 @@
     {
       "type": "single",
       "resource": "hexalunar_calamity:models/bolt"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:item/ammo_338"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:item/ammo_762_59"
+    },
+    {
+      "type": "single",
+      "resource": "hexalunar_calamity:item/ammo_762_61"
     }
   ]
 }

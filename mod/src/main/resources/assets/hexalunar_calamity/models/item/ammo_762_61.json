@@ -1,32 +1,22 @@
 {
- "parent": "item/generated",
+ "parent": "hexalunar_calamity:item/ammo_3d_base",
  "textures": {
-  "layer0": "hexalunar_calamity:item/ammo_762_61",
-  "0": "hexalunar_calamity:item/ammo_762_61"
+  "0": "hexalunar_calamity:item/ammo_762_61",
+  "particle": "hexalunar_calamity:item/ammo_762_61"
  },
  "elements": [
   {
    "name": "rim_0",
    "from": [
-    -0.4523,
+    -0.4423,
     -3.9,
     0.8342
    ],
    "to": [
-    0.4523,
+    0.4423,
     -3.5,
     1.0597
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 0.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -87,25 +77,15 @@
   {
    "name": "rim_1",
    "from": [
-    -0.4523,
+    0.2274,
     -3.9,
-    0.8342
+    0.5569
    ],
    "to": [
-    0.4523,
+    1.1119,
     -3.5,
-    1.0597
+    0.7824
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 45.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -161,30 +141,30 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     0.6696,
+     -3.7,
+     0.6696
+    ],
+    "axis": "y",
+    "angle": 45.0,
+    "rescale": false
    }
   },
   {
    "name": "rim_2",
    "from": [
-    -0.4523,
+    0.8342,
     -3.9,
-    0.8342
+    -0.4423
    ],
    "to": [
-    0.4523,
+    1.0597,
     -3.5,
-    1.0597
+    0.4423
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 90.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -245,25 +225,15 @@
   {
    "name": "rim_3",
    "from": [
-    -0.4523,
+    0.2274,
     -3.9,
-    0.8342
+    -0.7824
    ],
    "to": [
-    0.4523,
+    1.1119,
     -3.5,
-    1.0597
+    -0.5569
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 135.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -319,30 +289,30 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     0.6696,
+     -3.7,
+     -0.6696
+    ],
+    "axis": "y",
+    "angle": -45.0,
+    "rescale": false
    }
   },
   {
    "name": "rim_4",
    "from": [
-    -0.4523,
+    -0.4423,
     -3.9,
-    0.8342
+    -1.0597
    ],
    "to": [
-    0.4523,
+    0.4423,
     -3.5,
-    1.0597
+    -0.8342
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 180.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -403,25 +373,15 @@
   {
    "name": "rim_5",
    "from": [
-    -0.4523,
+    -1.1119,
     -3.9,
-    0.8342
+    -0.7824
    ],
    "to": [
-    0.4523,
+    -0.2274,
     -3.5,
-    1.0597
+    -0.5569
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 225.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -477,30 +437,30 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     -0.6696,
+     -3.7,
+     -0.6696
+    ],
+    "axis": "y",
+    "angle": 45.0,
+    "rescale": false
    }
   },
   {
    "name": "rim_6",
    "from": [
-    -0.4523,
+    -1.0597,
     -3.9,
-    0.8342
+    -0.4423
    ],
    "to": [
-    0.4523,
+    -0.8342,
     -3.5,
-    1.0597
+    0.4423
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 270.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -561,25 +521,15 @@
   {
    "name": "rim_7",
    "from": [
-    -0.4523,
+    -1.1119,
     -3.9,
-    0.8342
+    0.5569
    ],
    "to": [
-    0.4523,
+    -0.2274,
     -3.5,
-    1.0597
+    0.7824
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -3.7,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 315.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -635,6 +585,16 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     -0.6696,
+     -3.7,
+     0.6696
+    ],
+    "axis": "y",
+    "angle": -45.0,
+    "rescale": false
    }
   },
   {
@@ -709,25 +669,15 @@
   {
    "name": "case_0",
    "from": [
-    -0.4044,
+    -0.3944,
     -3.5,
     0.7325
    ],
    "to": [
-    0.4044,
+    0.3944,
     0.8,
     0.9305
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 0.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -788,25 +738,15 @@
   {
    "name": "case_1",
    "from": [
-    -0.4044,
+    0.1935,
     -3.5,
-    0.7325
+    0.489
    ],
    "to": [
-    0.4044,
+    0.9824,
     0.8,
-    0.9305
+    0.687
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 45.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -862,30 +802,30 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     0.588,
+     -1.35,
+     0.588
+    ],
+    "axis": "y",
+    "angle": 45.0,
+    "rescale": false
    }
   },
   {
    "name": "case_2",
    "from": [
-    -0.4044,
+    0.7325,
     -3.5,
-    0.7325
+    -0.3944
    ],
    "to": [
-    0.4044,
+    0.9305,
     0.8,
-    0.9305
+    0.3944
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 90.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -946,25 +886,15 @@
   {
    "name": "case_3",
    "from": [
-    -0.4044,
+    0.1935,
     -3.5,
-    0.7325
+    -0.687
    ],
    "to": [
-    0.4044,
+    0.9824,
     0.8,
-    0.9305
+    -0.489
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 135.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -1020,30 +950,30 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     0.588,
+     -1.35,
+     -0.588
+    ],
+    "axis": "y",
+    "angle": -45.0,
+    "rescale": false
    }
   },
   {
    "name": "case_4",
    "from": [
-    -0.4044,
+    -0.3944,
     -3.5,
-    0.7325
+    -0.9305
    ],
    "to": [
-    0.4044,
+    0.3944,
     0.8,
-    0.9305
+    -0.7325
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 180.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -1104,25 +1034,15 @@
   {
    "name": "case_5",
    "from": [
-    -0.4044,
+    -0.9824,
     -3.5,
-    0.7325
+    -0.687
    ],
    "to": [
-    0.4044,
+    -0.1935,
     0.8,
-    0.9305
+    -0.489
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 225.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -1178,30 +1098,30 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     -0.588,
+     -1.35,
+     -0.588
+    ],
+    "axis": "y",
+    "angle": 45.0,
+    "rescale": false
    }
   },
   {
    "name": "case_6",
    "from": [
-    -0.4044,
+    -0.9305,
     -3.5,
-    0.7325
+    -0.3944
    ],
    "to": [
-    0.4044,
+    -0.7325,
     0.8,
-    0.9305
+    0.3944
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 270.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -1262,25 +1182,15 @@
   {
    "name": "case_7",
    "from": [
-    -0.4044,
+    -0.9824,
     -3.5,
-    0.7325
+    0.489
    ],
    "to": [
-    0.4044,
+    -0.1935,
     0.8,
-    0.9305
+    0.687
    ],
-   "rotation": {
-    "origin": [
-     0.0,
-     -1.35,
-     0.0
-    ],
-    "axis": "y",
-    "angle": 315.0,
-    "rescale": false
-   },
    "faces": {
     "north": {
      "uv": [
@@ -1336,6 +1246,16 @@
      ],
      "texture": "#0"
     }
+   },
+   "rotation": {
+    "origin": [
+     -0.588,
+     -1.35,
+     0.588
+    ],
+    "axis": "y",
+    "angle": -45.0,
+    "rescale": false
    }
   },
   {

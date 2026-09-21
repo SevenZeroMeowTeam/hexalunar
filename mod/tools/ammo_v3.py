@@ -137,37 +137,56 @@ def add_box(elems, packer, name, x0, y0, z0, x1, y1, z1, rot=None):
     return e
 
 
-def oct_prism(elems, packer, name, y0, y1, dia, flare=0.0):
-    """八棱柱：8 块薄板绕 Y 轴均匀排（外接圆直径 dia）。flare>0 时做成上细下粗的锥台。"""
+def oct_prism(elems, packer, name, y0, y1, dia):
+    """八棱柱（正八边形，绕 Y 轴）：8 块薄板分别摆在八条边上。
+
+    ★★ r119b 重大修正（踩坑记录）：MC 的 BlockElement rotation **只接受
+    -45 / -22.5 / 0 / 22.5 / 45 五个角度值**（BlockElement$Deserializer
+    直接抛 JsonParseException: Invalid rotation 90.0 found），而早期版本用
+    `angle = i * 45` 生成 0/45/90/135/… ⇒ **整个模型 JSON 解析失败**。
+    游戏日志里的表现非常误导人：
+        Failed to load model hexalunar_calamity:models/item/ammo_338.json
+        Unable to load model … FileNotFoundException: …ammo_338.json
+    看着像「文件没打进 jar」（其实在），真因在两条日志之间的堆栈里。
+
+    所以不能靠旋转 90/135/… 把板"转"到圆周上，改法：
+      · 法线朝 ±Z 的边 → 板"薄在 Z"，不旋转
+      · 法线朝 ±X 的边 → 板"薄在 X"，不旋转（靠 from/to 换轴向，而不是转 90°）
+      · 斜边 → 板薄在 Z，绕**板自身中心**转 ±45°（135° 与 -45° 形状等价）
+    """
     r = dia / 2.0
-    # 八边形内切圆半径 / 边长
-    r_in = r * math.cos(math.radians(22.5))
-    side = 2.0 * r * math.sin(math.radians(22.5)) + 0.12      # 板宽（略重叠，防缝）
+    r_in = r * math.cos(math.radians(22.5))                 # 边心距（内切圆半径）
+    side = 2.0 * r * math.sin(math.radians(22.5)) + 0.10    # 板宽（略重叠，防缝）
     thick = max(0.16, dia * 0.11)
-    for i in range(8):
-        ang = i * 45.0
-        rad = math.radians(ang)
+    yc = (y0 + y1) / 2.0
+    # (外法线角°, 薄在哪轴, rotation 角度)
+    plan = [
+        (0, 'z', 0.0), (45, 'z', 45.0), (90, 'x', 0.0), (135, 'z', -45.0),
+        (180, 'z', 0.0), (225, 'z', 45.0), (270, 'x', 0.0), (315, 'z', -45.0),
+    ]
+    for k, (theta, thin, ang) in enumerate(plan):
+        rad = math.radians(theta)
         cx = math.sin(rad) * r_in
         cz = math.cos(rad) * r_in
-        # 先造一块"朝向 +Z"的板（让旋转把它转到圆周上），再绕中心旋转 ang
-        d_top = dia - flare
-        r_in_top = (d_top / 2.0) * math.cos(math.radians(22.5))
-        cx_t = math.sin(rad) * r_in_top
-        cz_t = math.cos(rad) * r_in_top
-        # 用 from/to 的 x 差表现锥台会失真，这里只做"整体倾斜"的近似：
+        if thin == 'z':
+            x0, x1 = cx - side / 2.0, cx + side / 2.0
+            z0, z1 = cz - thick / 2.0, cz + thick / 2.0
+            fw, fd = side, thick
+        else:
+            x0, x1 = cx - thick / 2.0, cx + thick / 2.0
+            z0, z1 = cz - side / 2.0, cz + side / 2.0
+            fw, fd = thick, side
         e = {
-            'name': '%s_%d' % (name, i),
-            'from': [round(-side / 2.0, 4), round(y0, 4), round(r_in - thick / 2.0, 4)],
-            'to': [round(side / 2.0, 4), round(y1, 4), round(r_in + thick / 2.0, 4)],
-            'rotation': {'origin': [0.0, round((y0 + y1) / 2.0, 4), 0.0],
-                         'axis': 'y', 'angle': round(ang, 4), 'rescale': False},
-            'faces': faces_for(None, packer, side, y1 - y0, thick),
+            'name': '%s_%d' % (name, k),
+            'from': [round(x0, 4), round(y0, 4), round(z0, 4)],
+            'to': [round(x1, 4), round(y1, 4), round(z1, 4)],
+            'faces': faces_for(None, packer, fw, y1 - y0, fd),
         }
-        if flare > 0.0:
-            # 锥台：顶部往轴心收（用 "rescission"？原版没有 ⇒ 改成两块叠：下粗上细各一半）
-            pass
+        if ang != 0.0:
+            # ★ origin 取**板自身中心**：旋转只改朝向、不移动板（位置已由 from/to 摆好）
+            e['rotation'] = {'origin': [round(cx, 4), round(yc, 4), round(cz, 4)],
+                             'axis': 'y', 'angle': ang, 'rescale': False}
         elems.append(e)
-        _ = (cx, cz, cx_t, cz_t)          # 保留计算（锥台后续版用）
 
 
 def box_centered(elems, packer, name, y0, y1, dia):
@@ -252,12 +271,43 @@ def paint(spec, packer, elems):
 
 
 # ------------------------------------------------------------------ 输出
+# ★★ 原版只允许这 5 个角度（BlockElement$Deserializer，违反就是整个模型加载失败）
+LEGAL_ANGLES = (-45.0, -22.5, 0.0, 22.5, 45.0)
+
+
+def check_rotations(model):
+    """自检：elements 里的 rotation.angle 必须是原版允许的 5 个值之一。
+
+    ★ 这个坑（r118）在游戏里表现成「模型打不进 jar」，实际是 JSON 解析失败 ——
+      一定要在生成器里拦下来，别让它在游戏日志里变成误导人的 FileNotFoundException。
+    """
+    for e in model.get('elements', []):
+        rot = e.get('rotation')
+        if rot is None:
+            continue
+        ang = float(rot['angle'])
+        if ang not in LEGAL_ANGLES:
+            raise RuntimeError('%s：rotation 角度 %s 非法，只允许 %s'
+                               % (e.get('name'), ang, LEGAL_ANGLES))
+        if rot.get('axis') != 'y':
+            raise RuntimeError('%s：本生成器只实现了绕 Y 轴旋转' % e.get('name'))
+
+
 def write_model(name, elems):
     model = {
-        'parent': 'item/generated',
-        'textures': {'layer0': 'hexalunar_calamity:item/%s' % name, '0': 'hexalunar_calamity:item/%s' % name},
+        # ★★ r119b：**绝不能用 item/generated** —— 它的根模型是 builtin/generated，
+        #   ModelBakery 会因此调 ItemModelGenerator 重新生成 elements；而那个生成器
+        #   只认 #layer0..#layer4 纹理，我们的面引用的是 #0 ⇒ 它把所有面都跳过，
+        #   产出一个 elements 为空的模型 ⇒ 游戏里就是一团品红/黑。
+        #   改成自定义的 ammo_3d_base（parent = block/block + 自己写 display）。
+        'parent': 'hexalunar_calamity:item/ammo_3d_base',
+        'textures': {
+            '0': 'hexalunar_calamity:item/%s' % name,
+            'particle': 'hexalunar_calamity:item/%s' % name,
+        },
         'elements': elems,
     }
+    check_rotations(model)                       # ★ 自检：rotation 角度是否合法
     dst = os.path.join(RES, 'models', 'item', name + '.json')
     with io.open(dst, 'w', encoding='utf-8', newline='\n') as fh:
         json.dump(model, fh, ensure_ascii=False, indent=1)
