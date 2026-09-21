@@ -293,6 +293,32 @@ def check_rotations(model):
             raise RuntimeError('%s：本生成器只实现了绕 Y 轴旋转' % e.get('name'))
 
 
+def center_on_grid(elems, offset=8.0):
+    """把整颗子弹**平移**到方块坐标的 (0.5, 0.5, 0.5) 周围。
+
+    ★★ r121 踩坑（用户：「图中子弹看不见」—— 截图里子弹只占格子右下角一小块）：
+    MC 渲染物品模型时会先 {@code translate(-0.5, -0.5, -0.5)}，它**假定模型几何占满
+    (0,0,0)~(1,1,1) 这一个方块**，用这个平移把方块中心 (0.5,0.5,0.5) 摆到格子中心。
+    而我们的原点在**几何中心**（坐标约 ±4.2 像素 = ±0.26 格）⇒ 再被减 0.5 格就整体
+    跑到格子左下后方去了，看上去就是「看不见 / 只剩一个小黑影」。
+
+    ★ 为什么 display 里的 translation 补不了：`ItemTransform.apply` 的顺序是
+    **先 translate、再 rotate**，而旋转是绕模型原点的 ⇒ 平移补不了旋转之后的偏移。
+    必须在**几何**里偏移。
+
+    ★ 另外 `rotation.origin` 也一起 +8 —— 否则那些绕板中心转的斜边会转错位置。
+
+    @param offset 平移量（模型像素 = 1/16 格）；+8 像素 = +0.5 格
+    """
+    for e in elems:
+        e['from'] = [round(v + offset, 4) for v in e['from']]
+        e['to'] = [round(v + offset, 4) for v in e['to']]
+        rot = e.get('rotation')
+        if rot is not None:
+            rot['origin'] = [round(v + offset, 4) for v in rot['origin']]
+    return elems
+
+
 def write_model(name, elems):
     model = {
         # ★★ r119b：**绝不能用 item/generated** —— 它的根模型是 builtin/generated，
@@ -307,7 +333,8 @@ def write_model(name, elems):
         },
         'elements': elems,
     }
-    check_rotations(model)                       # ★ 自检：rotation 角度是否合法
+    center_on_grid(elems)                       # ★ r121：几何必须居中在 (0.5,0.5,0.5)
+    check_rotations(model)                      # ★ 自检：rotation 角度是否合法
     dst = os.path.join(RES, 'models', 'item', name + '.json')
     with io.open(dst, 'w', encoding='utf-8', newline='\n') as fh:
         json.dump(model, fh, ensure_ascii=False, indent=1)

@@ -129,7 +129,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
     private static final float BOLT_PY = 1.50F;
     private static final float BOLT_PZ = 0.375F;
     /** 拉机柄握点相对 pivot 的偏移（模型像素）：v2 几何的球头中心 (1.31, 1.365, −0.045) 减 pivot */
-    private static final float BOLT_GRIP_DX = 0.70F;
+    private static final float BOLT_GRIP_DX = 0.82F;
     private static final float BOLT_GRIP_DY = -0.135F;
     /**
      * 右手「从握把摸到拉机柄」（{@code BOLT_HAND_IN} 之前）与「拉完立即回握把」的区间。
@@ -168,6 +168,15 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
      */
     private static final float CASE_BACK = 1.90F;
     private static final float CASE_VX = 5.0F;    // ★ r107：右抛壳（+X），原来是 -5 往左飞
+    /**
+     * ★ r121：弹壳的**起始偏移**（模型像素，+X = 屏幕右侧 = 射手右侧）。
+     *
+     * <p>弹壳骨骼自己的 pivot 是 x = 0.20（r115 为了「放在机匣右壁的抛壳窗里」而压得这么靠内），
+     * 结果是**贴着中线起飞**，玩家看上去就是「从枪身中间（偏左）冒出来」。
+     * 再加 0.40 ⇒ 从 x ≈ 0.60 起飞，已经在机匣右壁（半宽 0.38）**外面**，
+     * 与世界的 {@code WeaponMount.AWP_EJECT} 也基本对齐。
+     */
+    private static final float CASE_X0 = 0.40F;
     private static final float CASE_VY = 2.2F;
     private static final float CASE_G = 0.8F;
     /** 三轴翻滚（度） */
@@ -257,7 +266,7 @@ public class AwpGeoModel extends GeoModel<AwpRifleItem> {
                 float c = (bp - CASE_T0) / (CASE_T1 - CASE_T0);      // 窗口内 0..1
                 float out = Mth.clamp((c / 0.22F), 0.0F, 1.0F);      // 先跟枪机抽出来
                 float fly = Mth.clamp((c - 0.22F) / 0.78F, 0.0F, 1.0F);   // 再被顶出去
-                casing.setPosX(CASE_VX * fly);
+                casing.setPosX(CASE_X0 + CASE_VX * fly);
                 casing.setPosY(CASE_VY * fly - CASE_G * fly * fly);
                 casing.setPosZ(CASE_BACK * out - 1.2F * fly);
                 casing.setRotZ(fly * CASE_SPIN_Z * Mth.DEG_TO_RAD);

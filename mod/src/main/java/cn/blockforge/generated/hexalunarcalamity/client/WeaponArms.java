@@ -80,6 +80,12 @@ public final class WeaponArms {
     private static final float ROLL_L = 24.0F;
 
     /** AKM 右手（模型像素）：握把 */
+    /**
+     * AKM 右手平时握的位置（模型像素）。
+     *
+     * <p>★ r121：拉栓改由 {@link AkmGeoModel#rightHandPx} 驱动后，右手也要会动（平时握把 → 抓拉机柄），
+     * 所以这个固定点已经搬进 {@code AkmGeoModel.ARM_GRIP}（两处必须一致）；这里保留常量只作记录。
+     */
     private static final float[] AKM_RIGHT = {0.0F, 0.55F, -0.15F};
     /** 十字弩右手（模型像素）：grip 骨骼方块中心 */
     private static final float[] CB_RIGHT = {0.0F, -0.90F, 0.60F};
@@ -133,8 +139,10 @@ public final class WeaponArms {
         //   靠「渲染时捕获」的话只能拿到上一帧的值 —— 开火那一瞬枪和手会差一帧（用户反馈的「多一帧」）。
         AkmGeoModel.captureNow();
         float p = AkmGeoModel.localReloadProgress();
+        // ★ r121（用户：「akm，awp 拉栓应该都在右手位置」）：拉机柄交给**右手**（与 AWP / Kar98k /
+        //   莫辛 / M1 完全一致），左手只管弹匣 —— 两只手都动，和真枪 AK 的操作一样。
         render(mc, pose, buffer, light, AkmGeoModel.frame,
-                AKM_RIGHT, AkmGeoModel.leftHandPx(p, new float[3]));
+                AkmGeoModel.rightHandPx(p, new float[3]), AkmGeoModel.leftHandPx(p, new float[3]));
     }
 
     public static void renderCrossbow(Minecraft mc, PoseStack pose, MultiBufferSource buffer, int light) {

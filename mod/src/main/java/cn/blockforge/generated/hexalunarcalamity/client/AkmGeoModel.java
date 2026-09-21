@@ -152,6 +152,14 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
     // ------------------------------------------------------------------ 抛壳（从弹壳槽抛出空弹壳）
     /** 弹壳初速（模型像素 / tick）：**往后上方**飞（原版 AK 从右后侧的抛壳口抛，方向与枪口相反） */
     private static final float CASE_VX = 0.75F;   // ★ r107：右抛壳（AK 也是右侧）
+    /**
+     * ★ r121：弹壳的**起始偏移**（模型像素，+X = 屏幕右侧）。
+     *
+     * <p>弹壳骨骼自己的 pivot 已经落在 x = 0.95（机匣右侧的抛壳窗里），但那是**相对枪身**的；
+     * 枪身本身被 display 往屏幕左侧摆了 5/16 格 ⇒ 弹壳第一帧看上去仍偏中线。
+     * 再加 0.20 像素（往外推一点）⇒ 从枪身右侧**外面**起飞，不会与机匣重叠。
+     */
+    private static final float CASE_X0 = 0.20F;
     private static final float CASE_VY = 1.50F;
     private static final float CASE_VZ = 0.50F;
     /** 弹壳下落（像素 / tick²） */
@@ -179,7 +187,7 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
                 continue;
             }
             casing.setHidden(false);
-            casing.setPosX(CASE_VX * t);
+            casing.setPosX(CASE_X0 + CASE_VX * t);
             casing.setPosY(CASE_VY * t - 0.5F * CASE_G * t * t);
             casing.setPosZ(CASE_VZ * t);
             casing.setRotZ(t * CASE_SPIN_Z * Mth.DEG_TO_RAD);
@@ -385,6 +393,12 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
     private static final float[] ARM_MAG = {-0.50F, -0.20F, -4.30F};
     /** 拉机柄（枪机右侧那个把） */
     private static final float[] ARM_BOLT = {0.70F, 2.64F, -3.54F};
+    /**
+     * ★ r121：右手平时握的**握把**（模型像素）= {@code WeaponArms.AKM_RIGHT}。
+     * AK 的拉机柄在**枪身右侧**（{@link #ARM_BOLT}），按真枪操作：**右手**离开握把去拉它，
+     * **左手**只管弹匣 —— 所以这里必须有一份「右手能动的数学」。
+     */
+    private static final float[] ARM_GRIP = {0.0F, 0.55F, -0.15F};
     /** magazine 骨骼 pivot（geo 里的值） */
     private static final float MAG_PX = 0.0F;
     private static final float MAG_PY = 1.45F;
@@ -392,24 +406,45 @@ public class AkmGeoModel extends GeoModel<AkmRifleItem> {
     private static final float[] TMP_A = new float[3];
     private static final float[] TMP_B = new float[3];
 
-    /** 左手在模型像素空间的目标：换弹时跟着弹匣走 → 再抓拉机柄 → 回护木 */
+    /**
+     * 左手在模型像素空间的目标：**只干弹匣的活** —— 换弹时跟着弹匣走（抽空匣 / 插新匣），
+     * 插完就回护木。
+     *
+     * <p>★ r121（用户：「akm，awp 拉栓应该都在右手位置」）：拉机柄原来是在**这里**驱动的
+     * （0.82~0.93 那段抬到 {@link #ARM_BOLT}）—— 而拉机柄在枪身**右侧**，让**左手**去摸
+     * 屏幕上看着就是「左边那只手在拉栓」。现在拉机柄完全交给 {@link #rightHandPx}，
+     * 左手插完弹匣直接回护木（与真枪 AK 的操作一致）。
+     */
     static float[] leftHandPx(float p, float[] out) {
         if (p < 0.0F) return copy(ARM_HANDGUARD, out);
         if (p < 0.10F) {                       // 从护木移到弹匣
             magPoint(p, TMP_A);
             return lerp(ARM_HANDGUARD, TMP_A, ease(p / 0.10F), out);
         }
-        if (p < 0.82F) return magPoint(p, out);   // 抽空匣 / 插新匣（跟着弹匣一起走）
-        if (p < 0.90F) {                       // 换上机柄
-            magPoint(p, TMP_A);
+        if (p < 0.84F) return magPoint(p, out);   // 抽空匣 / 插新匣（跟着弹匣一起走）
+        // ★ r121：不再去拉机柄（那是右手的活）—— 从弹匣平滑滑回护木。
+        //   窗口留 0.16（≈5 tick），不再「甩」回去。
+        magPoint(p, TMP_A);
+        return lerp(TMP_A, ARM_HANDGUARD, ease((p - 0.84F) / 0.16F), out);
+    }
+
+    /**
+     * ★ r121：**右手**目标 —— 平时握住握把（食指在扳机上），换弹末段抬起来抓**右侧的拉机柄**、
+     * 跟着枪机后拉一起走，拉完再回握把。
+     *
+     * <p>与 AWP / Kar98k / 莫辛 / M1 的分工完全一致（那五把都是「右手干拉栓这个活」）。
+     * 拉机柄握点在枪身**右侧**（{@link #ARM_BOLT} 的 x = +0.70，即屏幕右侧）。
+     */
+    static float[] rightHandPx(float p, float[] out) {
+        if (p < 0.0F) return copy(ARM_GRIP, out);
+        if (p < 0.84F) return copy(ARM_GRIP, out);      // 换弹前 84%：右手一直握在握把上
+        if (p < 0.90F) {                                // 抬起来摸拉机柄
             boltPoint(p, TMP_B);
-            return lerp(TMP_A, TMP_B, ease((p - 0.82F) / 0.08F), out);
+            return lerp(ARM_GRIP, TMP_B, ease((p - 0.84F) / 0.06F), out);
         }
-        if (p < 0.93F) return boltPoint(p, out);  // 拉栓
-        // ★ r84：回护木用**更长**的窗口（0.93~1.00，约 3 tick）—— 原先只在最后 3%（~1 tick）里
-        //   从拉机柄甩回护木，看着就是「换弹完成手臂向下晃一下」；现在平滑滑回、稳稳停在平行位置。
-        boltPoint(p, TMP_B);                   // 回护木
-        return lerp(TMP_B, ARM_HANDGUARD, ease((p - 0.93F) / 0.07F), out);
+        if (p < 0.94F) return boltPoint(p, out);        // 拉栓
+        boltPoint(p, TMP_B);                            // 拉完平滑回握把
+        return lerp(TMP_B, ARM_GRIP, ease((p - 0.94F) / 0.06F), out);
     }
 
     /** 弹匣上的握点（跟着弹匣一起下移 + 前倾） */

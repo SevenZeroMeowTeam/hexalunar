@@ -97,7 +97,7 @@ public final class WeaponMount {
     /** 枪口（模型像素）：枪管轴线 Y=1.75、最前端 z=-11.60 */
     public static final double[] AKM_MUZZLE = {0.0D, 1.75D, -11.60D};
     /** 抛壳口（模型像素）：枪机右侧 x≈0.95、高度 2.62 */
-    public static final double[] AKM_EJECT = {0.95D, 2.62D, -2.30D};
+    public static final double[] AKM_EJECT = {1.05D, 2.62D, -2.30D};
     /** 弹匣换成手的位置（模型像素）：弹匣井上方 */
     public static final double[] AKM_MAG_GRIP = {0.0D, 1.55D, -3.95D};
     /** 红点圆心（模型 Y；与 akm_v3.py 的 build_dot_sight 一致：3.79 + RAIL_LIFT 0.28） */
@@ -274,7 +274,7 @@ public final class WeaponMount {
      * 现在 x 取 **0.78**（机匣半宽 0.36 的外侧一点 = 抛壳窗外沿），z 对齐右侧抛壳窗中心，
      * 与模型里 `casing` 骨骼（`tools/awp_v2.py` 的 `CASE_X`）同一侧。
      */
-    public static final double[] AWP_EJECT = {0.78D, 1.50D, -2.50D};
+    public static final double[] AWP_EJECT = {0.92D, 1.50D, -2.50D};
     /**
      * ★ AWP 与 AKM 是**同一套持枪规则**：不做任何额外旋转（{@code AwpGeoModel.computeMovePose}
      * 的三个角度恒为 0），所以枪口 / 抛壳点的模型坐标可以直接用，不需要按角度补偿。
