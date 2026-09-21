@@ -11,7 +11,7 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 
 /**
- * 十字弩的 GeckoLib 模型（体素，824 方块 / 14 骨骼）。
+ * 十字弩的 GeckoLib 模型（体素，953 方块 / 15 骨骼）。
  *
  * <p>模型由 {@code tools/crossbow_vox.py} 把参考网格 {@code 模型/十字弩_v2.bbmodel}
  * （11 个 mesh 部件的「现代复合弩」：窄弓臂 + 高导轨 + 枪式握把 + 镜筒 + 线缆）**表面体素化**而来，
@@ -20,18 +20,29 @@ import software.bernie.geckolib.model.GeoModel;
  *
  * <p><b>拉弦装弹</b>是连续动作（按住/R 键共 {@code RELOAD_TICKS}=30 tick），所以按
  * {@code CrossbowWeaponItem.reloadProgress} 程序化推骨骼：
- * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 DRAW_DZ，弩箭在后半段滑上弦。
- * 弦长取拉满所需（hypot(4.978, 1.80)=5.293），未拉时两段在中点重叠、被弦心缠绳盖住。
- * ★ TIP_X / DRAW_DZ / NOCK_Z0 必须与 {@code tools/crossbow_vox.py} 的同名常数一致
- *   （生成器末尾会打印并自检「拉满时两段弦的内端正好落在弦心」）。
+ * 弦两段绕弓臂梢（<b>Y 轴</b>）转 φ、弦心后退 {@code draw·DRAW_DZ}、弩箭跟着左手滑上箭槽。
+ *
+ * <p><b>★ r119 弦改成「一条平行直线 + 拉弦成 V」</b>（用户：「弦恢复平行线，弓臂向外扩展，
+ * 有拉弦动画，拉弦弓臂向内收缩，左手上箭，对照图 5 设计」）：
+ * <br>· <b>弓臂向外扩展</b>：生成器的 {@code LIMB_SX} 2.05 → 2.40（跨度 10.32 → 11.61 像素），
+ *   {@code TIP_X} 随之 5.371 → 5.805（取弓臂网格外缘 ⇒ 弦端点正好落在弓臂梢上）；
+ * <br>· <b>弦恢复平行线</b>：每段弦的几何长**改成正好 = TIP_X**（旧版固定 6.221 > 半跨 ⇒
+ *   静止时两段在中线重叠交叉，看上去是「两条斜线」）。静止时两段共线 ⇒ 一条笔直的弦；
+ * <br>· <b>拉弦</b>：{@link #stringPhi} 解出转角、{@link #stringStretch} 同步给骨骼 scaleX
+ *   （弦长 = {@code hypot(x, DRAW_DZ)}）⇒ 弦心精确落在两段内端，形成干净的**内 V**；
+ * <br>· <b>拉弦时弓臂向内收缩</b>：{@link #flexLimb} 绕「贴导轨的内端」内转 {@link #FLEX_DEG}°
+ *   并整体后滑 {@link #FLEX_BACK}（已上膛则保持内敛，击发才弹回）；
+ * <br>· <b>左手上箭</b>：p ∈ (0.70, 0.84) 时弩箭骨骼**跟着左手位移**从导轨下方升到箭槽
+ *   （旧版要等到 p > 0.84 才在导轨上凭空出现）。
+ *
+ * ★ TIP_X / DRAW_DZ / NOCK_Z0 / FLEX_PX / FLEX_PZ 必须与 {@code tools/crossbow_vox.py} 打印的
+ *   同名常数一致（生成器末尾会自检「拉满时两段弦的内端落在弦心」「静止时两段共线」）。
  * ★ 上弦完成（cocked）后弦**不往后拉**（贴回两弓臂之间）——拉回去的弦心离镜头更近，
  *   透视下会像一根浮在弩上方的「∧」。
  *
- * <p><b>弓臂内收（r63）</b>：拉弦时两弓臂绕「贴导轨的内端」向内转（拉满 9°），外端因此
+ * <p><b>弓臂内收（r63）</b>：拉弦时两弓臂绕「贴导轨的内端」向内转，外端因此
  * **向内 + 向后**走 —— 看上去就是「弓臂向内收缩」；松开 / 击发后回到参考网格（图片）那个张开姿态。
  * 弦与凸轮盘的 pivot 就在弓臂梢上，所以它们跟着弓臂平移同样的位移，不会脱开。
- * ★ FLEX_DEG / FLEX_PX / FLEX_PZ 必须与 {@code tools/_cb_flex.py} 的同名常数一致
- *   （那个脚本会打印收进量、弦内端偏差，并能烘焙姿态出图）。
  */
 public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
 
@@ -42,27 +53,30 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final ResourceLocation ANIMATION =
             new ResourceLocation(HexaLunarCalamity.MOD_ID, "animations/crossbow.animation.json");
 
-    /** 弓臂梢到弦心的横向距离（生成器 TIP_X）；★ r69 弓臂放大 2.05 倍后 = 5.371 */
-    private static final float TIP_X = 5.371F;
-    /** 拉满时弦心后退距离（生成器 DRAW_DZ） */
-    private static final float DRAW_DZ = 1.80F;
     /**
-     * 弦段长度（模型像素）—— **必须与 geo 里那根弦方块的长度、以及 {@code tools/crossbow_vox.py}
-     * 的 {@code STRING_LEN_RUNTIME} 完全一致**：{@link #stringPhi} 用它解出「绕锚点转 φ 之后
-     * 内端正好落在弦心」的 φ，三者不一致 V 就收不到弦心。
+     * 弓臂梢到弦心的横向距离（生成器 TIP_X）—— **同时也是每一段弦的几何长度**。
+     * ★ r119 弓臂向外扩展（缩放 2.05 → 2.40）后 = **5.805**（生成器现在取**弓臂网格的 X 外缘**，
+     * 而不是参考网格里那条比弓臂长 0.85 的 string 网格 ⇒ 弦端点正好搭在弓臂梢 / 凸轮上，
+     * 未拉弦时两段各占一半，正好铺满跨度）。
      *
-     * <p>★★ r89/r97 的踩坑记录：这条弦方块曾经是 5.6646（= hypot(TIP_X, DRAW_DZ)，按「拉满 1.8 px」
-     * 推的），而同一个骨骼里还并排放着 r71 加的一根**线缆**（{@code PAT_CABLE}，长度刻意做成
-     * {@code tip_x + 0.85 = 6.221}「越过中线形成交叉」）。r89 只改了这里的 Java 值、把它对齐到
-     * **线缆**的 6.221，方块没动 ⇒ 米白的弦短 0.56 收不到弦心，深灰的线缆反而正好落到弦心并交叉
-     * —— 用户看到的「外 V 字型」。
-     * <p>r97 起：geo / 生成器里**只留一根弦**、长度统一 6.221，线缆整段删掉 ⇒ 拉满时两段弦的内端
-     * 精确交在弦心上（{@code tools/_cb_flex.py} 自检偏差 0.00）。
+     * <p>★★ r119（用户：「弦恢复平行线 … 有拉弦动画」）—— 弦的**几何长度恒等于 {@link #TIP_X}**，
+     * 运行时靠**骨骼 scaleX** 改成实际需要的长度：
+     * <br>· 静止（draw = 0）：锚点到弦心的水平距离就是 TIP_X ⇒ 长度 = TIP_X ⇒ {@code scaleX = 1}，
+     * 两段共线 ⇒ **渲染出来就是一条笔直的弦**。
+     * <br>· 拉满（draw = 1）：锚点被弓臂内收带进来（{@code x = TIP_X + δx}）、弦心后退 DRAW_DZ
+     * ⇒ 需要的长度 = {@code hypot(x, DRAW_DZ)} ⇒ {@code scaleX = 该值 / TIP_X}（≈ 0.90）。
+     *
+     * <p>★ 历史踩坑（r89 / r97）：那时弦的**几何尺寸**被固定写成 6.221（前身是 r71 的「线缆」，
+     * 长度刻意做成 {@code tip_x + 0.85}「越过中线形成交叉」），而半跨只有 5.371 ⇒
+     * **未拉弦时两段就在中线附近重叠交叉**，看上去是「两条斜线」而不是一条弦 ——
+     * 这正是用户 r119 说的「弦不是平行线」。现在几何长度 = 半跨，静止必共线；
+     * 而「拉满时长度不够」由 scaleX 补上（真弓里对应凸轮放线）。
+     * <p>（旧的 {@code STRING_LEN = 6.221} 与 {@code PHI_RAD} 两个常量已随本次改动删除：
+     * 弦长不再固定，转角 φ 与伸缩量都由 {@link #stringPhi}/{@link #stringStretch} 每帧解析求出。）
      */
-    private static final float STRING_LEN = 6.221F;
-    /** 弦段转角 φ = atan(DRAW_DZ / TIP_X)：**只作为“弦段长度”的生成依据，运行时不再直接用它**
-     *（弓臂内收后锚点会往里走，能拉得更深 —— 见 {@link #stringPhi}） */
-    private static final float PHI_RAD = (float) Math.atan2(DRAW_DZ, TIP_X);
+    private static final float TIP_X = 5.805F;
+    /** 拉满时弦心相对**弓臂锚点平面**的净后退距离（生成器 DRAW_DZ） */
+    private static final float DRAW_DZ = 1.80F;
     /** 弦面中心的 z（生成器 NOCK_Z0；已含「以握把为原点」的平移） */
     private static final float NOCK_Z0 = -5.20F;
     /** 弩箭收起时挪走的高度（挪到看不见） */
@@ -193,12 +207,21 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             tw = (float) Math.sin((TWANG_TICKS - twLeft) * 2.1F) * 0.17F * decay * decay;
         }
 
-        // 弦两段：绕弓臂桜的 Y 轴转（左 -φ、右 +φ），两端正好在弦心重合；φ 随弓臂内收变（见 stringPhi）
-        float phi = stringPhi(flexAmt);
+        // ★ r119：弦两段绕弓臂梢（Y 轴）转 φ —— 左 -φ、右 +φ，内端精确落在弦心；
+        //   同时把**骨骼 scaleX** 设成「实际需要的长度 / 几何长度（= TIP_X）」：
+        //   静止时它正好是 1（两段共线 ⇒ 一条笔直的平行弦），拉满时锚点内移 ⇒ 略缩（≈0.90）。
+        float phi = stringPhi(flexAmt, draw);
+        float stretch = stringStretch(flexAmt, draw);
         CoreGeoBone left = getAnimationProcessor().getBone("string_left");
         CoreGeoBone right = getAnimationProcessor().getBone("string_right");
-        if (left != null) left.setRotY(-draw * phi + tw);
-        if (right != null) right.setRotY(draw * phi - tw);
+        if (left != null) {
+            left.setRotY(-draw * phi + tw);
+            left.setScaleX(stretch);
+        }
+        if (right != null) {
+            right.setRotY(draw * phi - tw);
+            right.setScaleX(stretch);
+        }
 
         // ★ 弓臂内收（r63/r64/r65）：拉弦时两弓臂绕「贴导轨的内端」向内转 + 整体往射手方向滑 ——
         //   外端**向内约 0.5 + 向后约 0.7**（用户选的「又向内又向后」），松开/击发后回到
@@ -228,11 +251,21 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         // 弩箭：没装填时挪到看不见；装填时滑到弦心（拉满后停在弦上）
         CoreGeoBone bolt = getAnimationProcessor().getBone("bolt");
         if (bolt != null) {
-            // ★ 左手（WeaponArms）在 p≈0.84 才把箭送到箭槽，所以箭也那时候出现，
-            //   否则箭会先凭空出现在导轨上、手再慢吞吞地过去「假装」放箭。
-            boolean hasBolt = cocked || p > 0.84F;
-            bolt.setPosY(hasBolt ? 0.0F : BOLT_HIDE_Y);
-            bolt.setPosZ(travel);
+            // ★★ r119（用户：「左手上箭」）：箭**跟着左手一起从下面升上来**，而不是等到
+            //   p > 0.84 才在导轨上凭空出现。手在 p = 0.70 落到最低点（ARM_FETCH，相当于
+            //   「从箭袋取箭」），所以箭从那时起出现、并贴着手的位移一起升到箭槽；
+            //   p >= 0.84 手把箭推到箭槽，箭归位到导轨（之后弦一放就把箭射出去）。
+            if (cocked || p >= 0.84F) {
+                bolt.setPosY(0.0F);
+                bolt.setPosZ(travel);
+            } else if (p > 0.70F) {
+                leftHandPx(p, TMP_BOLT);
+                bolt.setPosY(TMP_BOLT[1] - BOLT_GRIP_Y + BOLT_HAND_LIFT);
+                bolt.setPosZ(TMP_BOLT[2] - BOLT_GRIP_Z);
+            } else {
+                bolt.setPosY(BOLT_HIDE_Y);
+                bolt.setPosZ(0.0F);
+            }
         }
         // ★ 「只前后动，不上下动」（同 AKM）：角度一律清零，X/Y 一律清零，Z 只由后坐冲量驱动。
         //   以前在开火时给动画的 Z 放行 —— 那是阶跃值，每发都让弩顿一下（「多一帧」）。
@@ -279,14 +312,34 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
     private static final float[] ARM_SUPPORT = {0.0F, -0.65F, -6.30F};
     /** 去下面取箭时的位置（在导轨下方、前面） */
     private static final float[] ARM_FETCH = {0.20F, -1.30F, -7.20F};
+    /**
+     * ★ r119「左手上箭」：弩箭在模型里的**手持抓点** —— 箭身中心的 y / 手抓的 z
+     * （z 与 {@link #boltPoint} 一致，y 取导轨顶面 + 0.16）。
+     */
+    private static final float BOLT_GRIP_Y = 1.76F;
+    private static final float BOLT_GRIP_Z = -5.80F;
+    /** 箭压在掌心上方一点（否则箭会跟手方块重叠） */
+    private static final float BOLT_HAND_LIFT = 0.22F;
     private static final float[] TMP_A = new float[3];
     private static final float[] TMP_B = new float[3];
+    /** 画「左手上的箭」用的临时缓冲（不能跟 TMP_A/TMP_B 共用） */
+    private static final float[] TMP_BOLT = new float[3];
 
     /**
      * 左手在模型像素空间的目标：护木 → 抓住弦 → 往后拉 → 松手去取箭 → 把箭推上箭槽 → 回护木。
      */
     static float[] leftHandPx(float[] out) {
-        float p = lastProgress;
+        return leftHandPx(lastProgress, out);
+    }
+
+    /**
+     * 左手在模型像素空间的目标（**指定进度版本**）。
+     *
+     * <p>★ r119「左手上箭」：{@link #setCustomAnimations} 画「左手上的箭」时要用**当前帧**的 p
+     * （{@link #leftHandPx(float[])} 读的是上一帧的 {@code lastProgress}）——
+     * 否则箭会比手晚一帧，看上去就是「手到了、箭还在下面」。
+     */
+    static float[] leftHandPx(float p, float[] out) {
         if (p < 0.0F) return copy(ARM_SUPPORT, out);
         if (p < 0.05F) return copy(ARM_SUPPORT, out);
         if (p < 0.15F) {                                 // 伸手去抓弦
@@ -350,11 +403,33 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
      * {@code depth = √(L² − x²)}，转角 {@code φ = atan2(depth, x)}。
      * 把它代回「弦心后退量」与弦骨骼转角，弦的两段内端依旧精确交在弦心上（不会拉过头/拉不够）。
      */
-    private static float stringPhi(float flexAmt) {
+    private static float stringPhi(float flexAmt, float draw) {
+        return (float) Math.atan2(draw * DRAW_DZ, anchorX(flexAmt));
+    }
+
+    /**
+     * ★ r119：弦骨需要的 **scaleX** = 实际需要的长度 / 几何长度（= {@link #TIP_X}）。
+     *
+     * <p>静止 draw = 0 时锚点到弦心的水平距离就是 TIP_X ⇒ 返回 1（两段共线，一条笔直的弦）；
+     * 拉满时锚点被弓臂带进来（x = TIP_X + δx）、弦心后退 DRAW_DZ ⇒
+     * 返回 {@code hypot(x, DRAW_DZ) / TIP_X}（≈ 0.90，弦略缩 —— 视觉上弦只会短 10%，看不出来）。
+     */
+    private static float stringStretch(float flexAmt, float draw) {
+        float x = anchorX(flexAmt);
+        float pull = draw * DRAW_DZ;
+        return Mth.sqrt(x * x + pull * pull) / TIP_X;
+    }
+
+    /** 弓臂内收后弦锚点（弓臂梢）的横向位置：TIP_X + δx */
+    private static float anchorX(float flexAmt) {
         float[] sh = anchorShift(1, flexTheta(flexAmt), flexAmt * FLEX_BACK, TMP_SHIFT);
-        float x = TIP_X + sh[0];
-        float depth = Mth.sqrt(Math.max(0.0F, STRING_LEN * STRING_LEN - x * x));
-        return (float) Math.atan2(depth, x);
+        return TIP_X + sh[0];
+    }
+
+    /** 弓臂内收后弦锚点平面的 z 位移（含弓臂整体后滑 back） */
+    private static float anchorDz(float flexAmt) {
+        float[] sh = anchorShift(1, flexTheta(flexAmt), flexAmt * FLEX_BACK, TMP_SHIFT);
+        return sh[1];
     }
 
     /** 右弓臂内收角（弧度，负 = 外端向内 + 向后） */
@@ -370,9 +445,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
      * 第二项即 {@code L·sin(draw·φ)}，φ 用 {@link #stringPhi}（**随弓臂内收变**）。
      */
     private static float nockTravel(float flexAmt, float draw) {
-        float[] sh = anchorShift(1, flexTheta(flexAmt), flexAmt * FLEX_BACK, TMP_SHIFT);
-        float dz = sh[1];
-        return dz + STRING_LEN * Mth.sin(draw * stringPhi(flexAmt));
+        // ★ r119：弦心 = 两段弦的内端交汇处 ⇒ z 就是「锚点平面的位移 + 弦心净后退量」。
+        //   净后退量 = draw·DRAW_DZ（弦长由骨骼 scaleX 保证），不再需要反解 φ
+        //   —— 旧版用「固定弦长 6.221」反解，实际拉深到 3.12 px，远超设计的 1.80。
+        return anchorDz(flexAmt) + draw * DRAW_DZ;
     }
 
     /** nockTravel 用的临时缓冲（渲染单线程） */
@@ -441,6 +517,10 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
             bone.setPosX(0.0F);
             bone.setPosY(0.0F);
             bone.setPosZ(0.0F);
+            // ★ r119：弦的伸缩也归位（否则掠过一帧拉满的图标之后，弦会一直缩着）
+            bone.setScaleX(1.0F);
+            bone.setScaleY(1.0F);
+            bone.setScaleZ(1.0F);
         }
         for (String name : new String[]{"prod_left", "prod_right"}) {
             CoreGeoBone bone = getAnimationProcessor().getBone(name);
@@ -461,9 +541,16 @@ public class CrossbowGeoModel extends GeoModel<CrossbowWeaponItem> {
         flexLimb("prod_left", "cam_left", "string_left", -1, flex, FLEX_BACK);
         CoreGeoBone left = getAnimationProcessor().getBone("string_left");
         CoreGeoBone right = getAnimationProcessor().getBone("string_right");
-        float phiC = stringPhi(1.0F);
-        if (left != null) left.setRotY(-phiC);
-        if (right != null) right.setRotY(phiC);
+        float phiC = stringPhi(1.0F, 1.0F);
+        float stretchC = stringStretch(1.0F, 1.0F);
+        if (left != null) {
+            left.setRotY(-phiC);
+            left.setScaleX(stretchC);
+        }
+        if (right != null) {
+            right.setRotY(phiC);
+            right.setScaleX(stretchC);
+        }
         float travel = nockTravel(1.0F, 1.0F);
         CoreGeoBone nock = getAnimationProcessor().getBone("nock");
         if (nock != null) {

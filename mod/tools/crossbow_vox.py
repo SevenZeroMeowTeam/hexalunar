@@ -39,21 +39,23 @@ FACES = ('north', 'east', 'south', 'west', 'up', 'down')
 GRIP_TARGET = (0.0, -0.95, 0.66)
 # 拉弦行程（模型像素）：弦心从 NOCK_Z0 再往 +Z（射手方向）退这么多
 DRAW_DZ = 1.80
-# ★★ r97：**弦方块的长度**（模型像素）—— 必须与 Java 侧
-#   `client/CrossbowGeoModel.STRING_LEN` 一致：Java 用它解出「绕锚点转 φ 后内端落在弦心」的 φ。
-#   弓臂内收（FLEX）会把锚点往里带、拉满时弦心退得更深，所以它比 hypot(TIP_X, DRAW_DZ)=5.6646 长，
-#   等于「拉满时锚点到弦心」的距离（tools/_cb_flex.py 末尾会做数值自检）。
-STRING_LEN_RUNTIME = 6.221
+# ★★ r119（用户：「使用 blockbench 重新设计模型，**弦恢复平行线**，**弓臂向外扩展**，
+#   有拉弦动画，拉弦弓臂向内收缩，左手上箭，对照图 5 进行设计」）：
+#   ① 弦仍是**两段**（各自绕自己的弓臂梢 pivot 转 ⇒ 拉满时构成干净的**内 V**），但每段
+#      **几何长度改成正好 = 弓臂梢 X**（half = tip_x）：静止时两段严格共线 ⇒ 渲染出来
+#      就是**一条笔直的平行线**。
+#      旧做法里每段固定 6.221、而半跨只有 tip_x（5.37）⇒ **未拉弦时两段就在中线上
+#      重叠交叉**，看上去是「两条斜线」而不是一条弦（这就是用户说的「不是平行线」）。
+#   ② 拉满时弦要够到弦心，需要长度 = hypot(tip_x, DRAW_DZ)（斜边）：Java 除了把它转到
+#      phi，还要把弦骨 **scaleX 抻到 STRETCH = hypot(tip_x, DRAW_DZ) / tip_x**（≈1.04）。
+#      这也正好对应真弓「凸轮放线」的动作（见下面弦生成处的 STRETCH）。
+STRING_LEN_RUNTIME = None       # 已废弃（旧的两段固定斜弦常量，现由 STRETCH 取代）
 # 体素大小（模型像素）：0.45 -> ~820 方块（0.35 要 1400+，太贵；0.5 -> ~690）
 STEP = 0.45
-# ★ 弓臂放大（r65）：用户要求「弓臂明显探出机身」（参照 模型/十字弩.bbmodel 那个宽弓臂）。
-#   参考 v2 的弓臂只到 |x| 3.2、而机身带（riser）就到 1.9 ⇒ 弓臂只比机身探出 1.3 像素，看着就像贴在弩身上。
-#   X 拉长会让体素变成 0.45×0.77 的长条，所以厚度（Y/Z）另外再放一点，观感上更像参考的宽弓臂。
-#   ★ limb / cables / string 三个分件必须**一起**放（弦锚点在弓臂梢上），锚点取各自的内端，否则会和 riser 脱开。
-#   ★ r69：用户「弓臂再往外扩一点」⇒ 1.9 → 2.05（跨度 9.76 → 10.32，每侧再多探出 0.28 像素）。
-#   注意：这是**未拉弦**时的张开姿态 —— 拉弦/上膛后弓臂会向内收（Java 侧 FLEX_DEG/FLEX_BACK，
-#   r69 起上完膛会**保持内收**，不再弹回）。
-LIMB_SX = 2.05
+# ★ 弓臂放大：用户要求「弓臂明显探出机身」——
+#   ★ r119：2.05 → **2.40**（用户：「**弓臂向外扩展**」；跨度 10.32 → 12.09）。
+#   这是**未拉弦**时的张开姿态 —— 拉弦/上膛后弓臂会向内收（Java 侧 FLEX_DEG/FLEX_BACK）。
+LIMB_SX = 2.40
 LIMB_SY = 1.25
 # 弓臂（单侧分件，绕自己的内端缩放，内端不动 ⇒ 不会跟 riser 脱开）
 LIMB_X_MESHES = ('limb_L', 'limb_R')
@@ -94,6 +96,8 @@ BONES = [
     ('root', None), ('move', 'root'), ('body', 'move'), ('stock', 'body'), ('grip', 'body'),
     ('scope', 'body'), ('prod_left', 'body'), ('prod_right', 'body'),
     ('cam_left', 'body'), ('cam_right', 'body'),
+    # ★ r119：弦 = **两段**，各自 pivot 在自己的弓臂梢（±tip_x, str_y, nock_z）上——
+    #   静止时两段共线（一条直线），拉满时各自绕 pivot 转 phi ⇒ 内 V
     ('string_left', 'body'), ('string_right', 'body'), ('nock', 'body'), ('bolt', 'body'),
 ]
 
@@ -333,7 +337,13 @@ def main(argv):
     # 参考网格里弦就在弓臂桁上方 0.1 像素处，而桁部现在不会被 Y 放大抬高（见 scale_limbs）
     # ⇒ 弦自然就挂在桁上、也跟导轨顶面齐平（弩箭尾正好落在弦心上）。
     smin, smax = meshes['string']
-    tip_x = max(abs(smin[0]), abs(smax[0]))
+    # ★★ r119：弦的**半跨 / 锚点 X** 改用**弓臂梢**（弓臂网格的 X 外缘）。
+    #   以前取参考网格里 string 网格的包围盒 —— 那个网格本来就比弓臂长 0.85，
+    #   结果弦两端会伸出弓臂外面悬着（斜视角一看就是「弦比弓臂宽」）。
+    #   现在弦端点 = 弓臂外缘 = cam / 弦骨骼的 pivot ⇒ 拉弦时弦始终搭在弓臂梢上。
+    lminx = min(abs(meshes['limb_L'][0][0]), abs(meshes['limb_R'][1][0]))
+    lmaxx = max(abs(meshes['limb_L'][1][0]), abs(meshes['limb_R'][0][0]))
+    tip_x = lmaxx + delta[0]
     limb_vox = [(lo[0] + ix * step, lo[1] + iy * step, lo[2] + iz * step)
                 for (ix, iy, iz), (_u, _v, mesh) in cells.items() if mesh in LIMB_X_MESHES]
     print('弓臂桁（体素）最高 y %.2f｜弦面 y %.2f（导轨顶面 y %.2f）'
@@ -342,11 +352,12 @@ def main(argv):
              (meshes['rail'][1][1] + delta[1])))
     nock_z = (smin[2] + smax[2]) / 2 + delta[2]
     str_y = (smin[1] + smax[1]) / 2 + delta[1]
-    # ★★ r97：弦的长度必须**与 Java 侧 CrossbowGeoModel.STRING_LEN 完全一致**。
-    #   Java 用这个长度解出「绕锚点转 φ 之后内端正好落在弦心」的 φ；两边不一致，V 就收不到弦心。
-    #   r89 的 bug 就在这里：Java 改成了 6.221（那是下面**线缆**的长度），方块还是 5.6646
-    #   ⇒ 米白的弦短 0.56 收不上，深灰的线缆反而正好落到弦心并交叉（用户看到的「外 V」）。
-    half = STRING_LEN_RUNTIME
+    # ★★ r119：弦 = 两段（左半 / 右半），每段**几何长度正好等于弓臂梢 X**（half = tip_x）——
+    #   静止时两段严格共线 ⇒ 就是**一条笔直的弦**（旧版每段 6.221 > half，静止即交叉重叠）。
+    #   拉满时由 Java 绕各自 pivot 转到 phi（内 V），并把 scaleX 抻到 STRETCH ⇒ 内端精确合到弦心。
+    half = tip_x                      # 每段几何长度 = 弓臂梢 X（正好一半跨度）
+    phi = math.atan2(DRAW_DZ, tip_x)  # 拉满时弦与导轨的夹角
+    STRETCH = math.hypot(tip_x, DRAW_DZ) / tip_x   # 拉满时弦骨的 scaleX（≈1.04，绕 pivot 伸长）
 
     def rect(pat):
         x, y, w, h = pat
@@ -357,14 +368,11 @@ def main(argv):
                 'size': [round(abs(x1 - x0), 4), round(abs(y1 - y0), 4), round(abs(z1 - z0), 4)],
                 'uv': {f: dict(rect(pat)) for f in FACES}}
 
-    # ★ r69：弦再细一档（用户：「拉弦还是太厚」）—— 方块截面 0.10 → 0.07 像素。
-    #   th 是弦方块的**半**厚/半宽（弦段由 (str_y ± th, nock_z ± th) 扫出）。
-    #   同一次还把「弦心」与「弩箭尾羽」都收小：从射手视角看，挡视线的其实是那两块厚方块
-    #   （弦心 1.2×0.52×0.52、尾羽 0.72×0.6×0.48），它们 + 细弦看起来就是「厚 + 分叉」。
+    # 弦方块截面 0.07 像素（用户：「拉弦还是太厚」）
     th = 0.035
-    buckets['string_left'].append(box(-tip_x, -tip_x + half, str_y - th, str_y + th,
+    buckets['string_left'].append(box(-tip_x, 0.0, str_y - th, str_y + th,
                                       nock_z - th, nock_z + th, PAT_STRING))
-    buckets['string_right'].append(box(tip_x - half, tip_x, str_y - th, str_y + th,
+    buckets['string_right'].append(box(0.0, tip_x, str_y - th, str_y + th,
                                        nock_z - th, nock_z + th, PAT_STRING))
     # 弦心（缠绳）：0.9 × 0.32 × 0.32（原 1.2 × 0.52 × 0.52）
     buckets['nock'].append(box(-0.45, 0.45, str_y - 0.16, str_y + 0.16,
@@ -394,6 +402,8 @@ def main(argv):
     for name, parent in BONES:
         cubes = buckets.get(name) or []
         if name in ('string_left', 'string_right', 'cam_left', 'cam_right', 'nock'):
+            # ★ r119：弦骨 pivot = **弓臂梢**（±tip_x, str_y, nock_z）——
+            #   绕它转 phi 时内端扫向弦心；cam 与 nock 沿用同一位置（凸轮就在梢上）。
             sign = -1.0 if name.endswith('_left') else (1.0 if name.endswith('_right') else 0.0)
             piv = [round(sign * tip_x, 4), round(str_y, 4), round(nock_z, 4)]
         elif cubes:
@@ -434,30 +444,30 @@ def main(argv):
 
     print()
     print('---- Java 常数（CrossbowGeoModel）----')
-    print('TIP_X   = %.3f  （弦半跨 = 弓臂梢 X）' % tip_x)
+    print('TIP_X   = %.3f  （弦半跨 = 弓臂桜 X；= 每段弦的几何长）' % tip_x)
     print('DRAW_DZ = %.3f  （本脚本设定）' % DRAW_DZ)
     print('NOCK_Z0 = %.3f  （弦面 Z）' % nock_z)
-    print('弦面 Y  = %.3f  弦半长 = %.3f  PHI = %.2f°'
-          % (str_y, half, math.degrees(math.atan2(DRAW_DZ, tip_x))))
+    print('弦面 Y  = %.3f  每段长 = %.3f  PHI = %.2f°  STRETCH(scaleX) = %.5f'
+          % (str_y, half, math.degrees(phi), STRETCH))
     print('导轨前端 z=%.3f 顶面 y=%.3f   弩箭 尾 z=%.3f 尖 z=%.3f y=%.3f'
           % (rail_front, rail_top, bolt_rear, bolt_tip, bolt_y))
     lmin, lzmax = meshes['limb_L'][0], meshes['limb_L'][1]
     print('FLEX_PX = %.3f  FLEX_PZ = %.3f  （弓臂内端最前角 = 弓臂弯折支点，模型像素）'
           % (lmin[0] + delta[0] + step / 2.0, lmin[2] + delta[2]))
-    lminx = min(abs(meshes['limb_L'][0][0]), abs(meshes['limb_R'][1][0]))
-    lmaxx = max(abs(meshes['limb_L'][1][0]), abs(meshes['limb_R'][0][0]))
     print('弓臂 X 范围 %.3f ~ %.3f（模型像素）  跨度 %.2f'
           % (lminx + delta[0], lmaxx + delta[0], (lmaxx + delta[0]) * 2))
 
-    phi = math.atan2(DRAW_DZ, tip_x)
     ok = True
+    seg = half * STRETCH               # 拉满时弦骨的实际渲染色长（几何长 × scaleX）
     for sign, label in ((-1, 'left'), (1, 'right')):
-        ex = sign * tip_x - sign * half * math.cos(phi)
-        ez = nock_z + half * math.sin(phi)
-        good = abs(ex) < 1e-9 and abs(ez - (nock_z + DRAW_DZ)) < 1e-9
+        ex = sign * tip_x - sign * seg * math.cos(phi)
+        ez = nock_z + seg * math.sin(phi)
+        good = abs(ex) < 1e-6 and abs(ez - (nock_z + DRAW_DZ)) < 1e-6
         ok = ok and good
         print('弦%-5s 拉满内端 -> X %.4f  Z %.4f（目标 0.0000 / %.4f）%s'
               % (label, ex, ez, nock_z + DRAW_DZ, 'OK' if good else '*** 不对'))
+    print('弦静止：两段各 %.3f，共线（-%.3f -> 0 -> +%.3f）⇒ 一条直线'
+          % (half, half, half))
     return 0 if ok else 1
 
 
