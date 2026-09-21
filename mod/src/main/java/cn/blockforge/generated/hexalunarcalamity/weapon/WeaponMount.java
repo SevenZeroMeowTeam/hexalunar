@@ -268,12 +268,13 @@ public final class WeaponMount {
      */
     public static final float AWP_AIM_DZ = -3.5F;
     /**
-     * ★★ r115（用户：「抛壳位置为右侧，不是左侧」）：抛壳口改到**机匣右侧的抛壳窗**中心，
-     * 与模型里 `casing` 骨骼（`tools/awp_v2.py` 的 `CASE_X = 0.20`）同一个点 ——
-     * 以前这里是 `{0.90, 1.39, -0.60}`（机匣右外侧、机匣后部），与模型里那颗弹壳的位置对不上，
-     * 世界里的黄铜壳就会从「枪身中间/偏左」冒出来。
+     * ★★ r116（用户标注图：「所有武器自动抛壳为绿色箭头位置，抛壳方向应该为蓝色箭头位置」）：
+     * 抛壳点必须**明显落在枪身右侧**。r115 曾把这里从 `{0.90, 1.39, -0.60}` 改到
+     * `{0.30, 1.575, -2.50}`（x 几乎回到枪身中线）⇒ 粒子看着还在枪身中间，用户再次反馈。
+     * 现在 x 取 **0.78**（机匣半宽 0.36 的外侧一点 = 抛壳窗外沿），z 对齐右侧抛壳窗中心，
+     * 与模型里 `casing` 骨骼（`tools/awp_v2.py` 的 `CASE_X`）同一侧。
      */
-    public static final double[] AWP_EJECT = {0.30D, 1.575D, -2.50D};
+    public static final double[] AWP_EJECT = {0.78D, 1.50D, -2.50D};
     /**
      * ★ AWP 与 AKM 是**同一套持枪规则**：不做任何额外旋转（{@code AwpGeoModel.computeMovePose}
      * 的三个角度恒为 0），所以枪口 / 抛壳点的模型坐标可以直接用，不需要按角度补偿。
@@ -431,7 +432,7 @@ public final class WeaponMount {
     /** 枪口（模型像素）：枪管轴线 Y=2.25、最前端 z=−13.60 */
     public static final double[] KAR98K_MUZZLE = {0.0D, 2.25D, -13.60D};
     /** 抛壳口（模型像素）：机匣右侧、正对拉机柄（{@code casing} 骨骼 pivot 0.30 / 3.00 / −1.20） */
-    public static final double[] KAR98K_EJECT = {0.55D, 3.00D, -1.20D};
+    public static final double[] KAR98K_EJECT = {0.80D, 3.00D, -1.20D};
 
     /** 举枪时的 display X 增量（左撇子走另一侧） */
     public static float kar98kAimDx(LivingEntity entity) {
@@ -489,8 +490,12 @@ public final class WeaponMount {
     public static final float MOSIN_AIM_DZ = 1.2F;
     /** 枪口（模型像素）：枪管轴线 Y=1.75、最前端 z=−17.35（长枪管） */
     public static final double[] MOSIN_MUZZLE = {0.0D, 1.75D, -17.35D};
-    /** 抛壳口（模型像素）：机匣右侧、正对拉机柄（{@code casing} 骨骼 pivot 0.62 / 2.10 / −1.95） */
-    public static final double[] MOSIN_EJECT = {0.62D, 2.10D, -1.95D};
+    /**
+     * 抛壳口（模型像素）：机匣右侧、正对拉机柄。
+     * ★ r116：x 由 0.62 提到 **0.90**（机匣半宽 0.38 的外侧一点）—— 粒子要**明显在枪身右侧**，
+     * 贴着枪身 midline 的话在屏幕上看着还是「从枪身中间冒出来」。
+     */
+    public static final double[] MOSIN_EJECT = {0.90D, 2.10D, -1.95D};
 
     /** 举枪时该顶到屏幕中心的参照高度（机瞄 / 4 倍镜两档） */
     public static double mosinAnchorY(int sight) {
@@ -555,8 +560,11 @@ public final class WeaponMount {
     public static final float M1_AIM_DZ = 1.9F;
     /** 枪口（模型像素）：枪管轴线 Y=2.30、最前端 z=−13.60（`m1_garand_v2.py` 的 MUZZLE_Z） */
     public static final double[] M1_MUZZLE = {0.0D, 2.30D, -13.60D};
-    /** 抛壳口（模型像素）：机匣右侧抛壳窗（收窄后 x 0.20…0.46、y 2.78…3.00、z −1.75…−0.45） */
-    public static final double[] M1_EJECT = {0.33D, 2.88D, -1.05D};
+    /**
+     * 抛壳口（模型像素）：机匣右侧抛壳窗（x 0.20…0.46、y 2.78…3.00、z −1.75…−0.45）。
+     * ★ r116：x 由 0.33（窗内）提到 **0.85**（窗外侧）—— 粒子要明显在枪身右侧。
+     */
+    public static final double[] M1_EJECT = {0.85D, 2.88D, -1.05D};
 
     // ------------------------------------------------ ★ M1 的「持枪动画」= TaCZ 通用步枪 rifle_default
     /**

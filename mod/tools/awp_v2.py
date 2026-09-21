@@ -67,7 +67,9 @@ BORE = 1.575                # ★ 枪管轴线（WeaponMount.AWP_MUZZLE 的 y）
 SCOPE_Y = 3.15              # ★ 4/8 倍镜光轴（WeaponMount.AWP_SCOPE_Y）
 MUZZLE_Z = -18.00           # ★ 枪管加长 1.73（原 −16.275）—— WeaponMount.AWP_MUZZLE 同步改
 BUTT_Z = 6.00               # ★ 托底收到 z 6.00（原 7.98）⇒ 全长 24.00 单位 = **1.50 格 = 150cm**
-EJECT_WORLD = (0.30, 1.575, -2.50)   # ★ r115：抛壳口（WeaponMount.AWP_EJECT，世界用）
+# ★ r116（用户：「抛壳为绿色箭头位置，应该在蓝色箭头」）：抛壳点必须**明显在枪身右侧**——
+#   r115 曾把它从 0.90 改到 0.30（几乎回到中线）⇒ 粒子看着还在枪身中间/
+EJECT_WORLD = (0.78, 1.50, -2.50)   # 抛壳口（WeaponMount.AWP_EJECT，世界用）
 CASE_X = 0.20               # ★ r115：空弹壳中心（**右侧抛壳窗**内，右内壁 0.24）
 RCV_Z0, RCV_Z1 = -4.12, -1.20       # 机匣（位置不变：枪机/抛壳口/弹匣都挂在它上面）
 RCV_HW = 0.36               # ★ 收窄（原 0.42）—— 用户：「显得太臃肿」
@@ -368,15 +370,18 @@ def build_scope():
             改成**坐在机匣后桥上的一整块实心块**（前后端面对齐 ⇒ 没有缝）
     """
     c = []
-    c += tube_z('scope', 'sc_obj', SC_Z0, SC_Z0 + 0.34, SCOPE_Y, SC_RO + 0.05, SC_RI, BLACK,
+    # ★ r116（用户标图：「倍镜看起来有明显分叉」）：**整根筒的外径统一**（最粗与最细只差 0.02）——
+    #   以前物镜端 +0.05 / 变倍环 +0.03 / 目镜 +0.03 / 镜环 +0.07 ⇒ 四个台阶，
+    #   从玩家那个斜下视角看就像「筒上又叠了一层」（用户截图里那个分叉）。
+    c += tube_z('scope', 'sc_obj', SC_Z0, SC_Z0 + 0.34, SCOPE_Y, SC_RO + 0.02, SC_RI, BLACK,
                 tag='optic')
     c += tube_z('scope', 'sc_t1', SC_Z0 + 0.34, SC_CZ - 0.12, SCOPE_Y, SC_RO, SC_RI, BLACK,
                 tag='optic')
-    c += tube_z('scope', 'sc_var', SC_CZ - 0.12, SC_CZ + 0.12, SCOPE_Y, SC_RO + 0.03, SC_RI,
+    c += tube_z('scope', 'sc_var', SC_CZ - 0.12, SC_CZ + 0.12, SCOPE_Y, SC_RO + 0.01, SC_RI,
                 BLACK, tag='optic')
     c += tube_z('scope', 'sc_t2', SC_CZ + 0.12, SC_Z1 - 0.34, SCOPE_Y, SC_RO, SC_RI, BLACK,
                 tag='optic')
-    c += tube_z('scope', 'sc_eye', SC_Z1 - 0.34, SC_Z1, SCOPE_Y, SC_RO + 0.03, SC_RI, BLACK,
+    c += tube_z('scope', 'sc_eye', SC_Z1 - 0.34, SC_Z1, SCOPE_Y, SC_RO + 0.02, SC_RI, BLACK,
                 tag='optic')
     lz = SC_RI + 0.02
     c.append(B('scope', 'sc_lens_f', (-lz, lz), (SCOPE_Y - lz, SCOPE_Y + lz),
@@ -397,10 +402,15 @@ def build_scope():
                    (_zz, _zz + 0.14), BLACK_D))
     for zn in (-3.20, -1.50):
         nm = 'r%d' % int(-zn * 10)
-        c += tube_z('scope', 'sc_ring' + nm, zn - 0.16, zn + 0.16, SCOPE_Y, SC_RO + 0.07,
+        # ★ r116（用户：「倍镜看起来有明显分叉」）：镜环只比筒身粗 **0.025**（原来 0.07 ⇒
+        #   两个大凸环，从斜下方看就像镜筒上又分出一层）；
+        c += tube_z('scope', 'sc_ring' + nm, zn - 0.16, zn + 0.16, SCOPE_Y, SC_RO + 0.01,
                     SC_RI + 0.006, BLACK_D, tag='optic')
-        c.append(B('scope', 'sc_mnt' + nm, (-0.22, 0.22), (RCV_TOP + 0.22, SCOPE_Y - SC_RO + 0.02),
-                   (zn - 0.16, zn + 0.16), BLACK_D))
+        #   镜座从「细立柱」加宽成**整块座**（x ±0.30 / z 0.44）：筒与机匣之间是实在的座子，
+        #   不再是两条细腿（这才是真枪镜环座的样子）。
+        c.append(B('scope', 'sc_mnt' + nm, (-0.30, 0.30),
+                   (RCV_TOP + 0.22, SCOPE_Y - SC_RO + 0.02),
+                   (zn - 0.22, zn + 0.22), BLACK_D))
     # 高低鼓（顶）/ 风偏鼓（右）/ 侧面调焦环（`scope_adjust` 骨骼）
     c.append(B('scope_elev', 'el_drum', (-0.18, 0.18),
                (SCOPE_Y + SC_RO - 0.04, SCOPE_Y + SC_RO + 0.30), (-0.34, 0.04), BLACK_D,
