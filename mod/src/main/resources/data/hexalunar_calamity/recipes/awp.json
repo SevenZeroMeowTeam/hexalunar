@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "group": "hexalunar_weapons",
+  "pattern": [
+    "IGI",
+    "III",
+    "TSC"
+  ],
+  "key": {
+    "I": {
+      "tag": "forge:ingots/iron"
+    },
+    "G": {
+      "tag": "forge:gunpowder"
+    },
+    "T": {
+      "tag": "minecraft:planks"
+    },
+    "S": {
+      "item": "minecraft:glass"
+    },
+    "C": {
+      "item": "hexalunar_calamity:ammo_338"
+    }
+  },
+  "result": {
+    "item": "hexalunar_calamity:awp"
+  }
+}

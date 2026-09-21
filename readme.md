@@ -553,7 +553,34 @@ tools/  开发辅助脚本（见第五节）
 
 ## 七、更新日志（本次开发）
 
-> 版本 `1.0.0-r121`
+> 版本 `1.0.0-r122`
+
+- ★ **r122：7 把武器终于能在工作台做出来了**（并说明为什么借不了 TaCZ 的合成台）
+
+  **① TaCZ 的枪械合成台 —— 技术上走不通**（结论 + 证据，免得下次再试）：
+  TaCZ 1.1.8 `GunSmithTableResult` 只有三种类型常量 `GUN` / `AMMO` / `ATTACHMENT`，
+  其余值走默认分支，而 `RawGunTableResult.init` 的字节码在默认分支里
+  直接构造 **`ItemStack.EMPTY`** ⇒ 数据包层面的 `result.id` **只能是 TaCZ 自己的物品**。
+  其数据包目录 `recipe_filters`（`RecipeFilterManager`，`FileToIdConverter("recipe_filters")`）
+  里的 `RecipeFilter` 也只有 `whitelist` / `blacklist` ⇒ **只能筛掉 TaCZ 自带配方，不能新增**。
+  ⇒ 想“借”它的合成台，只能把本模组武器整个重写成 TaCZ 枪包（模型 / 动画 / 射击逻辑全换）
+  —— 而我们的武器是 GeckoLib + 自定义 Java（弹道 / 换弹 / 栓动循环 / 开镜遮罩），不现实。
+
+  **② 改成给 7 把武器加“装配式”工作台配方**（每把都要**它自己那种弹**当击发件
+  —— “先有弹，才能造枪”）：
+  · 复合弓 `PSP/SFS/PSP` = 木板×4 + 木棍×4 + 燧石
+  · 战术十字弩 `PIP/SBS/PS` = 木板×3 + 铁锭 + 木棍×3 + 弩箭
+  · AKM `III/IGI/TTA` = 铁锭×5 + 火药 + 木板×2 + 7.62×39 子弹
+  · AWP `IGI/III/TSC` = 铁锭×5 + 火药 + 木板 + 玻璃 + .338 狙击弹
+  · Kar98k `IGI/III/TSM` = 铁锭×5 + 火药 + 木板 + 玻璃 + 7.62×59 子弹
+  · 莫辛-纳甘 `ITI/IGI/NMS` = 铁锭×4 + 木板×2 + 火药 + 玻璃 + 7.62×59 子弹
+  · M1 加兰德 `III/IGI/TSB` = 铁锭×5 + 火药 + 木板 + 玻璃 + 7.62×61 子弹
+  ⇒ 全部 `minecraft:crafting_shaped`；材料用**标签**
+  （`forge:ingots/iron` / `forge:gunpowder` / `minecraft:planks`）⇒ 兼容其他模组的铁 / 火药。
+  ★ **Kar98k 也终于能正常获取了**（以前只能创造模式页签拿）。
+
+  ⚠️ `tools/recipe_audit.py` 会对 `forge:` 前缀的标签报“引用缺少命名空间”
+  （它的白名单里没有 `forge`）—— 那是**误报**，TaCZ 自己的配方也在用 `forge:ingots/copper`。
 
 - ★★ **r121：修「子弹看不见」（只占格子一小角）+ AKM/AWP 拉栓改右手、抛壳靠右**
 

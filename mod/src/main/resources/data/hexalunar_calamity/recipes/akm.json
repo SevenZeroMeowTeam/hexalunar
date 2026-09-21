@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "group": "hexalunar_weapons",
+  "pattern": [
+    "III",
+    "IGI",
+    "TTA"
+  ],
+  "key": {
+    "I": {
+      "tag": "forge:ingots/iron"
+    },
+    "G": {
+      "tag": "forge:gunpowder"
+    },
+    "T": {
+      "tag": "minecraft:planks"
+    },
+    "A": {
+      "item": "hexalunar_calamity:ammo_762"
+    }
+  },
+  "result": {
+    "item": "hexalunar_calamity:akm"
+  }
+}
