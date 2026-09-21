@@ -267,8 +267,13 @@ public final class WeaponMount {
      * 屏幕中心那点黑只是目镜玻璃（0.05 格宽）在 0.68 格外的投影。
      */
     public static final float AWP_AIM_DZ = -3.5F;
-    /** 抛壳口（模型像素）：机匣右侧（弹壳从这儿翻出去） */
-    public static final double[] AWP_EJECT = {0.90D, 1.39D, -0.60D};
+    /**
+     * ★★ r115（用户：「抛壳位置为右侧，不是左侧」）：抛壳口改到**机匣右侧的抛壳窗**中心，
+     * 与模型里 `casing` 骨骼（`tools/awp_v2.py` 的 `CASE_X = 0.20`）同一个点 ——
+     * 以前这里是 `{0.90, 1.39, -0.60}`（机匣右外侧、机匣后部），与模型里那颗弹壳的位置对不上，
+     * 世界里的黄铜壳就会从「枪身中间/偏左」冒出来。
+     */
+    public static final double[] AWP_EJECT = {0.30D, 1.575D, -2.50D};
     /**
      * ★ AWP 与 AKM 是**同一套持枪规则**：不做任何额外旋转（{@code AwpGeoModel.computeMovePose}
      * 的三个角度恒为 0），所以枪口 / 抛壳点的模型坐标可以直接用，不需要按角度补偿。

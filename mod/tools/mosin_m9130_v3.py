@@ -225,7 +225,7 @@ BONES = [
     ('scope', 'body', (0.0, SCOPE_Y, -2.60)),        # ★ 空心镜筒 + 透明镜片 + 十字线
     ('scope_elev', 'scope', (0.0, 3.80, -2.40)),     # 高低鼓
     ('scope_wind', 'scope', (0.42, SCOPE_Y, -2.40)),  # 风偏鼓
-    ('casing', 'body', (0.0, BORE, -2.48)),          # 抛壳用的黄铜空壳（绕自身翻滚）
+    ('casing', 'body', (0.13, BORE, -2.48)),         # ★ r115：右侧抛壳窗内（贴右内壁，绕自身翻滚）
     ('camera', 'body', (0.0, BORE, -2.40)),
 ]
 
@@ -238,7 +238,12 @@ def build_receiver():
     c = []
     c.append(B('body', 'rcv_l', (-RCV_HW, -RCV_IN), (RCV_BOT, RCV_TOP), (RCV_Z0, RCV_Z1),
                BLUE, tag='stamp'))
-    c.append(B('body', 'rcv_r', (RCV_IN, RCV_HW), (RCV_BOT, RCV_TOP), (RCV_Z0, RCV_Z1), BLUE))
+    # ★ r115（用户：「抛壳位置为右侧，不是左侧」）：右壁在抛壳窗位置**留洞** ——
+    #   真实栓动步枪的抛壳窗就在机匣右侧，弹壳从这儿出去（与 AWP 同一改法）。
+    c.append(B('body', 'rcv_r_f', (RCV_IN, RCV_HW), (RCV_BOT, RCV_TOP), (RCV_Z0, PORT_Z0),
+               BLUE))
+    c.append(B('body', 'rcv_r_b', (RCV_IN, RCV_HW), (RCV_BOT, RCV_TOP), (PORT_Z1, RCV_Z1),
+               BLUE))
     # 顶盖：装填口前 / 后两段（口子 z PORT_Z0…PORT_Z1）
     c.append(B('body', 'rcv_top_f', (-RCV_HW, RCV_HW), (RCV_TOP - 0.14, RCV_TOP),
                (RCV_Z0, PORT_Z0), BLUE))
@@ -549,8 +554,10 @@ def build_small():
     #   （0.70 → 0.44，露 0.26 ≈ 14mm）⇒ 侧面能看见护圈弓口里的扳机片
     c.append(B('trigger', 'trg_blade', (-0.07, 0.07), (0.44, WOOD_MID_Y1 + 0.04), (-1.42, -1.30),
                STEEL, 'brushed'))
-    # 空弹壳（黄铜）：待在装填口那一带的枪膛高度 ⇒ 拉栓时被带出来、往 +X 抛（Java CASE_*）
-    c.append(B('casing', 'cas_body', (-0.13, 0.13), (BORE - 0.13, BORE + 0.13),
+    # ★ r115（用户：「抛壳位置为右侧，不是左侧」）：空弹壳贴在**右侧抛壳窗**里 ——
+    #   以前在膛内中线（x=0），斜看就是「从枪身中间/偏左冒出来」。
+    #   拉栓时被枪机带出来、往 +X 抛（Java 的 CASE_* 管轨迹）。
+    c.append(B('casing', 'cas_body', (0.00, 0.26), (BORE - 0.13, BORE + 0.13),
                (-2.80, -2.15), BRASS, 'metal', tag='round'))
     return c
 

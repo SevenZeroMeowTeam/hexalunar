@@ -221,7 +221,7 @@ BONES = [
     ('clip_rounds', 'clip_in', (0.0, 1.56, -0.90)),  # ★ 漏夹里的 8 发子弹
     ('magazine', 'body', (0.0, 1.54, -0.30)),     # 弹仓底板（漏夹供弹，不可拆）
     ('trigger', 'body', (0.0, 1.58, 1.32)),       # 扳机（绕顶部销轴）
-    ('casing', 'body', (0.0, 2.84, -2.25)),       # 抛壳用的黄铜空壳（在弹膛里，z −2.50…−2.00）
+    ('casing', 'body', (0.20, 2.84, -1.40)),      # ★ r115：右侧抛壳口（右壁缺口 z −1.75…−0.45）
 ]
 
 CUBES = []
@@ -489,7 +489,9 @@ def main():
         #   ⇒ `magazine` 骨骼保留（Java 按名字取，有 null 保护）但**不放方块**。
         CUBES.append(B('trigger', 'trg_blade', (-0.08, 0.08), (0.90, 1.58), (1.20, 1.45),
                        STEEL))
-        CUBES.append(B('casing', 'cas_body', (-0.10, 0.10), (2.72, 2.96), (-2.50, -2.00),
+        # ★ r115（用户：「抛壳位置为右侧，不是左侧」）：空壳挪到**右侧抛壳口**里 ——
+        #   以前在膛内中线（x=0, z−2.50…−2.00），斜看就是「从枪身中间/偏左冒出来」。
+        CUBES.append(B('casing', 'cas_body', (0.10, 0.30), (2.72, 2.96), (-1.65, -1.15),
                        BRASS, tag='round'))
         try:
             geo, img = boxlib.build(BONES, CUBES, 'geometry.m1_garand', size=SIZE,

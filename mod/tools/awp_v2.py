@@ -67,7 +67,8 @@ BORE = 1.575                # ★ 枪管轴线（WeaponMount.AWP_MUZZLE 的 y）
 SCOPE_Y = 3.15              # ★ 4/8 倍镜光轴（WeaponMount.AWP_SCOPE_Y）
 MUZZLE_Z = -18.00           # ★ 枪管加长 1.73（原 −16.275）—— WeaponMount.AWP_MUZZLE 同步改
 BUTT_Z = 6.00               # ★ 托底收到 z 6.00（原 7.98）⇒ 全长 24.00 单位 = **1.50 格 = 150cm**
-EJECT_WORLD = (0.90, 1.39, -0.60)   # 抛壳口（WeaponMount.AWP_EJECT，世界用）
+EJECT_WORLD = (0.30, 1.575, -2.50)   # ★ r115：抛壳口（WeaponMount.AWP_EJECT，世界用）
+CASE_X = 0.20               # ★ r115：空弹壳中心（**右侧抛壳窗**内，右内壁 0.24）
 RCV_Z0, RCV_Z1 = -4.12, -1.20       # 机匣（位置不变：枪机/抛壳口/弹匣都挂在它上面）
 RCV_HW = 0.36               # ★ 收窄（原 0.42）—— 用户：「显得太臃肿」
 RCV_BOT = 0.95              # 机匣底面
@@ -215,7 +216,7 @@ BONES = [
     ('bolt', 'body', (0.61, 1.50, 0.38)),            # ★ Java 用这个 pivot
     ('scope_elev', 'scope', (0.0, 3.15, -0.15)),
     ('scope_wind', 'scope', (0.36, 2.74, -0.15)),
-    ('casing', 'body', (0.0, BORE, -2.25)),
+    ('casing', 'body', (CASE_X, BORE, -2.50)),       # ★ r115：右侧抛壳窗中心（抛壳翻滚绕它）
     ('trigger', 'body', (0.0, 0.95, 0.17)),          # ★ 销轴放在机匣底（扣扳机 = 绕它转）
 ]
 
@@ -236,7 +237,12 @@ def build_body():
     c = []
     # ---------------- 机匣：两侧 + 顶盖（留口）+ 底壁 + 前后两个加厚环
     c.append(B('body', 'rcv_l', (-RCV_HW, -0.24), (RCV_BOT, RCV_TOP), (RCV_Z0, RCV_Z1), BLACK))
-    c.append(B('body', 'rcv_r', (0.24, RCV_HW), (RCV_BOT, RCV_TOP), (RCV_Z0, RCV_Z1), BLACK,
+    # ★ r115（用户：「抛壳位置为右侧，不是左侧」）：右壁在抛壳窗位置**留洞** ——
+    #   真实 AWP 的抛壳窗就在机匣右侧，弹壳从这儿出去；拆成前后两段，
+    #   中间 PORT_Z0..PORT_Z1 就是窗口（与顶部的装填口同一个 z，左右贯通看得见）。
+    c.append(B('body', 'rcv_r_f', (0.24, RCV_HW), (RCV_BOT, RCV_TOP), (RCV_Z0, PORT_Z0), BLACK,
+               tag='print'))
+    c.append(B('body', 'rcv_r_b', (0.24, RCV_HW), (RCV_BOT, RCV_TOP), (PORT_Z1, RCV_Z1), BLACK,
                tag='print'))
     c.append(B('body', 'rcv_top_f', (-RCV_HW, RCV_HW), (RCV_TOP - 0.13, RCV_TOP),
                (RCV_Z0, PORT_Z0), BLACK))
@@ -467,9 +473,10 @@ def build_small():
                'brushed'))
     c.append(B('trigger', 'trg_shoe', (-0.06, 0.06), (-0.22, -0.10), (0.00, 0.12), STEEL,
                'brushed'))
-    # 弹膛里的空弹壳（黄铜）：拉栓时被带出来、往 +X 抛（Java 的 CASE_* 管轨迹）
-    c.append(B('casing', 'cas_body', (-0.12, 0.12), (BORE - 0.12, BORE + 0.12),
-               (-2.50, -1.90), BRASS, 'metal', tag='round'))
+    # ★ r115：空弹壳在**右侧抛壳窗**里（以前放在膛内中线 x=0，钁看就成了「从枪身中间/
+    #   偏左冒出来」）。拉栓时被枪机带出台、往 +X 抛（Java 的 CASE_* 管轨迹）。
+    c.append(B('casing', 'cas_body', (CASE_X - 0.12, CASE_X + 0.12),
+               (BORE - 0.12, BORE + 0.12), (-2.85, -2.25), BRASS, 'metal', tag='round'))
     return c
 
 
@@ -775,8 +782,13 @@ def main():
           % (PORT_Z0, PORT_Z1, 'OK' if closed else '!! 没盖住', 'OK' if not opened else '!! 还挡着'))
 
     def touch(a, b, eps=0.02):
+        # ★ r115：坐标允许写成逆序（如 `(_sx*0.23, _sx*0.07)` 在 _sx=−1 时是 (−0.23,−0.07)），
+        #   先归一化成 [min,max] 再比区间 —— 否则逆序的方块会被误判成「悬空件」
+        #   （mz_slotr0/r1、bp_foot_r 就是这么被误报的）。
         for k in range(3):
-            if a[k][1] + eps < b[k][0] or b[k][1] + eps < a[k][0]:
+            a0, a1 = min(a[k]), max(a[k])
+            b0, b1 = min(b[k]), max(b[k])
+            if a1 + eps < b0 or b1 + eps < a0:
                 return False
         return True
 
