@@ -17,7 +17,7 @@ def modName = qmode ? '六相月灾 · Q弹版' : '六相月灾'
 //    （见 .github/workflows/build.yml）。写成三目之后 sed 匹配不到，VERSION 为空，
 //    release 作业会直接 `exit 1` 失败（jar 照样构建成功，但不会打 tag / 发 Release）。
 //    Q 弹版的版本号在这行之后覆盖，两种构建的产物名与以前完全一致。
-version = '1.0.0-r116'
+version = '1.0.0-r117'
 if (qmode) {
     version = '1.0.0-q3'
 }

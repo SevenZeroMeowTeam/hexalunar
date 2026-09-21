@@ -400,17 +400,17 @@ def build_scope():
         c.append(B('scope', 'sc_tooth%d' % _k, (-0.22, 0.22), (RCV_TOP + 0.22,
                                                              RCV_TOP + 0.28),
                    (_zz, _zz + 0.14), BLACK_D))
-    for zn in (-3.20, -1.50):
-        nm = 'r%d' % int(-zn * 10)
-        # ★ r116（用户：「倍镜看起来有明显分叉」）：镜环只比筒身粗 **0.025**（原来 0.07 ⇒
-        #   两个大凸环，从斜下方看就像镜筒上又分出一层）；
-        c += tube_z('scope', 'sc_ring' + nm, zn - 0.16, zn + 0.16, SCOPE_Y, SC_RO + 0.01,
-                    SC_RI + 0.006, BLACK_D, tag='optic')
-        #   镜座从「细立柱」加宽成**整块座**（x ±0.30 / z 0.44）：筒与机匣之间是实在的座子，
-        #   不再是两条细腿（这才是真枪镜环座的样子）。
-        c.append(B('scope', 'sc_mnt' + nm, (-0.30, 0.30),
-                   (RCV_TOP + 0.22, SCOPE_Y - SC_RO + 0.02),
-                   (zn - 0.22, zn + 0.22), BLACK_D))
+    # ★ r117（用户截图：「**倍镜有明显间隙修复它**」）：镜座从「两个窄环座」改成
+    #   **两段长座** —— 原来座子只有 0.44 宽的两小块，镜筒在它们之间/之前/之后全都悬空，
+    #   斜下看就是一条穿过枪身的缝。现在装填口前后各一段（x ±0.30、从镜筒底一直连到导轨顶）。
+    #   装填口（PORT_Z0…PORT_Z1）上空仍留空 —— 弹匣里那一发要从那儿看得见、
+    #   而机匣右壁的抛壳窗也在同一段 z 上，堵了就没法看也没法抛壳。
+    c.append(B('scope', 'sc_mnt_f', (-0.30, 0.30),
+               (RCV_TOP + 0.22, SCOPE_Y - SC_RO + 0.02),
+               (SC_Z0 + 0.05, PORT_Z0), BLACK_D))
+    c.append(B('scope', 'sc_mnt_b', (-0.30, 0.30),
+               (RCV_TOP + 0.22, SCOPE_Y - SC_RO + 0.02),
+               (PORT_Z1, RCV_Z1), BLACK_D))
     # 高低鼓（顶）/ 风偏鼓（右）/ 侧面调焦环（`scope_adjust` 骨骼）
     c.append(B('scope_elev', 'el_drum', (-0.18, 0.18),
                (SCOPE_Y + SC_RO - 0.04, SCOPE_Y + SC_RO + 0.30), (-0.34, 0.04), BLACK_D,

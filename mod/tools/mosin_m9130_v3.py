@@ -534,9 +534,13 @@ def build_scope():
     #   机匣后端面 ⇒ 侧面看支架和机匣是一整块，不再有凹槽
     c.append(B('scope', 'sc_mnt', (-RCV_HW, RCV_HW), (RCV_TOP + 0.02, SCOPE_Y - SC_RO + 0.06),
                (PORT_Z1, RCV_Z1), BLUE_D))
-    # 机匣前面那段导轨（在装填口之前，不影响压弹）—— 同样与机匣顶面齐平
-    c.append(B('scope', 'sc_rail_f', (-0.30, 0.30), (RCV_TOP + 0.02, RCV_TOP + 0.14),
-               (-3.82, PORT_Z0), BLUE_D))
+    # ★ r117（用户截图：「**倍镜有明显间隙修复它**」）：原来**只有装填口之后**有支架，
+    #   镜筒在机匣前半那一大段下面是空的（那里只有一条矮导轨，顶到 2.34，离镜筒底 2.96
+    #   还差 0.62）⇒ 玩家那个斜下视角能看到一条穿过枪身的缝。
+    #   现在把装填口**之前**那段也托到镜筒底（与机匣同宽、与后段支架同高）。
+    #   装填口（PORT_Z0…PORT_Z1）上方仍然开敞 —— 压弹那一发要从那儿垂直落进弹仓，不能堵。
+    c.append(B('scope', 'sc_mnt_f', (-RCV_HW, RCV_HW), (RCV_TOP + 0.02, SCOPE_Y - SC_RO + 0.06),
+               (SC_Z0 + 0.05, PORT_Z0), BLUE_D))
     # 高低鼓（镜筒顶）/ 风偏鼓（镜筒右侧）—— 各自独立骨骼，Java 或动画可以单独动
     c.append(B('scope_elev', 'el_drum', (-0.17, 0.17),
                (SCOPE_Y + SC_RO - 0.04, SCOPE_Y + SC_RO + 0.34), (-2.57, -2.23), BLUE_D,
