@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "name": "六相月灾枪包",
+  "description": "把「六相月灾」的 AWP 栓动狙击枪接进 TaCZ（试点）",
+  "license": "ARR",
+  "authors": [
+    "SevenZeroMeow"
+  ],
+  "date": "2026-09-21",
+  "url": "https://github.com/SevenZeroMeowTeam/hexalunar"
+}

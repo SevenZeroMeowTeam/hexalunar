@@ -49,9 +49,15 @@ ZERO = {'rot': [0, 0, 0], 'pos': [0, 0, 0], 'scale': [1, 1, 1]}
 
 
 def sample(chan, t):
-    """线性插值一条通道；单关键帧 = 常量。"""
+    """线性插值一条通道；单关键帧 = 常量。
+
+    ★ TaCZ / 基岩版允许通道直接写成**常量数组**（如 `"scale": [1, 1.5, 1]`），
+      官方 ai_awp 的手骨就是这么写的 —— 这里也要认，否则烘姿态直接报错。
+    """
     if not chan:
         return None
+    if isinstance(chan, list):
+        return [float(v) for v in chan]
     keys = sorted((float(k), v) for k, v in chan.items())
     if t <= keys[0][0]:
         return list(keys[0][1])
@@ -139,7 +145,9 @@ def main(argv):
 
     geo = json.load(open(geo_path, encoding='utf-8'))
     anim = json.load(open(anim_path, encoding='utf-8'))['animations'][aname]
-    tex_path = geo_path.replace('.geo.json', '.png')
+    # 贴图默认与 geo 同名同目录；TaCZ 枪包的 geo 与贴图分在两个目录，所以支持 --tex 指定
+    tex_path = (argv[argv.index('--tex') + 1] if '--tex' in argv
+                else geo_path.replace('.geo.json', '.png'))
 
     print('动画 %s  时长 %s  loop=%s' % (aname, anim.get('animation_length'), anim.get('loop')))
     for t in times:

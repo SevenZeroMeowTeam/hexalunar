@@ -93,9 +93,9 @@
     },
     {
       "label": "mc_audit",
-      "detail": "合成表 + 战利品修饰器 + 翻译键体检",
+      "detail": "合成表 + 战利品修饰器 + 翻译键 + 美术规范体检",
       "type": "shell",
-      "command": "python tools/recipe_audit.py; python tools/lang_audit.py",
+      "command": "python tools/recipe_audit.py; python tools/lang_audit.py; python tools/art_audit.py",
       "options": {
         "cwd": "${workspaceFolder}"
       },

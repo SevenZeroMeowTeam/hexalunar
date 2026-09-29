@@ -26,7 +26,7 @@
 ★ 几何约定**不能动**（ADS 对准、弹道、手臂、Java 常量都靠它，见 `WeaponMount.AWP_*`）：
   - 前向 = −Z（枪口）、上 = +Y；**枪管轴线 `BORE = 1.575`**；原点 = 机匣中心（握把在下方）
   - 镜光轴 **`SCOPE_Y = 3.15`**（`WeaponMount.AWP_SCOPE_Y`）
-  - 枪口 `(0, 1.575, −16.275)`（`AWP_MUZZLE`）、抛壳口 `(0.90, 1.39, −0.60)`（`AWP_EJECT`）
+  - 枪口 `(0, 1.575, −18.00)`（`AWP_MUZZLE`）、抛壳口 `(0.92, 1.50, −2.50)`（`AWP_EJECT`，r121 外移）
   - 骨骼名与 pivot **原样保留**（Java 硬编码了其中几个）：
     `root/move/body/barrel/bipod/scope/scope_adjust/magazine/bolt/scope_elev/scope_wind/
      casing/trigger` + 新增 `mag_r1..mag_r4`
@@ -69,7 +69,7 @@ MUZZLE_Z = -18.00           # ★ 枪管加长 1.73（原 −16.275）—— Wea
 BUTT_Z = 6.00               # ★ 托底收到 z 6.00（原 7.98）⇒ 全长 24.00 单位 = **1.50 格 = 150cm**
 # ★ r116（用户：「抛壳为绿色箭头位置，应该在蓝色箭头」）：抛壳点必须**明显在枪身右侧**——
 #   r115 曾把它从 0.90 改到 0.30（几乎回到中线）⇒ 粒子看着还在枪身中间/
-EJECT_WORLD = (0.78, 1.50, -2.50)   # 抛壳口（WeaponMount.AWP_EJECT，世界用）
+EJECT_WORLD = (0.92, 1.50, -2.50)   # 对表锚点 = WeaponMount.AWP_EJECT（r121 从 0.78 外移到 0.92）
 CASE_X = 0.20               # ★ r115：空弹壳中心（**右侧抛壳窗**内，右内壁 0.24）
 RCV_Z0, RCV_Z1 = -4.12, -1.20       # 机匣（位置不变：枪机/抛壳口/弹匣都挂在它上面）
 RCV_HW = 0.36               # ★ 收窄（原 0.42）—— 用户：「显得太臃肿」
@@ -818,7 +818,7 @@ def main():
     print('  枪管轴线 Y   = %.3f（-> AWP_MUZZLE 的 y）' % BORE)
     print('  枪口         = (0.00, %.3f, %.3f)  -> WeaponMount.AWP_MUZZLE' % (BORE, MUZZLE_Z))
     print('  镜光轴 Y     = %.2f -> WeaponMount.AWP_SCOPE_Y' % SCOPE_Y)
-    print('  抛壳口(世界) = %s -> WeaponMount.AWP_EJECT（没变）' % (EJECT_WORLD,))
+    print('  抛壳口(世界) = %s —— 必须等于 WeaponMount.AWP_EJECT（以 Java 为准）' % (EJECT_WORLD,))
     print('  枪机 pivot   = (0.61, 1.50, 0.38)（没变）  Java BOLT_BACK 取 1.90 / LIFT 62°')
     print('  弹匣最上一发 = y %.2f（round_in）  弹匣 pivot (0.00, 0.00, 0.90)（没变）' % ROUND_TOP_Y)
     print()

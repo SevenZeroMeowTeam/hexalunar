@@ -5,9 +5,11 @@
 Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组。
 月相会改变夜晚的威胁强度，玩家则用枪械、弩弓与投掷物应对尸潮。
 
-- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r113`
+- 模组 ID：`hexalunar_calamity`｜版本：`1.0.0-r122`
 - 武器模型：**GeckoLib 4.8.4 骨骼模型**（`geo/*.geo.json` + `animations/*.animation.json`，可在 Blockbench 里直接改）
 - 创造模式页签：**六相月灾**
+- 美术规范：**[`美术规范.md`](美术规范.md)**（单位 / 密度 / 色板 / 贴图尺寸 / 命名 / pivot 规则 / 自检项）＋ [`agent.md`](agent.md)（建模 Agent 设定）—— **做模型前必读，提交前跑 `python tools/art_audit.py`（0 错误）**
+- 许可：**代码 MIT**｜**模型/贴图/音效等美术音频资产 CC BY 4.0**（详见 [`LICENSE`](LICENSE)、[`CREDITS.md`](CREDITS.md) 与第七节）
 
 ---
 
@@ -18,7 +20,7 @@ Minecraft **1.20.1 / Forge 47.4.x** 的月相灾变 + 现代射击玩法模组�
 | 需要 | JDK **17**、**Gradle 8.14.5** |
 | 依赖 | **GeckoLib 4.8.4**（`software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4`，由 Gradle 自动拉取） |
 | ⚠️ 重要 | ForgeGradle `[6.0,6.2)` **不支持 Gradle 9.x**，必须用 8.x |
-| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r113.jar` |
+| 产物 | `mod/build/libs/hexalunar_calamity-1.0.0-r122.jar` |
 | 部署 | 复制到 `%APPDATA%\.minecraft\versions\1.20.1-Forge_47.4.23-2\mods\` |
 | ⚠️ 运行前置 | **GeckoLib 4.8.4** 必须与 jar 一起放进 `mods/`（武器骨骼模型靠它渲染，缺了直接加载失败） |
 
@@ -476,6 +478,8 @@ tools/  开发辅助脚本（见第五节）
 |---|---|
 | `akm_v3.py` / `bow_v3.py` / `grenade_v3.py` / `flashbang_v3.py` | **武器/投掷物模型生成器**（几何 + 逐面 UV 贴图 + 自检），产物写到 `build/*.geo.json` / `*.png`；自检会打印骨骼名、瞄准线水平/居中、弦端点、导轨高度余量（**十字弩 r61 起改用下表的 `crossbow_vox.py` 体素化**，`crossbow_v3.py` 仅作历史参考） |
 | `boxlib.py` | 上面各生成器共用的几何/上色库（倒角、圆角、椭圆、螺栓、通风口、布纹…） |
+| `art_audit.py` | ★ **美术规范体检**（照根目录《美术规范.md》第七节）：单位/朝向、贴图尺寸与逐面 UV（越界/重叠）、骨骼命名与必需骨、pivot 距自身几何 ≤4u、抛壳在 +X、方块负尺寸、规模上限、交付物齐全；报告写 `build/art_audit.txt`（终端中文乱码时看它），有「错误」时退出码 1（`mc_audit` 任务已带上）|
+| `dead_assets.py` | ★ **死资源扫描**（引用闭包）：以全部 Java 为根、顺着 JSON 里的路径传递展开（`.obj/.mtl` 不做裸名兜底），列出**没人引用**的旧模型/贴图/备份垃圾；区分「引擎按固定位置读取」「命名约定加载」「0 引用」三类，报告写 `build/dead_assets.txt`。2026-09-21 用它清掉了 35 个 OBJ 时代残留（含 `crossbow.geo.json`）|
 | `install_models.py` | 把 `build/*.geo.json` + `*.png` 装进 `assets/.../geo` 与 `textures/models`（先备份旧文件） |
 | `gen_glowmask.py` | 按亮度阈值自动生成自发光遮罩 `*_glowmask.png`（**改完贴图必跑**） |
 | `geo2bbmodel.py` | 把 `.geo.json` 反导成 `.bbmodel`，方便在 Blockbench 里看/改 |
@@ -551,7 +555,43 @@ tools/  开发辅助脚本（见第五节）
 
 ---
 
-## 七、更新日志（本次开发）
+## 七、许可证与合规
+
+| 内容 | 许可 | 说明 |
+|---|---|---|
+| **Java 源码**（`mod/src/main/java/**`）、数据（`data/**`）、语言文件 | **MIT** | 见根目录 [`LICENSE`](LICENSE)，版权 **2026 七零喵团队** |
+| **美术与音频资产**：骨骼模型（`geo/**`）、动画（`animations/**`）、贴图与 UI（`textures/**`）、音效（`sounds/**`）、TaCZ 枪包（`mod/tacz_pack/**`） | **CC BY 4.0** | 许可全文 <https://creativecommons.org/licenses/by/4.0/> ：可自由使用 / 修改 / **商用**，只要求**保留署名** |
+
+**CC BY 4.0 的署名格式（转载我们的模型/贴图/音效时请照抄一行）**：
+
+> 模型 / 贴图 / 音效：**七零喵团队**《六相月灾》(HexaLunar Calamity)，
+> <https://github.com/SevenZeroMeowTeam/hexalunar> ，许可 CC BY 4.0（若修改过请注明）。
+
+三种渠道的许可声明（三处内容一致，只是读者不同）：
+
+1. **仓库**：根目录 `LICENSE`（MIT 全文）+ `CREDITS.md`（第三方与待核实清单）；
+2. **jar 内**：`META-INF/mods.toml` 的 `license="MIT (code) / CC BY 4.0 (assets)"`
+   ＋ `META-INF/LICENSE-hexalunar_calamity.txt`（用压缩软件打开 jar 即可看到，随包分发不带丢）；
+3. **文档**：本节 + `mod/README.md` 的「许可证」章。
+
+**与 TaCZ（永恒枪械工坊：零）的合规边界**：
+
+- TaCZ 只是**玩家自行安装的运行时前置**（只有装它的枪包功能时才需要），
+  本模组**不是** TaCZ 的衍生作品；
+- 我们**没有**复制 / 修改 / 再分发它的模型、贴图、音效、动画、Lua 或数据包，
+  TaCZ 的 jar 与官方包也不在本仓库 / Release 里；
+- 参考的只是**数据格式与接口行为**（枪包目录结构、`display` JSON 字段、动画轨道与状态机语义、
+  音效路径规则）—— 用于**互操作性**（让我们的 AWP 能直接作为一个 TaCZ 枪包跑起来）；
+- 开发期为研究生成的字节码 / JSON 转储只留在本地 `mod/build/`（`.gitignore` 已排除），
+  **不入库、不随 Release 分发**；
+- `mod/tacz_pack/hexalunar_gun_pack/**` 里的模型、贴图、音效、动画**全部本项目自制**（CC BY 4.0）。
+
+> ⚠️ 维护者注意：`CREDITS.md` 第四节有一张**待核实清单**（3 个源音效 ogg、1 个风格参考模型包），
+> 逐条确认来源后把「待核实」改成结论；确认不能再分发的，直接 `git rm` 掉。
+
+---
+
+## 八、更新日志（本次开发）
 
 > 版本 `1.0.0-r122`
 

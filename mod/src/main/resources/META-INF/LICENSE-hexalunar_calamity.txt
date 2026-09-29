@@ -1,0 +1,63 @@
+================================================================================
+六相月灾 / HexaLunar Calamity —— 许可说明（LICENSE）
+================================================================================
+本文件随 jar 一起分发，区分说明「代码」与「美术 / 音频资产」两类内容各自的许可。
+仓库主页（源码、问题反馈、第三方清单 CREDITS.md）：
+    https://github.com/SevenZeroMeowTeam/hexalunar
+
+--------------------------------------------------------------------------------
+一、代码（Java 源码、数据包 data/**、语言文件、生成脚本）
+--------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 七零喵团队
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+二、美术与音频资产（骨骼模型 geo/**、动画 animations/**、贴图 textures/**、音效 sounds/**）
+--------------------------------------------------------------------------------
+
+除另有说明外，本模组的模型、骨骼动画、贴图、界面图标与音效采用
+Creative Commons Attribution 4.0 International（CC BY 4.0）许可。
+
+    许可全文：https://creativecommons.org/licenses/by/4.0/
+    中文全文：https://creativecommons.org/licenses/by/4.0/legalcode.zh-hans
+
+你可以自由地：复制、修改、再分发、**商用**本模组的上述资产。
+**唯一要求**：保留署名，并注明是否做过修改。建议署名格式：
+
+    模型 / 贴图 / 音效：七零喵团队《六相月灾》(HexaLunar Calamity)，
+    https://github.com/SevenZeroMeowTeam/hexalunar ，许可 CC BY 4.0（若修改过请注明）。
+
+--------------------------------------------------------------------------------
+三、第三方内容
+--------------------------------------------------------------------------------
+
+* Minecraft Forge、GeckoLib：本模组仅在运行时依赖，**未打包其任何代码或资源**，
+  请遵守各自的许可（Forge: LGPL-2.1；GeckoLib: MIT，以其官方仓库为准）。
+* TaCZ（永恒枪械工坊：零）：玩家自行安装的运行时前置，**仅** `tacz_pack/hexalunar_gun_pack`
+  这类枪包功能需要。本模组**不是** TaCZ 的衍生作品，也**未复制、修改或再分发**
+  TaCZ 的任何模型、贴图、音效、动画、Lua 或数据包。
+* 其余第三方素材（以及维护者的「待核实清单」）见仓库根目录 CREDITS.md。
+
+--------------------------------------------------------------------------------
+如有疑问或希望以本文件未列出的方式使用本项目内容，请在仓库提出 issue 联系作者。
+================================================================================

@@ -4,6 +4,27 @@
 
 ---
 
+## 零、本项目落地方式（**与下文通用设定冲突时，以本节 + [`美术规范.md`](../美术规范.md) 为准**）
+
+> ★ **必读**：[`美术规范.md`](../美术规范.md)（仓库根）是本项目的**唯一技术标准**
+> —— 单位 / 密度 / 色板 / 贴图尺寸 / 命名 / pivot 规则 / 自检项，七节齐全；动手前先读它。
+> 提交前跑：`cd mod` → `python tools/art_audit.py`（**0 错误**才算完，明细看 `mod/build/art_audit.txt`）。
+
+| 下文（通用设定） | 本项目实际做法 |
+|---|---|
+| 在 Blockbench 里手工建模 | **程序化生成**：`mod/tools/<武器>_v<N>.py` 用 `boxlib.py` 造几何 + 逐面 UV 贴图 + geo.json；Blockbench 只用来**看和微调**（`bbpush.py` / `geo2bbmodel.py` / `bbmcp.py`） |
+| 必须用 Generate Shape 插件拼圆 | 等价物是 `boxlib` 图元：`ring` / `arc_boxes` / `sphere_slabs` / `bolt` / `vents` / `cross_boxes`（别手堆方块拼圆） |
+| 纹理 512×512 | ✅ 一致（**逐面 UV 图集**，密度 11~13 px/单位；`kar98k` 的 128² 是历史例外） |
+| 枪长 12~24px（0.75~1.5 格） | ✅ 一致：**16 u = 1 方块 = 1 m**、**1 u = 6.25 cm**，成品 1.0~1.5 格（AKM 16.6u / AWP 24u / 莫辛 22.9u） |
+| （未约定前向） | ★ **枪口 = −Z、上 = +Y、+X = 射手右侧**（铁律）；原点 = 机匣中心（握把在下方）；**骨骼一根都不许带旋转** |
+| 动画写在 `.animation.json` 里 | 本项目姿态**由 Java 程序化驱动**（`*GeoModel.setCustomAnimations`），动画文件多是空通道/循环；TaCZ 枪包通道例外 |
+| 交付时给一份建模说明 | 交付物 = 生成器改动 + geo/贴图/glowmask + `art_audit` 0 错误 + **同步 `WeaponMount.*` 常量** + 两份 README 更新 |
+
+**关键锚点以 `weapon/WeaponMount.java` 为准**（枪口 / 抛壳点 / 镜光轴全表见《美术规范.md》第一节）
+—— 生成器里的注释**不保证**与 Java 同步，改一处就两处一起改。
+
+---
+
 ## 一、角色定位
 
 - **领域**：Minecraft Java 版枪械模组（Mod / Resource Pack）武器建模与绑定。

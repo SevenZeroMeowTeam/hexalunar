@@ -1,0 +1,6 @@
+{
+  "namespace": "hexalunar",
+  "dependencies": {
+    "tacz": "[1.1.4,)"
+  }
+}
